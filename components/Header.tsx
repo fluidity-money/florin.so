@@ -36,7 +36,7 @@ export function Header() {
         <Link href="/" className="brand">
           <span className="brand__mark">¤</span>
           <span className="brand__name">
-            florin <span className="brand__sub">/ stable SPY</span>
+            Florin <span className="brand__sub"></span>
           </span>
         </Link>
 
