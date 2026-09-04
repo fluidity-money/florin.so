@@ -10,10 +10,13 @@ export default function HomePage() {
   return (
     <>
       <Overline>florin protocol</Overline>
-      <h1 className="page-title">Mint FUSD by borrowing SPY</h1>
+      <h1 className="page-title">Deposit SPY and mint FUSD.</h1>
       <p className="lead">
-        Deposit SPY (SPDR S&amp;P 500 ETF TRUST) on the Robinhood Chain. Mint FUSD. Borrow
+        Deposit SPY (SPDR S&amp;P 500 ETF TRUST) on Robinhood Chain. Mint FUSD. Borrow
         dollars without selling a share.
+      </p>
+      <p className="lead">
+        When dividends land they compound into your collateral, so your stocks grow while you borrow.
       </p>
 
       {/* Action cards */}

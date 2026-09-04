@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAppKit, useAppKitNetworkCore } from '@reown/appkit/react';
 import { useWallet } from './wallet/wallet';
 import { Button } from './ui';
 
@@ -10,6 +11,20 @@ const NAV = [
   { href: '/position', label: 'Manage' },
   { href: '/stability', label: 'Stability pool' },
 ];
+
+// Network selector. Only mounted when the real (Reown) provider is active, so
+// the AppKit hooks are safe to call. Opens the network-sheet; shows the active
+// chain name once one is set.
+function NetworkControl() {
+  const { open } = useAppKit();
+  const { caipNetwork } = useAppKitNetworkCore();
+  const net = caipNetwork?.name ?? 'Connect network';
+  return (
+    <Button variant="ghost" onClick={() => void open({ view: 'Networks' })}>
+      {net}
+    </Button>
+  );
+}
 
 export function Header() {
   const w = useWallet();
@@ -39,6 +54,7 @@ export function Header() {
 
         <div className="site-header__conn">
           {w.connected && w.short && <span className="addr-chip">{w.short}</span>}
+          {w.kind === 'real' && <NetworkControl />}
           <Button
             variant={w.connected ? 'ghost' : 'primary'}
             onClick={() => (w.connected ? w.disconnect() : w.connect())}

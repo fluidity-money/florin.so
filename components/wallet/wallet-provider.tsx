@@ -8,7 +8,7 @@ import {
   useDisconnect,
 } from '@reown/appkit/react';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
-import { mainnet } from '@reown/appkit/networks';
+import { robinhood } from '@reown/appkit/networks';
 import { Wallet, WalletContext, MOCK_ADDRESS } from './wallet';
 
 /*
@@ -65,7 +65,7 @@ function RealWalletBridge({ children }: { children: ReactNode }) {
     short: acc.address ? shortAddr(acc.address) : null,
     kind: 'real',
     mock: false,
-    connect: () => void open({ view: 'Connect' }),
+    connect: () => void open({ view: 'Networks' }),
     disconnect: () => void disconnect(),
   };
   return <WalletContext.Provider value={wallet}>{children}</WalletContext.Provider>;
@@ -73,15 +73,18 @@ function RealWalletBridge({ children }: { children: ReactNode }) {
 
 function RealWalletProvider({ children }: { children: ReactNode }) {
   const adapter = useMemo(
-    () => new WagmiAdapter({ projectId: PROJECT_ID, networks: [mainnet] }),
+    () => new WagmiAdapter({ projectId: PROJECT_ID, networks: [robinhood] }),
     []
   );
+  // Don't block/nag on wrong network — the user picks their chain on demand
+  // via the header "Connect network" button.
   return (
     <AppKitProvider
       projectId={PROJECT_ID}
       adapters={[adapter]}
-      networks={[mainnet]}
-      defaultNetwork={mainnet}
+      networks={[robinhood]}
+      defaultNetwork={robinhood}
+      allowUnsupportedChain={true}
       themeMode="light"
       metadata={{
         name: 'Florin',

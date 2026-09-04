@@ -1,16 +1,30 @@
 :root {
-  --ink: #000;
-  --paper: #fff;
-  --gray-1: #111;
-  --gray-2: #444;
-  --gray-3: #888;
-  --gray-4: #bbb;
-  --line: #000;
-  --line-soft: #c8c8c8;
-  --grid-dot: rgba(0, 0, 0, 0.14);
+  /* Canonical values live in lib/theme.ts (applied inline on <body>).
+     These are fallback defaults so the sheet works on its own. */
+  --paradiso: #3A8D90;
+  --shamrock: #34C5AD;
+  --flax: #E9E07F;
+  --rose-bud: #F7B295;
+
+  --ink: #153b3d;
+  --paper: #fbf5e8;
+  --gray-1: #2e4a4e;
+  --gray-2: #5d6a64;
+  --gray-3: #8b8c73;
+  --gray-4: #c6c0ac;
+  --line: #3A8D90;
+  --line-soft: #b9c8c2;
+  --grid-dot: rgba(58, 141, 144, 0.14);
+  --accent: #34C5AD;
+  --tint-soft: #E9E07F;
+  --tint-warm: #F7B295;
+  --strong: #3A8D90;
+  --strong-fg: #fff;
+
   --mono: "SF Mono", "IBM Plex Mono", "JetBrains Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
-  --sans: ui-sans-serif, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
+  --sans: "Iowan Old Style", Charter, Georgia, "Times New Roman", ui-serif,
+    serif;
 }
 
 * {
@@ -73,7 +87,7 @@ a {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-size: 11px;
-  color: var(--gray-3);
+  color: var(--accent);
 }
 
 /* ---- header ---------------------------------------------------------------- */
@@ -102,7 +116,7 @@ a {
   place-items: center;
   width: 26px;
   height: 26px;
-  border: 1px solid #000;
+  border: 1px solid var(--line);
   font-size: 15px;
   line-height: 1;
 }
@@ -125,10 +139,9 @@ a {
   font-size: 13px;
 }
 .site-nav__link--active {
-  border-color: #000;
-  color: #000;
-  background: #000;
-  color: #fff;
+  border-color: var(--line);
+  color: var(--strong-fg);
+  background: var(--strong);
 }
 .site-header__conn {
   display: flex;
@@ -140,8 +153,8 @@ a {
   font-family: var(--mono);
   font-size: 12px;
   padding: 4px 8px;
-  border: 1px solid #000;
-  background: #fff;
+  border: 1px solid var(--line);
+  background: var(--paper);
 }
 .demo-badge {
   font-family: var(--mono);
@@ -164,9 +177,9 @@ a {
 /* ---- buttons ---------------------------------------------------------------- */
 .btn {
   appearance: none;
-  border: 1px solid #000;
-  background: #fff;
-  color: #000;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
   padding: 10px 16px;
   font-size: 14px;
   font-weight: 600;
@@ -179,21 +192,21 @@ a {
   cursor: not-allowed;
 }
 .btn--primary {
-  background: #000;
-  color: #fff;
+  background: var(--strong);
+  color: var(--strong-fg);
 }
 .btn--ghost {
-  background: #fff;
-  color: #000;
+  background: var(--paper);
+  color: var(--ink);
 }
 .btn--danger {
-  background: #fff;
-  color: #000;
-  border-color: #000;
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--ink);
 }
 .btn--danger:hover {
-  background: #000;
-  color: #fff;
+  background: var(--strong);
+  color: var(--strong-fg);
 }
 
 /* ---- panels / cards --------------------------------------------------------- */
@@ -218,7 +231,7 @@ a {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-size: 10px;
-  color: var(--gray-3);
+  color: var(--accent);
 }
 .panel__h {
   margin: 0;
@@ -242,7 +255,7 @@ a {
   border: 1px solid var(--line);
   background: var(--paper);
   box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.12);
-  color: #000;
+  color: var(--ink);
   text-decoration: none;
 }
 .card--wide {
@@ -274,25 +287,25 @@ a {
   color: var(--gray-3);
 }
 .card:hover {
-  background: #000;
-  color: #fff;
+  background: var(--strong);
+  color: var(--strong-fg);
 }
 .card:hover .card__body {
-  color: #fff;
+  color: var(--strong-fg);
 }
 .card:hover .card__sub {
-  color: #bbb;
+  color: var(--gray-4);
 }
 
 /* ---- stat tiles ------------------------------------------------------------- */
 .stat {
   border: 1px solid var(--line);
   padding: 12px 14px;
-  background: #fff;
+  background: var(--paper);
 }
 .stat--strong {
-  background: #000;
-  color: #fff;
+  background: var(--strong);
+  color: var(--strong-fg);
 }
 .stat__label {
   text-transform: uppercase;
@@ -311,7 +324,7 @@ a {
   line-height: 1.05;
 }
 .stat--strong .stat__value {
-  color: #fff;
+  color: var(--strong-fg);
 }
 .stat__sub {
   font-size: 12px;
@@ -339,13 +352,13 @@ a {
 .field__in {
   flex: 1;
   padding: 9px 10px;
-  border: 1px solid #000;
-  background: #fff;
+  border: 1px solid var(--line);
+  background: var(--paper);
   font-family: var(--mono);
   font-size: 15px;
 }
 .field__in:focus {
-  outline: 2px solid #000;
+  outline: 2px solid var(--line);
   outline-offset: 1px;
 }
 .field__suffix {
@@ -369,7 +382,7 @@ a {
   appearance: none;
   width: 100%;
   height: 14px;
-  border: 1px solid #000;
+  border: 1px solid var(--line);
   border-radius: 0;
   background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0 1px, transparent 1px 9px);
   outline: none;
@@ -380,15 +393,15 @@ a {
 }
 .slider::-moz-range-progress,
 .slider::-webkit-slider-fill-lower {
-  background: #000;
+  background: var(--strong);
 }
 .slider::-moz-range-thumb,
 .slider::-webkit-slider-thumb {
   appearance: none;
   width: 14px;
   height: 18px;
-  border: 1px solid #000;
-  background: #000;
+  border: 1px solid var(--line);
+  background: var(--strong);
   cursor: pointer;
 }
 
@@ -396,7 +409,7 @@ a {
 .ratiobar__track {
   position: relative;
   height: 14px;
-  border: 1px solid #000;
+  border: 1px solid var(--line);
   background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0 1px, transparent 1px 7px);
 }
 .ratiobar__min {
@@ -404,7 +417,7 @@ a {
   top: -3px;
   bottom: -3px;
   width: 1px;
-  background: #000;
+  background: var(--strong);
 }
 .ratiobar__fill {
   position: absolute;
@@ -412,7 +425,7 @@ a {
   background: rgba(0, 0, 0, 0.18);
 }
 .ratiobar--liquidation .ratiobar__fill {
-  background-image: linear-gradient(45deg, #000 0 4px, transparent 4px 8px);
+  background-image: linear-gradient(45deg, var(--strong) 0 4px, transparent 4px 8px);
 }
 .ratiobar__scale {
   display: flex;
@@ -435,7 +448,7 @@ a {
   letter-spacing: 0.06em;
   font-size: 10px;
   color: var(--gray-2);
-  border-bottom: 1px solid #000;
+  border-bottom: 1px solid var(--line);
   padding: 6px 10px;
 }
 .table td {
@@ -454,27 +467,27 @@ a {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   padding: 1px 6px;
-  border: 1px solid #000;
+  border: 1px solid var(--line);
 }
 .tag--outline {
-  background: #fff;
-  color: #000;
+  background: var(--paper);
+  color: var(--ink);
 }
 .tag--filled {
-  background: #000;
-  color: #fff;
+  background: var(--strong);
+  color: var(--strong-fg);
 }
 .tag--danger {
-  background-image: linear-gradient(45deg, #000 0 4px, transparent 4px 8px);
-  color: #000;
+  background-image: linear-gradient(45deg, var(--strong) 0 4px, transparent 4px 8px);
+  color: var(--ink);
 }
 
 /* ---- empty state ---------------------------------------------------------------- */
 .empty {
-  border: 1px dashed #000;
+  border: 1px dashed var(--line);
   padding: 40px 28px;
   text-align: center;
-  background: #fff;
+  background: var(--tint-soft);
 }
 .empty__glyph {
   font-size: 40px;
@@ -522,7 +535,7 @@ a {
   color: var(--gray-3);
 }
 .rule {
-  border-top: 1px solid #000;
+  border-top: 1px solid var(--line);
   margin: 18px 0;
 }
 .kv {
@@ -541,11 +554,11 @@ a {
 }
 
 .warn {
-  border: 1px solid #000;
+  border: 1px solid var(--line);
   border-left-width: 4px;
   padding: 9px 12px;
   font-size: 12.5px;
-  background-image: linear-gradient(45deg, rgba(0, 0, 0, 0.08) 0 4px, transparent 4px 8px);
+  background: var(--tint-warm);
   margin: 12px 0;
 }
 
@@ -554,7 +567,7 @@ a {
   margin-top: 18px;
 }
 .link {
-  color: #000;
+  color: var(--ink);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -572,26 +585,26 @@ a {
   gap: 8px;
   margin: 18px 0;
   padding: 12px 14px;
-  border: 1px solid #000;
-  background: #000;
-  color: #fff;
+  border: 1px solid var(--line);
+  background: var(--strong);
+  color: var(--strong-fg);
 }
 .banner__label {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-size: 11px;
-  color: #fff;
+  color: var(--strong-fg);
   opacity: 0.85;
 }
 .banner__value {
   font-family: var(--mono);
   font-size: 26px;
   font-weight: 600;
-  color: #fff;
+  color: var(--strong-fg);
 }
 .banner__note {
   font-size: 12px;
-  color: #fff;
+  color: var(--strong-fg);
   opacity: 0.8;
   font-family: var(--mono);
 }
@@ -604,14 +617,14 @@ a {
   margin-top: 18px;
   padding: 14px 16px;
   border: 1px solid var(--line);
-  background: #000;
-  color: #fff;
+  background: var(--strong);
+  color: var(--strong-fg);
 }
 .tvl__label {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-size: 11px;
-  color: #fff;
+  color: var(--strong-fg);
   opacity: 0.85;
 }
 .tvl__value {
@@ -623,7 +636,7 @@ a {
 .tvl__note {
   font-size: 12px;
   font-family: var(--mono);
-  color: #fff;
+  color: var(--strong-fg);
   opacity: 0.8;
 }
 
