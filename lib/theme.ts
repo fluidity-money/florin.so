@@ -43,32 +43,32 @@ export interface Theme {
 // Edit me. Swap values, tweak, rebuild (`npm run dev` or `npm run build`).
 // ---------------------------------------------------------------------------
 export const THEME: Theme = {
-  // raw palette
-  paradiso: '#3A8D90',
-  shamrock: '#34C5AD',
-  flax: '#E9E07F',
-  roseBud: '#F7B295',
+  // raw palette — warm/cool editorial contrast derived from the Florin mark
+  paradiso: '#171717',
+  shamrock: '#e8ad24',
+  flax: '#a9d4df',
+  roseBud: '#f0c7ba',
 
-  // typography — serif for the body/UI, mono kept for numbers
-  sans: '"Iowan Old Style", Charter, Georgia, "Times New Roman", ui-serif, serif',
+  // neutral grotesk for display/UI, mono kept for protocol values
+  sans: 'Arial, "Helvetica Neue", Helvetica, ui-sans-serif, system-ui, sans-serif',
   mono:
     '"SF Mono", "IBM Plex Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace',
 
-  // derived — replace these to re-tint the whole skin
-  ink: '#153b3d', // near-black teal for body text
-  paper: '#fbf5e8', // warm cream
-  gray1: '#2e4a4e',
-  gray2: '#5d6a64',
-  gray3: '#8b8c73',
-  gray4: '#c6c0ac',
-  line: '#3A8D90', // Paradiso rule
-  lineSoft: '#b9c8c2',
-  gridDot: 'rgba(58, 141, 144, 0.14)',
-  accent: '#34C5AD', // Shamrock
-  tintSoft: '#E9E07F', // Flax
-  tintWarm: '#F7B295', // Rose Bud
-  strong: '#3A8D90', // Paradiso fill
-  strongFg: '#fff',
+  // derived semantic tokens
+  ink: '#111111',
+  paper: '#f7f7f3',
+  gray1: '#242424',
+  gray2: '#555550',
+  gray3: '#777771',
+  gray4: '#c9c9c1',
+  line: '#171717',
+  lineSoft: '#d9d9d1',
+  gridDot: 'transparent',
+  accent: '#b97800',
+  tintSoft: '#a9d4df',
+  tintWarm: '#f0c7ba',
+  strong: '#171717',
+  strongFg: '#f7f7f3',
 };
 
 // Emit as CSS custom properties for inline application on <body>.

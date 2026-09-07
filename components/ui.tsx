@@ -178,7 +178,7 @@ export function RatioBar({
       </div>
       <div className="ratiobar__scale">
         <span>0%</span>
-        <span className="ratiobar__min-label">min {Math.round(minPct)}%</span>
+        <span className="ratiobar__min-label" style={{ left: `${minAt * 100}%` }}>min {Math.round(minPct)}%</span>
         <span>400%</span>
       </div>
     </div>

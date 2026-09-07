@@ -33,11 +33,9 @@ export function Header() {
   return (
     <header className="site-header">
       <div className="site-header__row">
-        <Link href="/" className="brand">
-          <span className="brand__mark">¤</span>
-          <span className="brand__name">
-            Florin <span className="brand__sub"></span>
-          </span>
+        <Link href="/" className="brand" aria-label="Florin home">
+          <span className="brand__mark" aria-hidden="true" />
+          <span className="brand__name">Florin</span>
         </Link>
 
         <nav className="site-nav" aria-label="Main">
