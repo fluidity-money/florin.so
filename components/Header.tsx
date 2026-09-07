@@ -59,7 +59,7 @@ export function Header() {
           >
             {w.connected ? 'Disconnect' : 'Connect wallet'}
           </Button>
-          {w.mock && !w.connected && <span className="demo-badge">demo wallet</span>}
+          {w.mock && !w.connected}
         </div>
       </div>
     </header>
