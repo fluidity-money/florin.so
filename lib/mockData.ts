@@ -13,15 +13,15 @@ export const SPY_PRICE_USD = 600.0; // $600.00 / share (mocked oracle)
 // -- Protocol parameters ------------------------------------------------------
 export const MIN_COLLATERAL_RATIO = 1.5; // 150% — liquidation below this
 export const MAX_DEBT_APR = 0.059; // yearly "stability fee" charged on FUSD debt
-export const STABILITY_APR = 0.039; // yearly yield paid to stability-pool depositors
+export const STABILITY_APR = 0; // yearly yield paid to stability-pool depositors
 export const LIQUIDATION_BUFFER = 0.05; // 5% CR cushion before warning
 
 // -- Protocol level stats (mocked) -------------------------------------------
 export const PROTOCOL_STATS = {
-  fusdSupply: 124_500_000, // total FUSD minted & outstanding
-  spyLocked: 221_000, // SPY shares locked as collateral protocol-wide
-  stabilityPoolUsd: 4_200_000, // FUSD deposited in the stability pool
-  totalDebtUsd: 118_000_000, // FUSD borrowed by all Troves
+  fusdSupply: 0, // total FUSD minted & outstanding
+  spyLocked: 0, // SPY shares locked as collateral protocol-wide
+  stabilityPoolUsd: 0, // FUSD deposited in the stability pool
+  totalDebtUsd: 0, // FUSD borrowed by all Troves
 };
 
 // -- Sample position (used on /position to demonstrate a live Trove) ---------
@@ -32,8 +32,8 @@ export const SAMPLE_POSITION = {
 
 // -- Mock wallet holdings (drives deposit/repay limits in the demo) ----------
 export const MOCK_WALLET = {
-  spy: 500, // SPY shares this wallet holds
-  fusd: 25_000, // FUSD this wallet holds
+  spy: 0, // SPY shares this wallet holds
+  fusd: 0, // FUSD this wallet holds
 };
 
 // -- Derived geometry ----------------------------------------------------------

@@ -7,8 +7,8 @@ import { useWallet } from './wallet/wallet';
 
 export function OpenPositionForm() {
   const w = useWallet();
-  const [spyStr, setSpyStr] = useState('100');
-  const [debtStr, setDebtStr] = useState('36000');
+  const [spyStr, setSpyStr] = useState('0');
+  const [debtStr, setDebtStr] = useState('0');
 
   const spy = Math.max(0, xnum(spyStr));
   const debt = Math.max(0, xnum(debtStr));

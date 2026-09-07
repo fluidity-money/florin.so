@@ -1587,6 +1587,21 @@ input:focus-visible {
   background: var(--blue);
 }
 
+.home-action--disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.home-action.home-action--disabled:hover {
+  background: var(--blue);
+  color: var(--ink);
+  transform: none;
+}
+
+.home-action.home-action--disabled:hover .card__body {
+  color: var(--ink);
+}
+
 .home-action--wide {
   min-height: 145px;
   margin-top: 16px;

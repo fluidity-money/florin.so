@@ -7,8 +7,8 @@ import { useWallet } from './wallet/wallet';
 
 export function StabilityPool() {
   const w = useWallet();
-  const [deposited, setDeposited] = useState(10_000);
-  const [depStr, setDepStr] = useState('2500');
+  const [deposited, setDeposited] = useState(0);
+  const [depStr, setDepStr] = useState('0');
 
   const amt = Math.max(0, xnum(depStr));
   const annual = deposited * STABILITY_APR;

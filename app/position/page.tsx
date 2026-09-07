@@ -10,7 +10,7 @@ export default function PositionPage() {
       <Overline>manage</Overline>
       <h1 className="page-title">Manage your position</h1>
       <p className="lead">
-        A live (mocked) Trove — add collateral, borrow or repay FUSD, or close it out.
+        Connect a wallet to view and manage its Florin position.
       </p>
       <ManagePosition />
     </>

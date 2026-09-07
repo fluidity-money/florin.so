@@ -32,13 +32,13 @@ export default function HomePage() {
           <span className="card__body">SPY and get FUSD collateral</span>
         </Link>
 
-        <Link href="/open" className="card home-action home-action--blue">
+        <div className="card home-action home-action--blue home-action--disabled" aria-disabled="true">
           <span className="card__row">
             <span className="card__title">Leverage</span>
-            <span className="card__arrow">→</span>
+            <span className="card__arrow">Soon</span>
           </span>
           <span className="card__body">Your SPY exposure to 10 times</span>
-        </Link>
+        </div>
 
         <aside className="home-manifesto" aria-label="Florin principle">
           <span className="home-manifesto__mark" aria-hidden="true" />

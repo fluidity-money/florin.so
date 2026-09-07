@@ -4,6 +4,7 @@ import { Panel, Button, NumberField, RatioBar, Stat, Tag } from './ui';
 import { metrics, MIN_COLLATERAL_RATIO, MAX_DEBT_APR, maxBorrowableFUSD, collateralValueUSD, SAMPLE_POSITION, MOCK_WALLET } from '../lib/mockData';
 import { money, pct, xnum, int } from '../lib/format';
 import { useWallet } from './wallet/wallet';
+import { canViewSamplePosition } from '../lib/position-access';
 
 export function ManagePosition() {
   const w = useWallet();
@@ -11,10 +12,10 @@ export function ManagePosition() {
   const [debt, setDebt] = useState(SAMPLE_POSITION.debtFUSD);
   const [hasClosed, setHasClosed] = useState(false);
 
-  const [depositSpy, setDepositSpy] = useState('20');
-  const [withdrawSpy, setWithdrawSpy] = useState('10');
-  const [borrowFusd, setBorrowFusd] = useState('5000');
-  const [repayFusd, setRepayFusd] = useState('5000');
+  const [depositSpy, setDepositSpy] = useState('0');
+  const [withdrawSpy, setWithdrawSpy] = useState('0');
+  const [borrowFusd, setBorrowFusd] = useState('0');
+  const [repayFusd, setRepayFusd] = useState('0');
 
   const m = metrics(collateral, debt);
   const cap = maxBorrowableFUSD(collateral);
@@ -49,6 +50,19 @@ export function ManagePosition() {
     setCollateral(0);
     setDebt(0);
     setHasClosed(true);
+  }
+
+  if (!canViewSamplePosition(w.address)) {
+    return (
+      <Panel title="Your trove" kicker={w.connected ? `connected ${w.short}` : 'wallet not connected'}>
+        <div className="empty">
+          <span className="empty__glyph">∎</span>
+          <h3>No position found</h3>
+          <p>This address does not have an open Florin position.</p>
+          <a className="btn btn--primary" href="/open">Open position →</a>
+        </div>
+      </Panel>
+    );
   }
 
   return (
