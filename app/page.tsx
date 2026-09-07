@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Overline } from '../components/ui';
 import { PROTOCOL_STATS, collateralValueUSD } from '../lib/mockData';
 import { money, int } from '../lib/format';
 
@@ -7,64 +8,64 @@ export default function HomePage() {
   const tvlUsd = spyLockedUsd + PROTOCOL_STATS.stabilityPoolUsd;
 
   return (
-    <div className="home">
-      <section className="hero" aria-labelledby="hero-title">
-        <div className="hero__copy">
-          <p className="hero__eyebrow">THE STOCK-BACKED DOLLAR</p>
-          <h1 id="hero-title" className="hero__title">
-            Borrow<br />without<br />selling.
-          </h1>
-          <p className="hero__lead">
-            Deposit SPY and mint FUSD on Robinhood Chain. Keep your market exposure,
-            let dividends compound, and unlock dollars without selling a share.
-          </p>
-          <Link href="/open" className="hero__cta">OPEN A POSITION <span>→</span></Link>
-        </div>
+    <div className="home home--compact">
+      <Overline>florin protocol</Overline>
 
-        <div className="hero__art" aria-hidden="true">
-          <div className="hero__orb hero__orb--one" />
-          <div className="hero__orb hero__orb--two" />
-          <span className="hero__mark" />
-          <p className="hero__ticker">SPY / FUSD</p>
-        </div>
+      <section className="home-pitch">
+        <h1 className="page-title">Deposit SPY and mint FUSD.</h1>
+        <p className="lead">
+          Deposit SPY (SPDR S&amp;P 500 ETF TRUST) on Robinhood Chain. Mint FUSD.
+          Borrow dollars without selling a share.
+        </p>
+        <p className="lead home-pitch__last">
+          When dividends land they compound into your collateral, so your stocks
+          grow while you borrow.
+        </p>
       </section>
 
-      <section className="home-actions" aria-label="Use Florin">
-        <Link href="/open" className="story-card story-card--gold">
-          <span className="story-card__visual">
-            <span className="story-card__number">01</span>
-            <span className="story-card__mini-mark" aria-hidden="true" />
+      <div className="home-action-grid">
+        <Link href="/open" className="card home-action home-action--gold">
+          <span className="card__row">
+            <span className="card__title">Deposit</span>
+            <span className="card__arrow">→</span>
           </span>
-          <span className="story-card__title">Deposit SPY. Mint dollars.</span>
-          <span className="story-card__body">Borrow FUSD against the S&amp;P 500 without giving up your position.</span>
-          <span className="story-card__link">OPEN POSITION <b>→</b></span>
+          <span className="card__body">SPY and get FUSD collateral</span>
         </Link>
 
-        <Link href="/open" className="story-card story-card--blue">
-          <span className="story-card__visual">
-            <span className="story-card__number">10×</span>
-            <span className="story-card__word">EXPOSURE</span>
+        <Link href="/open" className="card home-action home-action--blue">
+          <span className="card__row">
+            <span className="card__title">Leverage</span>
+            <span className="card__arrow">→</span>
           </span>
-          <span className="story-card__title">Keep more market exposure.</span>
-          <span className="story-card__body">Use borrowed FUSD while your SPY collateral remains invested.</span>
-          <span className="story-card__link">EXPLORE LEVERAGE <b>→</b></span>
+          <span className="card__body">Your SPY exposure to 10 times</span>
         </Link>
 
-        <Link href="/stability" className="story-card story-card--ink">
-          <span className="story-card__visual">
-            <span className="story-card__number">03</span>
-            <span className="story-card__word">EARN</span>
-          </span>
-          <span className="story-card__title">Put FUSD to work.</span>
-          <span className="story-card__body">Provide redemption liquidity and earn protocol stability fees.</span>
-          <span className="story-card__link">STABILITY POOL <b>→</b></span>
-        </Link>
-      </section>
+        <aside className="home-manifesto" aria-label="Florin principle">
+          <span className="home-manifesto__mark" aria-hidden="true" />
+          <p>Borrow<br />without<br />selling.</p>
+        </aside>
+      </div>
 
-      <section className="home-tvl" aria-label="Protocol totals">
-        <p>TOTAL VALUE LOCKED</p>
-        <strong>${money(tvlUsd, 0)}</strong>
-        <span>{int(PROTOCOL_STATS.spyLocked)} SPY locked · ${int(PROTOCOL_STATS.stabilityPoolUsd)} in the stability pool</span>
+      <Link href="/stability" className="card card--wide home-action home-action--wide">
+        <span className="card__row">
+          <span className="card__title">Earn</span>
+          <span className="card__arrow">→</span>
+        </span>
+        <span className="card__body">
+          Dividends on SPY
+          <span className="card__sub">
+            They compound into your collateral — so your stocks grow while you borrow.
+          </span>
+        </span>
+      </Link>
+
+      <section className="tvl home-compact-tvl">
+        <span className="tvl__label">total value locked</span>
+        <span className="tvl__value">${money(tvlUsd, 0)}</span>
+        <span className="tvl__note">
+          <span>{int(PROTOCOL_STATS.spyLocked)} SPY · ${int(spyLockedUsd)} collateral</span>
+          <span className="tvl-note__pool">${int(PROTOCOL_STATS.stabilityPoolUsd)} pool</span>
+        </span>
       </section>
     </div>
   );
