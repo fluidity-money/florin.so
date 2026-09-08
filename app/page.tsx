@@ -41,7 +41,6 @@ export default function HomePage() {
         </div>
 
         <aside className="home-manifesto" aria-label="Florin principle">
-          <span className="home-manifesto__mark" aria-hidden="true" />
           <p>Borrow<br />without<br />selling.</p>
         </aside>
       </div>

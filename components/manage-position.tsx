@@ -56,7 +56,7 @@ export function ManagePosition() {
     return (
       <Panel title="Your trove" kicker={w.connected ? `connected ${w.short}` : 'wallet not connected'}>
         <div className="empty">
-          <span className="empty__glyph">∎</span>
+          <span className="empty__mark" aria-hidden="true" />
           <h3>No position found</h3>
           <p>This address does not have an open Florin position.</p>
           <a className="btn btn--primary" href="/open">Open position →</a>
@@ -75,7 +75,7 @@ export function ManagePosition() {
       >
         {closed ? (
           <div className="empty">
-            <span className="empty__glyph">∎</span>
+            <span className="empty__mark" aria-hidden="true" />
             <h3>Trove closed</h3>
             <p>All SPY reclaimed and FUSD repaid (demo). Open a fresh position anytime.</p>
             <a className="btn btn--primary" href="/open">Open position →</a>

@@ -6,11 +6,16 @@
 // quickly — the tokens below are emitted as CSS custom properties on <body>
 // from app/layout.tsx, and the stylesheet references them by name.
 //
-// Palette (Paradiso / Shamrock / Flax / Rose Bud):
-//   Paradiso #3A8D90  rgb(58,141,144)   teal   — primary, lines, strong fills
-//   Shamrock #34C5AD  rgb(52,197,173)   aqua   — secondary accent text
-//   Flax     #E9E07F  rgb(233,224,127)  yellow — soft surface tone
-//   Rose Bud #F7B295  rgb(247,178,149)  coral  — warm highlight tone
+// Palette — Superposition brand. These four are the ONLY colours in the app;
+// every token below is one of them, or one of them at reduced alpha for
+// hierarchy.
+//   Black      #1E1E1E  rgb(30,30,30)     text, rules, reverse blocks
+//   White      #EEEEEE  rgb(238,238,238)  paper
+//   Gun Powder #3F455B  rgb(63,69,91)     landing-card ink
+//   Milan      #F4FDA3  rgb(244,253,163)  landing-card surface
+//
+// Contrast: black on white 14.4  |  Gun Powder on Milan 8.8 (AAA)
+//           black on Milan 15.4  |  Gun Powder on white 8.2
 // -----------------------------------------------------------------------------
 
 export interface Theme {
@@ -20,7 +25,7 @@ export interface Theme {
   flax: string;
   roseBud: string;
   // typography
-  sans: string; // serif stack — body / UI
+  sans: string; // sans stack — body / UI
   mono: string; // numbers / code
   // derived semantic tokens
   ink: string; // body text (dark)
@@ -43,32 +48,37 @@ export interface Theme {
 // Edit me. Swap values, tweak, rebuild (`npm run dev` or `npm run build`).
 // ---------------------------------------------------------------------------
 export const THEME: Theme = {
-  // raw palette — warm/cool editorial contrast derived from the Florin mark
-  paradiso: '#171717',
-  shamrock: '#e8ad24',
-  flax: '#a9d4df',
-  roseBud: '#f0c7ba',
+  // raw palette — the four Superposition brand colours
+  paradiso: '#1e1e1e',
+  shamrock: '#3f455b',
+  flax: '#f4fda3',
+  roseBud: '#f4fda3',
 
-  // neutral grotesk for display/UI, mono kept for protocol values
-  sans: 'Arial, "Helvetica Neue", Helvetica, ui-sans-serif, system-ui, sans-serif',
+  // PP Neue Montreal for display/UI (self-hosted, see app/globals.css),
+  // mono kept for protocol values
+  sans:
+    '"PP Neue Montreal", Arial, "Helvetica Neue", Helvetica, ui-sans-serif, system-ui, sans-serif',
   mono:
     '"SF Mono", "IBM Plex Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace',
 
-  // derived semantic tokens
-  ink: '#111111',
-  paper: '#f7f7f3',
-  gray1: '#242424',
-  gray2: '#555550',
-  gray3: '#777771',
-  gray4: '#c9c9c1',
-  line: '#171717',
-  lineSoft: '#d9d9d1',
+  // derived semantic tokens — black at reduced alpha carries text hierarchy,
+  // off-white at reduced alpha does the same on reverse blocks
+  ink: '#1e1e1e',
+  paper: '#eeeeee',
+  gray1: 'rgba(30, 30, 30, 0.86)',
+  gray2: 'rgba(30, 30, 30, 0.64)',
+  gray3: 'rgba(30, 30, 30, 0.5)',
+  gray4: 'rgba(238, 238, 238, 0.62)', // muted, used on dark only
+  line: '#1e1e1e',
+  lineSoft: 'rgba(30, 30, 30, 0.16)',
   gridDot: 'transparent',
-  accent: '#b97800',
-  tintSoft: '#a9d4df',
-  tintWarm: '#f0c7ba',
-  strong: '#171717',
-  strongFg: '#f7f7f3',
+  // Gun Powder and Milan are reserved for the landing-page cards, so the
+  // shared accent / tint tokens stay neutral
+  accent: '#1e1e1e',
+  tintSoft: '#eeeeee',
+  tintWarm: '#eeeeee',
+  strong: '#1e1e1e',
+  strongFg: '#eeeeee',
 };
 
 // Emit as CSS custom properties for inline application on <body>.

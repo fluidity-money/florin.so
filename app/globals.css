@@ -1,25 +1,55 @@
+/* PP Neue Montreal — self-hosted brand typeface (public/fonts). */
+@font-face {
+  font-family: 'PP Neue Montreal';
+  src: url('/fonts/ppneuemontreal-book.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Neue Montreal';
+  src: url('/fonts/ppneuemontreal-italic.woff2') format('woff2');
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Neue Montreal';
+  src: url('/fonts/ppneuemontreal-medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'PP Neue Montreal';
+  src: url('/fonts/ppneuemontreal-bold.woff2') format('woff2');
+  font-weight: 600 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* Canonical values live in lib/theme.ts (applied inline on <body>).
      These are fallback defaults so the sheet works on its own. */
-  --paradiso: #3A8D90;
-  --shamrock: #34C5AD;
-  --flax: #E9E07F;
-  --rose-bud: #F7B295;
+  --paradiso: #1e1e1e;
+  --shamrock: #818bfc;
+  --flax: #fcffba;
+  --rose-bud: #fcffba;
 
-  --ink: #153b3d;
-  --paper: #fbf5e8;
-  --gray-1: #2e4a4e;
-  --gray-2: #5d6a64;
-  --gray-3: #8b8c73;
-  --gray-4: #c6c0ac;
-  --line: #3A8D90;
-  --line-soft: #b9c8c2;
-  --grid-dot: rgba(58, 141, 144, 0.14);
-  --accent: #34C5AD;
-  --tint-soft: #E9E07F;
-  --tint-warm: #F7B295;
-  --strong: #3A8D90;
-  --strong-fg: #fff;
+  --ink: #1e1e1e;
+  --paper: #eeeeee;
+  --gray-1: rgba(30, 30, 30, 0.86);
+  --gray-2: rgba(30, 30, 30, 0.64);
+  --gray-3: rgba(30, 30, 30, 0.5);
+  --gray-4: rgba(238, 238, 238, 0.62);
+  --line: #1e1e1e;
+  --line-soft: rgba(30, 30, 30, 0.16);
+  --grid-dot: transparent;
+  --accent: #1e1e1e;
+  --tint-soft: #eeeeee;
+  --tint-warm: #eeeeee;
+  --strong: #1e1e1e;
+  --strong-fg: #eeeeee;
 
   --mono: "SF Mono", "IBM Plex Mono", "JetBrains Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
@@ -213,7 +243,7 @@ a {
 .panel {
   background: var(--paper);
   border: 1px solid var(--line);
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.12);
+  box-shadow: 3px 3px 0 rgba(30, 30, 30, 0.12);
 }
 .panel__head {
   display: flex;
@@ -254,7 +284,7 @@ a {
   padding: 20px 18px;
   border: 1px solid var(--line);
   background: var(--paper);
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.12);
+  box-shadow: 3px 3px 0 rgba(30, 30, 30, 0.12);
   color: var(--ink);
   text-decoration: none;
 }
@@ -354,6 +384,8 @@ a {
   padding: 9px 10px;
   border: 1px solid var(--line);
   background: var(--paper);
+  /* form controls don't inherit colour, so they'd fall back to UA black */
+  color: var(--ink);
   font-family: var(--mono);
   font-size: 15px;
 }
@@ -384,7 +416,7 @@ a {
   height: 14px;
   border: 1px solid var(--line);
   border-radius: 0;
-  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.3) 0 1px, transparent 1px 9px);
+  background-image: linear-gradient(90deg, rgba(30, 30, 30, 0.3) 0 1px, transparent 1px 9px);
   outline: none;
 }
 .slider::-moz-range-track,
@@ -410,7 +442,7 @@ a {
   position: relative;
   height: 14px;
   border: 1px solid var(--line);
-  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0 1px, transparent 1px 7px);
+  background-image: linear-gradient(90deg, rgba(30, 30, 30, 0.35) 0 1px, transparent 1px 7px);
 }
 .ratiobar__min {
   position: absolute;
@@ -422,7 +454,7 @@ a {
 .ratiobar__fill {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(30, 30, 30, 0.18);
 }
 .ratiobar--liquidation .ratiobar__fill {
   background-image: linear-gradient(45deg, var(--strong) 0 4px, transparent 4px 8px);
@@ -683,10 +715,20 @@ a {
    ========================================================================== */
 
 :root {
-  --gold: #e8ad24;
-  --blue: #a9d4df;
-  --blush: #f0c7ba;
-  --charcoal: #202020;
+  /* Superposition palette — the only colours in the app. */
+  --sp-black: #1e1e1e;
+  --sp-white: #eeeeee;
+  --sp-gunpowder: #3f455b;
+  --sp-milan: #f4fda3;
+
+  /* Role aliases. Names are historical; the value is what matters.
+     Gun Powder and Milan are reserved for the landing-page cards (see
+     .home-action / .home-manifesto below) — everything else is black
+     and white, so these three now resolve to the neutrals. */
+  --gold: var(--sp-black);
+  --blue: var(--sp-white);
+  --blush: var(--sp-white);
+  --charcoal: var(--sp-black);
   --page-gutter: clamp(20px, 5vw, 88px);
 }
 
@@ -705,8 +747,8 @@ body::before {
 }
 
 ::selection {
-  color: var(--ink);
-  background: var(--gold);
+  color: var(--paper);
+  background: var(--ink);
 }
 
 a:focus-visible,
@@ -780,8 +822,7 @@ input:focus-visible {
 .brand__mark,
 .site-footer__mark,
 .hero__mark,
-.story-card__mini-mark,
-.home-manifesto__mark {
+.story-card__mini-mark {
   display: block;
   border: 0;
   background: currentColor;
@@ -790,9 +831,9 @@ input:focus-visible {
 }
 
 .brand__mark {
-  width: 42px;
-  height: 48px;
-  color: var(--gold);
+  width: 26px;
+  height: 30px;
+  color: var(--ink);
 }
 
 .site-nav {
@@ -856,8 +897,8 @@ input:focus-visible {
 }
 
 .btn--primary:hover:not(:disabled) {
-  border-color: var(--gold);
-  background: var(--gold);
+  border-color: var(--ink);
+  background: var(--paper);
   color: var(--ink);
 }
 
@@ -904,13 +945,17 @@ input:focus-visible {
 }
 
 .stat--strong {
-  background: var(--blue);
-  color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
 }
 
-.stat--strong .stat__value,
-.stat--strong .stat__label {
-  color: var(--ink);
+.stat--strong .stat__value {
+  color: var(--paper);
+}
+
+.stat--strong .stat__label,
+.stat--strong .stat__sub {
+  color: var(--gray-4);
 }
 
 .field {
@@ -1255,7 +1300,8 @@ input:focus-visible {
 }
 
 .site-footer__nav a:hover {
-  color: var(--gold);
+  color: var(--paper);
+  text-decoration: underline;
 }
 
 .site-footer__legal {
@@ -1263,20 +1309,22 @@ input:focus-visible {
   text-align: center;
 }
 
+/* Same lockup as the header brand: mark left, wordmark right. */
 .site-footer__brand {
-  display: flex;
-  flex-direction: column;
+  display: inline-flex;
   align-items: center;
+  gap: 12px;
   justify-self: end;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.035em;
 }
 
 .site-footer__mark {
-  width: 110px;
-  height: 130px;
-  color: var(--gold);
+  width: 26px;
+  height: 30px;
+  /* the footer block is black, so the mark reverses out of it */
+  color: var(--paper);
 }
 
 @media (max-width: 1050px) {
@@ -1317,8 +1365,8 @@ input:focus-visible {
   }
 
   .brand__mark {
-    width: 34px;
-    height: 40px;
+    width: 24px;
+    height: 28px;
   }
 
   .brand__name {
@@ -1459,11 +1507,6 @@ input:focus-visible {
     justify-self: center;
   }
 
-  .site-footer__mark {
-    width: 76px;
-    height: 88px;
-  }
-
   .panel {
     border-radius: 16px;
   }
@@ -1528,31 +1571,8 @@ input:focus-visible {
   overflow: hidden;
   border-radius: 20px;
   padding: 28px;
-  background: var(--blue);
-  isolation: isolate;
-}
-
-.home-manifesto::before {
-  content: "";
-  position: absolute;
-  top: -58px;
-  right: -42px;
-  width: 150px;
-  height: 150px;
-  z-index: -1;
-  border-radius: 50%;
-  background: var(--gold);
-}
-
-.home-manifesto__mark {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 88px;
-  height: 100px;
-  z-index: -1;
-  color: var(--ink);
-  opacity: 0.92;
+  background: var(--sp-milan);
+  color: var(--sp-gunpowder);
 }
 
 .home-manifesto p {
@@ -1579,12 +1599,16 @@ input:focus-visible {
   transition: transform 150ms ease, background 150ms ease, color 150ms ease;
 }
 
-.home-action--gold {
-  background: var(--gold);
+/* The landing-page cards are the one place the brand pair is used:
+   Gun Powder on Milan (8.78:1, AAA). Everything else is black and white. */
+.home-action {
+  background: var(--sp-milan);
+  color: var(--sp-gunpowder);
 }
 
+.home-action--gold,
 .home-action--blue {
-  background: var(--blue);
+  background: var(--sp-milan);
 }
 
 .home-action--disabled {
@@ -1593,19 +1617,19 @@ input:focus-visible {
 }
 
 .home-action.home-action--disabled:hover {
-  background: var(--blue);
-  color: var(--ink);
+  background: var(--sp-milan);
+  color: var(--sp-gunpowder);
   transform: none;
 }
 
 .home-action.home-action--disabled:hover .card__body {
-  color: var(--ink);
+  color: var(--sp-gunpowder);
 }
 
 .home-action--wide {
   min-height: 145px;
   margin-top: 16px;
-  background: var(--blush);
+  background: var(--sp-milan);
 }
 
 .home-action .card__title {
@@ -1620,18 +1644,18 @@ input:focus-visible {
 
 .home-action .card__body,
 .home-action .card__sub {
-  color: var(--ink);
+  color: var(--sp-gunpowder);
 }
 
 .home-action:hover {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--sp-gunpowder);
+  color: var(--sp-milan);
   transform: translateY(-3px);
 }
 
 .home-action:hover .card__body,
 .home-action:hover .card__sub {
-  color: var(--paper);
+  color: var(--sp-milan);
 }
 
 .home-compact-tvl {
@@ -1646,7 +1670,7 @@ input:focus-visible {
 }
 
 .home-compact-tvl .tvl__label {
-  color: var(--gold);
+  color: var(--gray-4);
   opacity: 1;
 }
 
@@ -1688,11 +1712,6 @@ input:focus-visible {
     font-size: 25px;
   }
 
-  .home-manifesto__mark {
-    width: 65px;
-    height: 74px;
-  }
-
   .home-action-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
@@ -1724,4 +1743,171 @@ input:focus-visible {
   .home-compact-tvl .tvl-note__pool::before {
     content: "";
   }
+}
+/* ===========================================================================
+   Design pass — the brand pair beyond the landing cards.
+
+   Gun Powder = secondary ink on light surfaces  (8.2:1 on white)
+   Milan      = highlight surface                (Gun Powder on Milan 8.8:1)
+   Black / white stay the body ink, the rules and the reverse blocks.
+   =========================================================================== */
+
+::selection {
+  color: var(--sp-gunpowder);
+  background: var(--sp-milan);
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--sp-gunpowder);
+  outline-offset: 3px;
+}
+
+/* Kickers and overlines carry the brand tint instead of a flat grey. */
+.overline,
+.panel__kicker {
+  color: var(--sp-gunpowder);
+}
+
+/* The rule under the current page. */
+.site-nav__link:hover,
+.site-nav__link--active {
+  border-color: var(--sp-gunpowder);
+}
+
+/* Primary action: the brand pair, inverting to black on hover. */
+.btn--primary {
+  border-color: var(--sp-gunpowder);
+  background: var(--sp-gunpowder);
+  color: var(--sp-milan);
+}
+
+.btn--primary:hover:not(:disabled) {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--sp-milan);
+}
+
+/* A disabled button reads as a quiet outline, not a muddy fade. */
+.btn:disabled {
+  opacity: 1;
+  border-color: var(--line-soft);
+  background: transparent;
+  color: var(--gray-2);
+  cursor: not-allowed;
+}
+
+/* A Milan strip ties each panel head to its body. */
+.panel__head {
+  background: var(--sp-milan);
+  border-bottom-color: var(--ink);
+}
+
+/* The emphasised stat tile. */
+.stat--strong {
+  background: var(--sp-gunpowder);
+}
+
+.stat--strong .stat__value {
+  color: var(--sp-milan);
+}
+
+.stat--strong .stat__label,
+.stat--strong .stat__sub {
+  color: rgba(244, 253, 163, 0.72);
+}
+
+/* Empty state: a Milan panel rather than a dashed grey box. */
+.empty {
+  border-style: solid;
+  border-color: var(--sp-gunpowder);
+  background: var(--sp-milan);
+  color: var(--sp-gunpowder);
+}
+
+.empty p {
+  color: var(--sp-gunpowder);
+}
+
+.empty__mark {
+  display: block;
+  width: 34px;
+  height: 39px;
+  margin: 0 auto 14px;
+  border: 0;
+  background: currentColor;
+  -webkit-mask: url('/florin.svg') center / contain no-repeat;
+  mask: url('/florin.svg') center / contain no-repeat;
+}
+
+/* Slider and ratio bar: Gun Powder fill, a thumb you can actually see. */
+.slider {
+  height: 16px;
+  border-color: var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  background-image: none;
+}
+
+.slider::-moz-range-progress,
+.slider::-webkit-slider-fill-lower {
+  background: var(--sp-gunpowder);
+}
+
+.slider::-moz-range-thumb,
+.slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--paper);
+  border-radius: 999px;
+  background: var(--sp-gunpowder);
+}
+
+.ratiobar__track {
+  border-color: var(--ink);
+  background: var(--paper);
+  background-image: none;
+}
+
+.ratiobar__fill {
+  background: var(--sp-milan);
+}
+
+.ratiobar__min {
+  background: var(--sp-gunpowder);
+}
+
+/* Reverse blocks: Milan is the label tone on black. */
+.home-compact-tvl .tvl__label {
+  color: var(--sp-milan);
+}
+
+.site-footer__nav a:hover {
+  color: var(--sp-milan);
+  text-decoration: underline;
+}
+
+/* Inner surfaces step back so the panel outline stays the strongest edge. */
+.stat {
+  border-color: var(--line-soft);
+}
+
+.stat--strong {
+  border-color: var(--sp-gunpowder);
+}
+
+.field__in {
+  border-color: var(--line-soft);
+  transition: border-color 120ms ease;
+}
+
+.field__in:hover {
+  border-color: var(--gray-2);
+}
+
+.field__in:focus {
+  outline: none;
+  border-color: var(--sp-gunpowder);
+  box-shadow: 0 0 0 3px rgba(63, 69, 91, 0.18);
 }
