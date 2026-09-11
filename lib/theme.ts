@@ -11,11 +11,11 @@
 // hierarchy.
 //   Black      #1E1E1E  rgb(30,30,30)     text, rules, reverse blocks
 //   White      #EEEEEE  rgb(238,238,238)  paper
-//   Gun Powder #3F455B  rgb(63,69,91)     landing-card ink
-//   Milan      #F4FDA3  rgb(244,253,163)  landing-card surface
+//   Catalina Blue #0E3A7E  rgb(14,58,126)    landing-card ink
+//   Satin Linen   #E6E0D6  rgb(230,224,214)  landing-card surface
 //
-// Contrast: black on white 14.4  |  Gun Powder on Milan 8.8 (AAA)
-//           black on Milan 15.4  |  Gun Powder on white 8.2
+// Contrast: black on white 14.4  |  Catalina on Linen 8.3 (AAA)
+//           black on Linen 12.7  |  Catalina on white 9.4
 // -----------------------------------------------------------------------------
 
 export interface Theme {
@@ -50,9 +50,9 @@ export interface Theme {
 export const THEME: Theme = {
   // raw palette — the four Superposition brand colours
   paradiso: '#1e1e1e',
-  shamrock: '#3f455b',
-  flax: '#f4fda3',
-  roseBud: '#f4fda3',
+  shamrock: '#0e3a7e',
+  flax: '#e6e0d6',
+  roseBud: '#e6e0d6',
 
   // PP Neue Montreal for display/UI (self-hosted, see app/globals.css),
   // mono kept for protocol values
@@ -72,7 +72,7 @@ export const THEME: Theme = {
   line: '#1e1e1e',
   lineSoft: 'rgba(30, 30, 30, 0.16)',
   gridDot: 'transparent',
-  // Gun Powder and Milan are reserved for the landing-page cards, so the
+  // Catalina Blue and Satin Linen are reserved for the landing-page cards, so the
   // shared accent / tint tokens stay neutral
   accent: '#1e1e1e',
   tintSoft: '#eeeeee',

@@ -23,40 +23,45 @@ export default function HomePage() {
         </p>
       </section>
 
+      {/* Two things you can do. Filled, arrowed, and they lift on hover. */}
       <div className="home-action-grid">
-        <Link href="/open" className="card home-action home-action--gold">
+        <Link href="/open" className="card home-action">
           <span className="card__row">
             <span className="card__title">Deposit</span>
             <span className="card__arrow">→</span>
           </span>
-          <span className="card__body">SPY and get FUSD collateral</span>
+          <span className="card__body">SPY as collateral, and mint FUSD against it</span>
         </Link>
 
-        <div className="card home-action home-action--blue home-action--disabled" aria-disabled="true">
+        <Link href="/stability" className="card home-action">
           <span className="card__row">
-            <span className="card__title">Leverage</span>
-            <span className="card__arrow">Soon</span>
+            <span className="card__title">Earn</span>
+            <span className="card__arrow">→</span>
           </span>
-          <span className="card__body">Your SPY exposure to 10 times</span>
-        </div>
-
-        <aside className="home-manifesto" aria-label="Florin principle">
-          <p>Borrow<br />without<br />selling.</p>
-        </aside>
+          <span className="card__body">
+            Back the pool that settles liquidations
+            <span className="card__sub">
+              Earns a share of borrower interest, paid in FUSD.
+            </span>
+          </span>
+        </Link>
       </div>
 
-      <Link href="/stability" className="card card--wide home-action home-action--wide">
-        <span className="card__row">
-          <span className="card__title">Earn</span>
-          <span className="card__arrow">→</span>
-        </span>
-        <span className="card__body">
-          Dividends on SPY
-          <span className="card__sub">
-            They compound into your collateral — so your stocks grow while you borrow.
-          </span>
-        </span>
-      </Link>
+      {/* Two things that are true. Outlined, no arrow, no hover: nothing to click. */}
+      <div className="home-info-grid">
+        <aside className="home-info">
+          <p className="home-info__title">Lever your SPY exposure</p>
+          <p className="home-info__body">
+            Mint FUSD, buy more SPY, redeposit, repeat. Every round is smaller
+            than the last, so the position settles rather than running away.
+          </p>
+        </aside>
+
+        <aside className="home-info">
+          <p className="home-info__title">Borrow without selling</p>
+          <p className="home-info__body">Keep the dividends and keep the upside.</p>
+        </aside>
+      </div>
 
       <section className="tvl home-compact-tvl">
         <span className="tvl__label">total value locked</span>
@@ -66,6 +71,12 @@ export default function HomePage() {
           <span className="tvl-note__pool">${int(PROTOCOL_STATS.stabilityPoolUsd)} pool</span>
         </span>
       </section>
+
+      <p className="home-risk-note">
+        Borrowing here carries liquidation, redemption and collateral-freeze
+        risk. <Link href="/risks">Read what can go wrong</Link> before you open a
+        position.
+      </p>
     </div>
   );
 }

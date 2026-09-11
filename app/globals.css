@@ -419,15 +419,29 @@ a {
   background-image: linear-gradient(90deg, rgba(30, 30, 30, 0.3) 0 1px, transparent 1px 9px);
   outline: none;
 }
-.slider::-moz-range-track,
+.slider::-moz-range-track {
+  background: transparent;
+}
+
 .slider::-webkit-slider-runnable-track {
   background: transparent;
 }
-.slider::-moz-range-progress,
+.slider::-moz-range-progress {
+  background: var(--strong);
+}
+
 .slider::-webkit-slider-fill-lower {
   background: var(--strong);
 }
-.slider::-moz-range-thumb,
+.slider::-moz-range-thumb {
+  appearance: none;
+  width: 14px;
+  height: 18px;
+  border: 1px solid var(--line);
+  background: var(--strong);
+  cursor: pointer;
+}
+
 .slider::-webkit-slider-thumb {
   appearance: none;
   width: 14px;
@@ -718,12 +732,12 @@ a {
   /* Superposition palette — the only colours in the app. */
   --sp-black: #1e1e1e;
   --sp-white: #eeeeee;
-  --sp-gunpowder: #3f455b;
-  --sp-milan: #f4fda3;
+  --sp-catalina: #0e3a7e;
+  --sp-linen: #e6e0d6;
 
   /* Role aliases. Names are historical; the value is what matters.
-     Gun Powder and Milan are reserved for the landing-page cards (see
-     .home-action / .home-manifesto below) — everything else is black
+     Catalina Blue and Satin Linen are reserved for the landing-page cards (see
+     .home-action / .home-info below) is where the brand pair lives; the rest
      and white, so these three now resolve to the neutrals. */
   --gold: var(--sp-black);
   --blue: var(--sp-white);
@@ -1563,52 +1577,82 @@ input:focus-visible {
   margin-bottom: 0;
 }
 
-.home-manifesto {
-  position: relative;
-  display: flex;
-  min-height: 165px;
-  align-items: flex-end;
-  overflow: hidden;
-  border-radius: 20px;
-  padding: 28px;
-  background: var(--sp-milan);
-  color: var(--sp-gunpowder);
-}
-
-.home-manifesto p {
-  margin: 0;
-  font-size: clamp(28px, 2.5vw, 37px);
-  font-weight: 700;
-  letter-spacing: -0.065em;
-  line-height: 0.83;
-}
-
 .home-action-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   margin-top: 34px;
+}
+
+/* Information, not action. Outlined rather than filled, no arrow and no lift,
+   so the filled cards above are unambiguously the things you can click. */
+.home-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.home-info {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 148px;
+  border: 1px solid var(--sp-catalina);
+  border-radius: 18px;
+  padding: 25px 27px;
+  background: transparent;
+  color: var(--ink);
+}
+
+
+.home-info__title {
+  margin: 2px 0 0;
+  font-size: clamp(20px, 2vw, 26px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.home-info__body {
+  margin: 0;
+  color: var(--gray-2);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.home-risk-note {
+  margin-top: 22px;
+  color: var(--gray-2);
+  font-size: 14px;
+}
+
+.home-risk-note a {
+  color: inherit;
+  text-underline-offset: 3px;
 }
 
 .home-action {
   min-height: 165px;
   justify-content: space-between;
-  border: 0;
+  /* Satin Linen sits close to the paper, so the fill alone does not hold the
+     card. A Catalina Blue hairline gives it an edge without a third colour. */
+  border: 1px solid var(--sp-catalina);
   border-radius: 18px;
   padding: 25px 27px;
   transition: transform 150ms ease, background 150ms ease, color 150ms ease;
 }
 
 /* The landing-page cards are the one place the brand pair is used:
-   Gun Powder on Milan (8.78:1, AAA). Everything else is black and white. */
+   Catalina Blue on Satin Linen (8.31:1, AAA). Everything else is black and white. */
 .home-action {
-  background: var(--sp-milan);
-  color: var(--sp-gunpowder);
+  background: var(--sp-linen);
+  color: var(--sp-catalina);
 }
 
 .home-action--gold,
 .home-action--blue {
-  background: var(--sp-milan);
+  background: var(--sp-linen);
 }
 
 .home-action--disabled {
@@ -1617,19 +1661,19 @@ input:focus-visible {
 }
 
 .home-action.home-action--disabled:hover {
-  background: var(--sp-milan);
-  color: var(--sp-gunpowder);
+  background: var(--sp-linen);
+  color: var(--sp-catalina);
   transform: none;
 }
 
 .home-action.home-action--disabled:hover .card__body {
-  color: var(--sp-gunpowder);
+  color: var(--sp-catalina);
 }
 
 .home-action--wide {
   min-height: 145px;
   margin-top: 16px;
-  background: var(--sp-milan);
+  background: var(--sp-linen);
 }
 
 .home-action .card__title {
@@ -1644,18 +1688,18 @@ input:focus-visible {
 
 .home-action .card__body,
 .home-action .card__sub {
-  color: var(--sp-gunpowder);
+  color: var(--sp-catalina);
 }
 
 .home-action:hover {
-  background: var(--sp-gunpowder);
-  color: var(--sp-milan);
+  background: var(--sp-catalina);
+  color: var(--sp-linen);
   transform: translateY(-3px);
 }
 
 .home-action:hover .card__body,
 .home-action:hover .card__sub {
-  color: var(--sp-milan);
+  color: var(--sp-linen);
 }
 
 .home-compact-tvl {
@@ -1703,15 +1747,6 @@ input:focus-visible {
     font-size: clamp(45px, 14vw, 62px);
   }
 
-  .home-manifesto {
-    min-height: 145px;
-    padding: 18px 16px;
-  }
-
-  .home-manifesto p {
-    font-size: 25px;
-  }
-
   .home-action-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
@@ -1747,46 +1782,46 @@ input:focus-visible {
 /* ===========================================================================
    Design pass — the brand pair beyond the landing cards.
 
-   Gun Powder = secondary ink on light surfaces  (8.2:1 on white)
-   Milan      = highlight surface                (Gun Powder on Milan 8.8:1)
+   Catalina Blue = secondary ink on light surfaces  (9.4:1 on white)
+   Satin Linen   = highlight surface                (Catalina on Linen 8.3:1)
    Black / white stay the body ink, the rules and the reverse blocks.
    =========================================================================== */
 
 ::selection {
-  color: var(--sp-gunpowder);
-  background: var(--sp-milan);
+  color: var(--sp-catalina);
+  background: var(--sp-linen);
 }
 
 a:focus-visible,
 button:focus-visible,
 input:focus-visible {
-  outline: 2px solid var(--sp-gunpowder);
+  outline: 2px solid var(--sp-catalina);
   outline-offset: 3px;
 }
 
 /* Kickers and overlines carry the brand tint instead of a flat grey. */
 .overline,
 .panel__kicker {
-  color: var(--sp-gunpowder);
+  color: var(--sp-catalina);
 }
 
 /* The rule under the current page. */
 .site-nav__link:hover,
 .site-nav__link--active {
-  border-color: var(--sp-gunpowder);
+  border-color: var(--sp-catalina);
 }
 
 /* Primary action: the brand pair, inverting to black on hover. */
 .btn--primary {
-  border-color: var(--sp-gunpowder);
-  background: var(--sp-gunpowder);
-  color: var(--sp-milan);
+  border-color: var(--sp-catalina);
+  background: var(--sp-catalina);
+  color: var(--sp-linen);
 }
 
 .btn--primary:hover:not(:disabled) {
   border-color: var(--ink);
   background: var(--ink);
-  color: var(--sp-milan);
+  color: var(--sp-linen);
 }
 
 /* A disabled button reads as a quiet outline, not a muddy fade. */
@@ -1798,36 +1833,38 @@ input:focus-visible {
   cursor: not-allowed;
 }
 
-/* A Milan strip ties each panel head to its body. */
+/* A Satin Linen strip ties each panel head to its body. */
 .panel__head {
-  background: var(--sp-milan);
+  background: var(--sp-linen);
   border-bottom-color: var(--ink);
 }
 
 /* The emphasised stat tile. */
 .stat--strong {
-  background: var(--sp-gunpowder);
+  background: var(--sp-catalina);
 }
 
 .stat--strong .stat__value {
-  color: var(--sp-milan);
+  color: var(--sp-linen);
 }
 
 .stat--strong .stat__label,
 .stat--strong .stat__sub {
-  color: rgba(244, 253, 163, 0.72);
+  /* Derived from the token, not a literal rgba: a hardcoded copy is what let
+     the previous palette survive a swap unnoticed. 5.1:1, AA. */
+  color: color-mix(in srgb, var(--sp-linen) 72%, transparent);
 }
 
-/* Empty state: a Milan panel rather than a dashed grey box. */
+/* Empty state: a Satin Linen panel rather than a dashed grey box. */
 .empty {
   border-style: solid;
-  border-color: var(--sp-gunpowder);
-  background: var(--sp-milan);
-  color: var(--sp-gunpowder);
+  border-color: var(--sp-catalina);
+  background: var(--sp-linen);
+  color: var(--sp-catalina);
 }
 
 .empty p {
-  color: var(--sp-gunpowder);
+  color: var(--sp-catalina);
 }
 
 .empty__mark {
@@ -1841,7 +1878,7 @@ input:focus-visible {
   mask: url('/florin.svg') center / contain no-repeat;
 }
 
-/* Slider and ratio bar: Gun Powder fill, a thumb you can actually see. */
+/* Slider and ratio bar: Catalina Blue fill, a thumb you can actually see. */
 .slider {
   height: 16px;
   border-color: var(--ink);
@@ -1850,18 +1887,30 @@ input:focus-visible {
   background-image: none;
 }
 
-.slider::-moz-range-progress,
-.slider::-webkit-slider-fill-lower {
-  background: var(--sp-gunpowder);
+.slider::-moz-range-progress {
+  background: var(--sp-catalina);
 }
 
-.slider::-moz-range-thumb,
-.slider::-webkit-slider-thumb {
+.slider::-webkit-slider-fill-lower {
+  background: var(--sp-catalina);
+}
+
+.slider::-moz-range-thumb {
   width: 16px;
   height: 16px;
   border: 2px solid var(--paper);
   border-radius: 999px;
-  background: var(--sp-gunpowder);
+  background: var(--sp-catalina);
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--paper);
+  border-radius: 999px;
+  background: var(--sp-catalina);
 }
 
 .ratiobar__track {
@@ -1870,21 +1919,24 @@ input:focus-visible {
   background-image: none;
 }
 
+/* Catalina Blue, not Satin Linen: the fill has to read against the paper
+   track, and Linen sits only 1.1:1 from it. Catalina is 9.4:1 and is the ink
+   role in this palette anyway. */
 .ratiobar__fill {
-  background: var(--sp-milan);
+  background: var(--sp-catalina);
 }
 
 .ratiobar__min {
-  background: var(--sp-gunpowder);
+  background: var(--sp-catalina);
 }
 
-/* Reverse blocks: Milan is the label tone on black. */
+/* Reverse blocks: Satin Linen is the label tone on black. */
 .home-compact-tvl .tvl__label {
-  color: var(--sp-milan);
+  color: var(--sp-linen);
 }
 
 .site-footer__nav a:hover {
-  color: var(--sp-milan);
+  color: var(--sp-linen);
   text-decoration: underline;
 }
 
@@ -1894,7 +1946,7 @@ input:focus-visible {
 }
 
 .stat--strong {
-  border-color: var(--sp-gunpowder);
+  border-color: var(--sp-catalina);
 }
 
 .field__in {
@@ -1908,6 +1960,57 @@ input:focus-visible {
 
 .field__in:focus {
   outline: none;
-  border-color: var(--sp-gunpowder);
+  border-color: var(--sp-catalina);
   box-shadow: 0 0 0 3px rgba(63, 69, 91, 0.18);
+}
+
+
+/* ---- risks page ------------------------------------------------------------- */
+.risk-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.risk {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ink);
+  border-radius: 6px;
+  padding: 20px 22px;
+  background: var(--paper);
+}
+
+.risk__title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.risk__body {
+  margin: 0 0 8px;
+  color: var(--gray-2);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.risk__body:last-child {
+  margin-bottom: 0;
+}
+
+.risk__tag {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gray-3);
+}
+
+@media (max-width: 720px) {
+  .home-action-grid,
+  .home-info-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

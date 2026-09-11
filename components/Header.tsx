@@ -10,6 +10,7 @@ const NAV = [
   { href: '/open', label: 'Open position' },
   { href: '/position', label: 'Manage' },
   { href: '/stability', label: 'Stability pool' },
+  { href: '/risks', label: 'Risks' },
 ];
 
 // Network selector. Only mounted when the real (Reown) provider is active, so

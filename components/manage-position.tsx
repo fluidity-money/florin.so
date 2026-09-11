@@ -1,15 +1,19 @@
 'use client';
 import { useState } from 'react';
-import { Panel, Button, NumberField, RatioBar, Stat, Tag } from './ui';
-import { metrics, MIN_COLLATERAL_RATIO, MAX_DEBT_APR, maxBorrowableFUSD, collateralValueUSD, SAMPLE_POSITION, MOCK_WALLET } from '../lib/mockData';
+import Link from 'next/link';
+import { Panel, Button, NumberField, SliderField, RatioBar, Stat, Tag } from './ui';
+import { metrics, MIN_COLLATERAL_RATIO, maxBorrowableFUSD, collateralValueUSD, SAMPLE_POSITION, MOCK_WALLET, queueAhead, MIN_RATE, MAX_RATE } from '../lib/mockData';
 import { money, pct, xnum, int } from '../lib/format';
 import { useWallet } from './wallet/wallet';
+import { useSpyPrice } from '../lib/use-spy-price';
 import { canViewSamplePosition } from '../lib/position-access';
 
 export function ManagePosition() {
   const w = useWallet();
+  const { price: spyPrice } = useSpyPrice();
   const [collateral, setCollateral] = useState(SAMPLE_POSITION.collateralSPY);
   const [debt, setDebt] = useState(SAMPLE_POSITION.debtFUSD);
+  const [rate, setRate] = useState(SAMPLE_POSITION.rate);
   const [hasClosed, setHasClosed] = useState(false);
 
   const [depositSpy, setDepositSpy] = useState('0');
@@ -17,10 +21,11 @@ export function ManagePosition() {
   const [borrowFusd, setBorrowFusd] = useState('0');
   const [repayFusd, setRepayFusd] = useState('0');
 
-  const m = metrics(collateral, debt);
-  const cap = maxBorrowableFUSD(collateral);
+  const m = metrics(collateral, debt, spyPrice);
+  const cap = maxBorrowableFUSD(collateral, spyPrice);
   const freeUsd = Math.max(0, cap - debt);
-  const monthlyFee = debt * (MAX_DEBT_APR / 12);
+  const monthlyFee = debt * (rate / 12);
+  const ahead = queueAhead(rate);
   const closed = hasClosed || (collateral <= 0 && debt <= 0);
 
   const dep = Math.max(0, xnum(depositSpy));
@@ -35,7 +40,7 @@ export function ManagePosition() {
   function doWithdraw() {
     if (!wd) return;
     const nc = Math.max(0, collateral - wd);
-    if (metrics(nc, debt).health === 'liquidation') return; // can't drop below min CR
+    if (metrics(nc, debt, spyPrice).health === 'liquidation') return; // can't drop below min CR
     setCollateral(nc);
   }
   function doBorrow() {
@@ -96,8 +101,12 @@ export function ManagePosition() {
               <dd>$ {money(m.liquidationPriceUsd)} / SPY</dd>
               <dt>free borrowing power</dt>
               <dd>$ {money(freeUsd)}</dd>
-              <dt>stability fee</dt>
+              <dt>your rate</dt>
+              <dd>{pct(rate * 100, 2)} / yr</dd>
+              <dt>interest</dt>
               <dd>$ {money(monthlyFee)} / mo</dd>
+              <dt>ahead of you in queue</dt>
+              <dd>{pct(ahead * 100, 0)} of protocol debt</dd>
             </dl>
             {m.health !== 'healthy' && (
               <p className="warn">
@@ -130,6 +139,23 @@ export function ManagePosition() {
 
           <NumberField label="Repay FUSD" value={repayFusd} onChange={setRepayFusd} suffix="FUSD" hint={`you hold $ ${int(MOCK_WALLET.fusd)} FUSD`} />
           <Button variant="ghost" disabled={!w.connected || rp <= 0 || debt <= 0} onClick={doRepay}>Repay / burn FUSD</Button>
+
+          <div className="rule" />
+
+          <SliderField
+            label="Your interest rate"
+            value={rate}
+            display={<strong>{pct(rate * 100, 2)}</strong>}
+            onChange={setRate}
+            min={MIN_RATE}
+            max={MAX_RATE}
+            step={0.0025}
+          />
+          <p className="muted">
+            Repricing is how you leave the redemption queue. Raising your rate
+            costs more but moves troves cheaper than you in front.{' '}
+            <Link href="/risks">Why that matters</Link>
+          </p>
 
           <div className="rule" />
 
