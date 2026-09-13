@@ -737,7 +737,7 @@ a {
 
   /* Role aliases. Names are historical; the value is what matters.
      Catalina Blue and Satin Linen are reserved for the landing-page cards (see
-     .home-action / .home-info below) is where the brand pair lives; the rest
+     .home-action / .market below) is where the brand pair lives; the rest
      and white, so these three now resolve to the neutrals. */
   --gold: var(--sp-black);
   --blue: var(--sp-white);
@@ -1579,46 +1579,109 @@ input:focus-visible {
 
 .home-action-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   margin-top: 34px;
 }
 
-/* Information, not action. Outlined rather than filled, no arrow and no lift,
-   so the filled cards above are unambiguously the things you can click. */
-.home-info-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 16px;
+/* Same colours as its neighbours, but there is nothing to click yet: no
+   arrow, no lift, and a chip that says so. */
+.home-action--soon {
+  cursor: default;
 }
 
-.home-info {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-height: 148px;
-  border: 1px solid var(--sp-catalina);
-  border-radius: 18px;
-  padding: 25px 27px;
-  background: transparent;
-  color: var(--ink);
+.home-action--soon:hover {
+  background: var(--sp-linen);
+  color: var(--sp-catalina);
+  transform: none;
 }
 
-
-.home-info__title {
-  margin: 2px 0 0;
-  font-size: clamp(20px, 2vw, 26px);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 1.1;
+.home-action--soon:hover .card__body {
+  color: var(--sp-catalina);
 }
 
-.home-info__body {
+.card__soon {
+  flex: none;
+  align-self: flex-start;
+  margin-top: 6px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-family: var(--mono, monospace);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* ---- market tables ----------------------------------------------------------- */
+
+.markets {
+  margin-top: 34px;
+  align-items: start;
+}
+
+.market {
+  border: 1px solid var(--rule, var(--line));
+  border-radius: 14px;
+  padding: 26px 26px 10px;
+  background: var(--paper);
+}
+
+.market__title {
   margin: 0;
+  font-size: clamp(19px, 1.9vw, 25px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.market__sub {
+  margin: 8px 0 18px;
   color: var(--gray-2);
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.45;
+}
+
+.market .table th:last-child,
+.market .table td:last-child {
+  text-align: right;
+}
+
+/* Five columns in half a container: a wrapped figure reads as two numbers. */
+.market .table td {
+  white-space: nowrap;
+}
+
+.market .table th {
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.market__asset {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 600;
+}
+
+.market__mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--sp-catalina);
+}
+
+.market__cta {
+  color: var(--sp-catalina);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.market__cta:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .home-risk-note {
@@ -2008,9 +2071,12 @@ input:focus-visible {
   color: var(--gray-3);
 }
 
-@media (max-width: 720px) {
-  .home-action-grid,
-  .home-info-grid {
+@media (max-width: 900px) {
+  .home-action-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .markets {
     grid-template-columns: minmax(0, 1fr);
   }
 }

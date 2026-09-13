@@ -30,15 +30,12 @@ export const DEFAULT_RATE = 0.06;
 // Share of borrower interest routed to stability-pool depositors.
 export const SP_INTEREST_SHARE = 0.75;
 
-// -- Protocol level stats (mocked) -------------------------------------------
-export const PROTOCOL_STATS = {
-  fusdSupply: 0, // total FUSD minted & outstanding
-  spyLocked: 0, // SPY shares locked as collateral protocol-wide
-  stabilityPoolUsd: 0, // FUSD deposited in the stability pool
-  totalDebtUsd: 0, // FUSD borrowed by all Troves
-};
-
-// -- Redemption queue (mocked book) ------------------------------------------
+// -- The mocked market ---------------------------------------------------------
+// Everything below derives from the rate book. Three separate inventions that
+// contradicted each other (zeroed protocol stats, a populated queue, a fixed
+// pool APR) told three different stories on the same page; one source that
+// hangs together is worth more than three that do not.
+//
 // Redemptions are filled from the cheapest troves first, so a borrower's rate
 // decides how exposed they are. Debt in FUSD, one entry per rate bucket.
 export const RATE_BOOK: { rate: number; debtFUSD: number }[] = [
@@ -51,6 +48,23 @@ export const RATE_BOOK: { rate: number; debtFUSD: number }[] = [
 ];
 
 export const RATE_BOOK_TOTAL = RATE_BOOK.reduce((t, b) => t + b.debtFUSD, 0);
+
+// Debt-weighted, which is the only average that means anything here: it is
+// what the protocol actually earns, not the midpoint of the rate range.
+export const AVG_RATE =
+  RATE_BOOK.reduce((t, b) => t + b.debtFUSD * b.rate, 0) / RATE_BOOK_TOTAL;
+
+export const ANNUAL_INTEREST_FUSD = RATE_BOOK_TOTAL * AVG_RATE;
+
+// Per-collateral borrowing cap. SPY is the only market for now.
+export const DEBT_CAP_FUSD = 5_000_000;
+
+export const PROTOCOL_STATS = {
+  fusdSupply: RATE_BOOK_TOTAL, // supply always equals outstanding debt
+  totalDebtUsd: RATE_BOOK_TOTAL,
+  spyLocked: 5_536, // tokens, not dollars: the USD value moves with the price
+  stabilityPoolUsd: 900_000,
+};
 
 // Fraction of protocol debt sitting on a cheaper rate than `rate`, and so
 // ahead of this borrower in the redemption queue.
@@ -71,9 +85,8 @@ export const SAMPLE_POSITION = {
 // pool, divided across whoever is in it. A high figure means the pool is small
 // relative to the debt it has to absorb, so read it as a warning, not a rate.
 export function stabilityPoolApr(): number {
-  if (PROTOCOL_STATS.stabilityPoolUsd <= 0 || RATE_BOOK_TOTAL <= 0) return 0;
-  const interest = RATE_BOOK.reduce((t, b) => t + b.debtFUSD * b.rate, 0);
-  return (interest * SP_INTEREST_SHARE) / PROTOCOL_STATS.stabilityPoolUsd;
+  if (PROTOCOL_STATS.stabilityPoolUsd <= 0) return 0;
+  return (ANNUAL_INTEREST_FUSD * SP_INTEREST_SHARE) / PROTOCOL_STATS.stabilityPoolUsd;
 }
 
 // -- Mock wallet holdings (drives deposit/repay limits in the demo) ----------
