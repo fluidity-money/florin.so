@@ -8,9 +8,8 @@ import { Button } from './ui';
 const NAV = [
   { href: '/', label: 'Home' },
   { href: '/open', label: 'Open position' },
+  { href: '/stability', label: 'Earn' },
   { href: '/position', label: 'Manage' },
-  { href: '/stability', label: 'Stability pool' },
-  { href: '/risks', label: 'Risks' },
 ];
 
 // Network selector. Only mounted when the real (Reown) provider is active, so

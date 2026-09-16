@@ -12,9 +12,8 @@ export function Footer() {
         <nav className="site-footer__nav" aria-label="Footer">
           <Link href="/">Home</Link>
           <Link href="/open">Open position</Link>
+          <Link href="/stability">Earn</Link>
           <Link href="/position">Manage</Link>
-          <Link href="/stability">Stability pool</Link>
-          <Link href="/risks">Risks</Link>
         </nav>
 
         <p className="site-footer__legal">

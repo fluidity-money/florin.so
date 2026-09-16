@@ -735,6 +735,13 @@ a {
   --sp-catalina: #0e3a7e;
   --sp-linen: #e6e0d6;
 
+  /* Semantic risk scale. Deliberately not the brand pair: "is my position
+     safe" is a different question from "is this a Florin surface", and one
+     colour cannot answer both. */
+  --risk-ok: #2f7d4f;
+  --risk-warn: #b07d2a;
+  --risk-bad: #b0483a;
+
   /* Role aliases. Names are historical; the value is what matters.
      Catalina Blue and Satin Linen are reserved for the landing-page cards (see
      .home-action / .market below) is where the brand pair lives; the rest
@@ -2079,4 +2086,496 @@ input:focus-visible {
   .markets {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* ---- swap-style borrow form -------------------------------------------------- */
+/* Single column. Every derived number sits directly under the field it belongs
+   to, so there is no second panel restating the first. */
+
+.swap {
+  width: min(100%, 460px);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.swap__title {
+  /* Sized to its content rather than to the 460px form column, so the token
+     marks do not push the heading onto a second line. */
+  width: max-content;
+  max-width: min(92vw, 640px);
+  margin: 0 auto 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 11px;
+  text-align: center;
+  font-size: clamp(26px, 3.4vw, 34px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.swap__tok {
+  color: var(--sp-catalina);
+}
+
+.swap__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--line-soft, rgba(30, 30, 30, 0.16));
+  border-radius: 14px;
+  padding: 16px 18px;
+  background: var(--paper);
+}
+
+.swap__field:focus-within {
+  border-color: var(--sp-catalina);
+}
+
+.swap__label {
+  font-size: 13px;
+  color: var(--gray-2);
+}
+
+.swap__label em {
+  font-style: normal;
+  color: var(--gray-3);
+}
+
+.swap__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.swap__amount {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  outline: none;
+  font-family: inherit;
+  font-size: 30px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.swap__amount::placeholder {
+  color: var(--gray-3);
+}
+
+.swap__amount--rate {
+  flex: 0 0 auto;
+  color: var(--sp-catalina);
+  font-weight: 700;
+}
+
+.swap__pill {
+  flex: 0 0 auto;
+  border: 1px solid var(--sp-catalina);
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: var(--sp-linen);
+  color: var(--sp-catalina);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.swap__usd {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--gray-3);
+}
+
+.swap__usd b {
+  color: var(--gray-1);
+  font-weight: 600;
+}
+
+.swap__slider {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Derived figures: outside the card, tied to the field above. */
+.swap__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 4px 6px;
+  font-size: 12px;
+  color: var(--gray-2);
+}
+
+.swap__meta--right {
+  justify-content: flex-end;
+  margin-top: -10px;
+}
+
+.swap__meta b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.swap__meta em {
+  font-style: normal;
+  color: var(--gray-3);
+}
+
+.swap__dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--gray-3);
+}
+
+.swap__dot--ok,
+.swap__dot--healthy,
+.swap__dot--low {
+  background: var(--risk-ok);
+}
+
+.swap__dot--warning,
+.swap__dot--medium {
+  background: var(--risk-warn);
+}
+
+.swap__dot--liquidation,
+.swap__dot--high {
+  background: var(--risk-bad);
+}
+
+.swap__meta--bad b,
+.swap__over {
+  color: var(--risk-bad);
+}
+
+.swap__over {
+  margin: -2px 4px 4px;
+  font-size: 12px;
+}
+
+.swap__max {
+  flex: 0 0 auto;
+  margin-right: 8px;
+  border: 1px solid var(--sp-catalina);
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: transparent;
+  color: var(--sp-catalina);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.swap__max:hover:not(:disabled) {
+  background: var(--sp-catalina);
+  color: var(--sp-linen);
+}
+
+.swap__max:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.swap__note {
+  border: 1px solid var(--line-soft, rgba(30, 30, 30, 0.16));
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 6px 0 4px;
+  background: var(--sp-linen);
+  font-size: 13px;
+  color: var(--gray-1);
+}
+
+.swap__note summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--sp-catalina);
+}
+
+.swap__note p {
+  margin: 10px 0 0;
+  line-height: 1.5;
+}
+
+.swap__done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid var(--sp-catalina);
+  border-radius: 16px;
+  padding: 36px 28px;
+  background: var(--sp-linen);
+  text-align: center;
+}
+
+.swap__done-mark {
+  font-size: 30px;
+  color: var(--sp-catalina);
+}
+
+.swap__done h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.swap__done p {
+  margin: 0;
+  color: var(--gray-2);
+  font-size: 14px;
+}
+
+/* ---- risks trigger and dialog ------------------------------------------------ */
+
+.risks-trigger {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 18px;
+  border: 1px solid var(--line-soft, rgba(30, 30, 30, 0.16));
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.risks-trigger:hover {
+  border-color: var(--sp-catalina);
+}
+
+.risks-trigger__mark {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--sp-catalina);
+  color: var(--sp-linen);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.risks-trigger strong {
+  display: block;
+  font-size: 14px;
+}
+
+.risks-trigger__sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--gray-3);
+}
+
+.risks-trigger__arrow {
+  margin-left: auto;
+  color: var(--gray-3);
+}
+
+.risks-dialog {
+  width: min(92vw, 720px);
+  max-height: 84vh;
+  border: 1px solid var(--sp-catalina);
+  border-radius: 16px;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  overflow: hidden;
+}
+
+.risks-dialog::backdrop {
+  background: rgba(14, 58, 126, 0.32);
+}
+
+.risks-dialog__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--line-soft, rgba(30, 30, 30, 0.16));
+  background: var(--sp-linen);
+}
+
+.risks-dialog__head h2 {
+  margin: 0;
+  font-size: 19px;
+  letter-spacing: -0.01em;
+}
+
+.risks-dialog__close {
+  border: 0;
+  background: transparent;
+  color: var(--sp-catalina);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.risks-dialog__body {
+  padding: 20px 22px 26px;
+  max-height: calc(84vh - 62px);
+  overflow-y: auto;
+}
+
+.risks-dialog__body .lead {
+  margin-bottom: 4px;
+  font-size: 15px;
+}
+
+@media (max-width: 560px) {
+  .swap__amount {
+    font-size: 26px;
+  }
+}
+
+/* ---- earn: pool list --------------------------------------------------------- */
+
+.swap__sub {
+  margin: -10px 0 18px;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--gray-2);
+}
+
+.pool {
+  border: 1px solid var(--sp-catalina);
+  border-radius: 14px;
+  background: var(--sp-linen);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.pool__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px 14px;
+}
+
+.pool__name {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--sp-catalina);
+}
+
+.pool__tvl {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--gray-2);
+}
+
+.pool__aprs {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  font-size: 13px;
+  color: var(--gray-2);
+}
+
+.pool__aprs b {
+  color: var(--sp-catalina);
+  font-size: 16px;
+}
+
+.pool__apr-sub {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--gray-3);
+}
+
+.pool__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 18px;
+  border-top: 1px solid rgba(14, 58, 126, 0.18);
+  font-size: 12px;
+  color: var(--gray-2);
+}
+
+.pool__foot b {
+  color: var(--sp-catalina);
+  font-weight: 600;
+}
+
+/* ---- token marks ------------------------------------------------------------- */
+
+.tok {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.tok-icon {
+  flex: 0 0 auto;
+  display: inline-block;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Florin black on Florin white, matching the header mark. The disc is the same
+   value as the page, so it needs a hairline to define its edge; without one the
+   coin dissolves into the background everywhere except inside a pill. */
+.tok-icon--fusd {
+  display: inline-grid;
+  place-items: center;
+  background: var(--sp-white);
+  box-shadow: inset 0 0 0 1px rgba(30, 30, 30, 0.18);
+}
+
+.tok-icon--fusd i {
+  display: block;
+  background: var(--sp-black);
+  -webkit-mask: url('/florin.svg') center / contain no-repeat;
+  mask: url('/florin.svg') center / contain no-repeat;
+}
+
+/* Inside a pill the mark sits tight against the symbol. */
+.swap__pill .tok {
+  gap: 7px;
+}
+
+/* The title is a flex row: centring the marks against large type by eye with
+   vertical-align never holds across font sizes or breakpoints. */
+.swap__pair {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.pool__ident {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.tok-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
 }

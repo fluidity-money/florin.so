@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Overline } from '../components/ui';
 import { Markets } from '../components/markets';
+import { RisksDialog } from '../components/risks-dialog';
 
 export default function HomePage() {
   return (
@@ -54,11 +55,7 @@ export default function HomePage() {
 
       <Markets />
 
-      <p className="home-risk-note">
-        Borrowing here carries liquidation, redemption and collateral-freeze
-        risk. <Link href="/risks">Read what can go wrong</Link> before you open a
-        position.
-      </p>
+      <RisksDialog label="Before you borrow, read what can go wrong" />
     </div>
   );
 }

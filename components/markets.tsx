@@ -9,6 +9,7 @@ import {
   collateralValueUSD,
   stabilityPoolApr,
 } from '../lib/mockData';
+import { Token } from './token-icon';
 import { compact, pct } from '../lib/format';
 import { useSpyPrice } from '../lib/use-spy-price';
 
@@ -33,10 +34,7 @@ export function Markets() {
           head={['Collateral', 'Avg rate, p.a.', 'Deposited', 'Debt issued', '']}
           rows={[
             [
-              <span className="market__asset" key="a">
-                <span className="market__mark" aria-hidden="true" />
-                SPY
-              </span>,
+              <Token symbol="SPY" size={20} className="market__asset" key="a" />,
               <span className="mono" key="r">
                 {pct(AVG_RATE * 100, 2)}
               </span>,
@@ -65,10 +63,7 @@ export function Markets() {
           head={['Pool', 'APR', 'Pool size', 'Coverage', '']}
           rows={[
             [
-              <span className="market__asset" key="a">
-                <span className="market__mark" aria-hidden="true" />
-                SPY
-              </span>,
+              <Token symbol="SPY" size={20} className="market__asset" key="a" />,
               <span className="mono" key="r">
                 {apr > 0 ? pct(apr * 100, 2) : 'n/a'}
               </span>,
