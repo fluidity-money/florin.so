@@ -1,0 +1,25 @@
+A threshold violation (cognitive, cyclomatic, nargs) means this function
+got harder for a human to follow. The number is a proxy for that, not the
+goal: make the code genuinely simpler, not the number smaller.
+
+- Do not game the metric. Extracting a helper that exists only to move
+  complexity off one function, splitting a cohesive function at an
+  arbitrary line, or collapsing readable branches into a dense expression
+  all lower the score while making the code worse.
+- Refactor only when it genuinely clarifies. A good split has a name that
+  means something and a boundary a reader would have drawn anyway. If you
+  cannot name the extracted piece without inventing `handleStuff2`, the
+  split is gaming -- stop.
+- In a React component, most of the count is usually JSX: a `? :` picking
+  a className, a `{cond && <div/>}` for an optional row. That is not the
+  kind of complexity a refactor fixes. Thresholds for .tsx are already set
+  wider for this reason, so a .tsx flag means the component is doing a lot
+  of real work, not that it renders a few conditionals.
+- When the complexity is essential, suppress it with a reason rather than
+  contorting the code: `// bca: suppress(cognitive) -- why`, on a line
+  inside the function. An honest suppression beats a compliant tangle.
+- Keep the fix where the violation is. Mention anything larger you noticed
+  instead of widening the edit into a rewrite.
+- This is advisory. It is not a gate, nothing in CI reads it, and it is
+  not a reason to stop what you were asked to do. If the flagged function
+  is fine as it stands, say so and move on.

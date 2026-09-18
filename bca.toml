@@ -1,0 +1,39 @@
+# big-code-analysis manifest.
+#
+# This is advisory tooling, not a gate. Nothing in CI or the commit path
+# reads it; it exists so the PostToolUse hook in .claude/hooks/ can tell a
+# coding agent when a function it just edited got denser.
+#
+# Thresholds are derived from the codebase as it stands rather than picked
+# off a blog post, and `flag at or over` is how bca reads them.
+
+paths = ["app", "components", "lib", "reference"]
+
+# Per-function metrics only. File length is deliberately not gated: a long
+# file is not something an agent can act on sensibly mid-edit, and the two
+# longest here (protocol.py, test_florin.py) are long because they are a
+# spec and its test suite.
+[thresholds]
+cyclomatic = 15
+cognitive = 20
+nargs = 8
+
+# TSX needs its own band. Every `? :` picking a className and every
+# `{cond && <div/>}` counts as a branch, so a JSX-heavy page component
+# scores far above a logic function doing the same amount of thinking.
+# Measured across this repo: .tsx functions run median 1, p90 5, with the
+# three page components at 18/28/53 — bimodal, not a smooth tail. 25 sits
+# above the presentational bulk and below where a real tangle would land.
+[thresholds.lang.tsx]
+cyclomatic = 25
+cognitive = 25
+
+# Plain .ts is ordinary logic with no JSX inflation; the project limits
+# already suit it (today's worst is useSpyPrice at 10).
+
+[check]
+# Today's offenders are pinned here, so the hook stays quiet about code
+# that has already been reviewed and only speaks up when something gets
+# worse than it is now. Refresh deliberately, never reflexively:
+#   bca check --write-baseline .bca-baseline.toml
+baseline = ".bca-baseline.toml"

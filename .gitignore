@@ -6,3 +6,5 @@ out
 .env*.local
 *.tsbuildinfo
 next-env.d.ts
+# Personal Claude Code config (hook registration); the hook scripts are tracked.
+.claude/settings.local.json
