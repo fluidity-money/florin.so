@@ -11,11 +11,11 @@
 // hierarchy.
 //   Black      #1E1E1E  rgb(30,30,30)     text, rules, reverse blocks
 //   White      #EEEEEE  rgb(238,238,238)  paper
-//   Catalina Blue #0E3A7E  rgb(14,58,126)    landing-card ink
-//   Satin Linen   #E6E0D6  rgb(230,224,214)  landing-card surface
+//   Biscay      #1F3D6E  rgb(31,61,110)    landing-card ink
+//   Hawkes Blue #CDE2FC  rgb(205,226,252)  landing-card surface
 //
-// Contrast: black on white 14.4  |  Catalina on Linen 8.3 (AAA)
-//           black on Linen 12.7  |  Catalina on white 9.4
+// Contrast: black on white 14.4  |  Biscay on Hawkes 8.1 (AAA)
+//           black on Hawkes 12.6  |  Biscay on white 9.3
 // -----------------------------------------------------------------------------
 
 export interface Theme {
@@ -50,9 +50,9 @@ export interface Theme {
 export const THEME: Theme = {
   // raw palette — the four Superposition brand colours
   paradiso: '#1e1e1e',
-  shamrock: '#0e3a7e',
-  flax: '#e6e0d6',
-  roseBud: '#e6e0d6',
+  shamrock: '#1f3d6e',
+  flax: '#cde2fc',
+  roseBud: '#cde2fc',
 
   // PP Neue Montreal for display/UI (self-hosted, see app/globals.css),
   // mono kept for protocol values
@@ -72,7 +72,7 @@ export const THEME: Theme = {
   line: '#1e1e1e',
   lineSoft: 'rgba(30, 30, 30, 0.16)',
   gridDot: 'transparent',
-  // Catalina Blue and Satin Linen are reserved for the landing-page cards, so the
+  // Biscay and Hawkes Blue are reserved for the landing-page cards, so the
   // shared accent / tint tokens stay neutral
   accent: '#1e1e1e',
   tintSoft: '#eeeeee',

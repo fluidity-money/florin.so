@@ -205,7 +205,12 @@ export function Table({
         {rows.map((r, i) => (
           <tr key={i}>
             {r.map((c, j) => (
-              <td key={j}>{c}</td>
+              // data-label carries the column heading down to the cell so the
+              // mobile layout can stack rows as label/value pairs instead of
+              // scrolling five columns sideways.
+              <td key={j} data-label={head[j] ?? ''}>
+                {c}
+              </td>
             ))}
           </tr>
         ))}

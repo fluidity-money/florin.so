@@ -5,9 +5,9 @@
 // rendering of it. It ships from /public instead of hotlinking, which keeps
 // the icon alive if CoinGecko reorganises its asset paths.
 //
-// FUSD is the Florin mark on a Catalina disc. It reuses the existing SVG as a
-// CSS mask, so the mark is tinted by `color` and stays in step with the
-// palette rather than being a second copy of the logo baked to a fixed hue.
+// FUSD is the Florin mark, black on white, matching the header logo. It reuses
+// the existing SVG as a CSS mask rather than being a second copy of the logo
+// baked to a fixed hue.
 
 export type TokenSymbol = 'SPY' | 'FUSD';
 

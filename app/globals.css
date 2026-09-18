@@ -732,8 +732,8 @@ a {
   /* Superposition palette — the only colours in the app. */
   --sp-black: #1e1e1e;
   --sp-white: #eeeeee;
-  --sp-catalina: #0e3a7e;
-  --sp-linen: #e6e0d6;
+  --sp-biscay: #1f3d6e;
+  --sp-hawkes: #cde2fc;
 
   /* Semantic risk scale. Deliberately not the brand pair: "is my position
      safe" is a different question from "is this a Florin surface", and one
@@ -743,7 +743,7 @@ a {
   --risk-bad: #b0483a;
 
   /* Role aliases. Names are historical; the value is what matters.
-     Catalina Blue and Satin Linen are reserved for the landing-page cards (see
+     Biscay and Hawkes Blue are reserved for the landing-page cards (see
      .home-action / .market below) is where the brand pair lives; the rest
      and white, so these three now resolve to the neutrals. */
   --gold: var(--sp-black);
@@ -1598,13 +1598,13 @@ input:focus-visible {
 }
 
 .home-action--soon:hover {
-  background: var(--sp-linen);
-  color: var(--sp-catalina);
+  background: var(--sp-hawkes);
+  color: var(--sp-biscay);
   transform: none;
 }
 
 .home-action--soon:hover .card__body {
-  color: var(--sp-catalina);
+  color: var(--sp-biscay);
 }
 
 .card__soon {
@@ -1676,11 +1676,11 @@ input:focus-visible {
   width: 18px;
   height: 18px;
   border-radius: 999px;
-  background: var(--sp-catalina);
+  background: var(--sp-biscay);
 }
 
 .market__cta {
-  color: var(--sp-catalina);
+  color: var(--sp-biscay);
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
@@ -1705,24 +1705,24 @@ input:focus-visible {
 .home-action {
   min-height: 165px;
   justify-content: space-between;
-  /* Satin Linen sits close to the paper, so the fill alone does not hold the
-     card. A Catalina Blue hairline gives it an edge without a third colour. */
-  border: 1px solid var(--sp-catalina);
+  /* Hawkes Blue sits close to the paper, so the fill alone does not hold the
+     card. A Biscay hairline gives it an edge without a third colour. */
+  border: 1px solid var(--sp-biscay);
   border-radius: 18px;
   padding: 25px 27px;
   transition: transform 150ms ease, background 150ms ease, color 150ms ease;
 }
 
 /* The landing-page cards are the one place the brand pair is used:
-   Catalina Blue on Satin Linen (8.31:1, AAA). Everything else is black and white. */
+   Biscay on Hawkes Blue (8.14:1, AAA). Everything else is black and white. */
 .home-action {
-  background: var(--sp-linen);
-  color: var(--sp-catalina);
+  background: var(--sp-hawkes);
+  color: var(--sp-biscay);
 }
 
 .home-action--gold,
 .home-action--blue {
-  background: var(--sp-linen);
+  background: var(--sp-hawkes);
 }
 
 .home-action--disabled {
@@ -1731,19 +1731,19 @@ input:focus-visible {
 }
 
 .home-action.home-action--disabled:hover {
-  background: var(--sp-linen);
-  color: var(--sp-catalina);
+  background: var(--sp-hawkes);
+  color: var(--sp-biscay);
   transform: none;
 }
 
 .home-action.home-action--disabled:hover .card__body {
-  color: var(--sp-catalina);
+  color: var(--sp-biscay);
 }
 
 .home-action--wide {
   min-height: 145px;
   margin-top: 16px;
-  background: var(--sp-linen);
+  background: var(--sp-hawkes);
 }
 
 .home-action .card__title {
@@ -1758,18 +1758,18 @@ input:focus-visible {
 
 .home-action .card__body,
 .home-action .card__sub {
-  color: var(--sp-catalina);
+  color: var(--sp-biscay);
 }
 
 .home-action:hover {
-  background: var(--sp-catalina);
-  color: var(--sp-linen);
+  background: var(--sp-biscay);
+  color: var(--sp-hawkes);
   transform: translateY(-3px);
 }
 
 .home-action:hover .card__body,
 .home-action:hover .card__sub {
-  color: var(--sp-linen);
+  color: var(--sp-hawkes);
 }
 
 .home-compact-tvl {
@@ -1852,46 +1852,46 @@ input:focus-visible {
 /* ===========================================================================
    Design pass — the brand pair beyond the landing cards.
 
-   Catalina Blue = secondary ink on light surfaces  (9.4:1 on white)
-   Satin Linen   = highlight surface                (Catalina on Linen 8.3:1)
+   Biscay      = secondary ink on light surfaces  (9.3:1 on white)
+   Hawkes Blue = highlight surface                (Biscay on Hawkes 8.1:1)
    Black / white stay the body ink, the rules and the reverse blocks.
    =========================================================================== */
 
 ::selection {
-  color: var(--sp-catalina);
-  background: var(--sp-linen);
+  color: var(--sp-biscay);
+  background: var(--sp-hawkes);
 }
 
 a:focus-visible,
 button:focus-visible,
 input:focus-visible {
-  outline: 2px solid var(--sp-catalina);
+  outline: 2px solid var(--sp-biscay);
   outline-offset: 3px;
 }
 
 /* Kickers and overlines carry the brand tint instead of a flat grey. */
 .overline,
 .panel__kicker {
-  color: var(--sp-catalina);
+  color: var(--sp-biscay);
 }
 
 /* The rule under the current page. */
 .site-nav__link:hover,
 .site-nav__link--active {
-  border-color: var(--sp-catalina);
+  border-color: var(--sp-biscay);
 }
 
 /* Primary action: the brand pair, inverting to black on hover. */
 .btn--primary {
-  border-color: var(--sp-catalina);
-  background: var(--sp-catalina);
-  color: var(--sp-linen);
+  border-color: var(--sp-biscay);
+  background: var(--sp-biscay);
+  color: var(--sp-hawkes);
 }
 
 .btn--primary:hover:not(:disabled) {
   border-color: var(--ink);
   background: var(--ink);
-  color: var(--sp-linen);
+  color: var(--sp-hawkes);
 }
 
 /* A disabled button reads as a quiet outline, not a muddy fade. */
@@ -1903,38 +1903,38 @@ input:focus-visible {
   cursor: not-allowed;
 }
 
-/* A Satin Linen strip ties each panel head to its body. */
+/* A Hawkes Blue strip ties each panel head to its body. */
 .panel__head {
-  background: var(--sp-linen);
+  background: var(--sp-hawkes);
   border-bottom-color: var(--ink);
 }
 
 /* The emphasised stat tile. */
 .stat--strong {
-  background: var(--sp-catalina);
+  background: var(--sp-biscay);
 }
 
 .stat--strong .stat__value {
-  color: var(--sp-linen);
+  color: var(--sp-hawkes);
 }
 
 .stat--strong .stat__label,
 .stat--strong .stat__sub {
   /* Derived from the token, not a literal rgba: a hardcoded copy is what let
      the previous palette survive a swap unnoticed. 5.1:1, AA. */
-  color: color-mix(in srgb, var(--sp-linen) 72%, transparent);
+  color: color-mix(in srgb, var(--sp-hawkes) 72%, transparent);
 }
 
-/* Empty state: a Satin Linen panel rather than a dashed grey box. */
+/* Empty state: a Hawkes Blue panel rather than a dashed grey box. */
 .empty {
   border-style: solid;
-  border-color: var(--sp-catalina);
-  background: var(--sp-linen);
-  color: var(--sp-catalina);
+  border-color: var(--sp-biscay);
+  background: var(--sp-hawkes);
+  color: var(--sp-biscay);
 }
 
 .empty p {
-  color: var(--sp-catalina);
+  color: var(--sp-biscay);
 }
 
 .empty__mark {
@@ -1948,7 +1948,7 @@ input:focus-visible {
   mask: url('/florin.svg') center / contain no-repeat;
 }
 
-/* Slider and ratio bar: Catalina Blue fill, a thumb you can actually see. */
+/* Slider and ratio bar: Biscay fill, a thumb you can actually see. */
 .slider {
   height: 16px;
   border-color: var(--ink);
@@ -1958,11 +1958,11 @@ input:focus-visible {
 }
 
 .slider::-moz-range-progress {
-  background: var(--sp-catalina);
+  background: var(--sp-biscay);
 }
 
 .slider::-webkit-slider-fill-lower {
-  background: var(--sp-catalina);
+  background: var(--sp-biscay);
 }
 
 .slider::-moz-range-thumb {
@@ -1970,7 +1970,7 @@ input:focus-visible {
   height: 16px;
   border: 2px solid var(--paper);
   border-radius: 999px;
-  background: var(--sp-catalina);
+  background: var(--sp-biscay);
 }
 
 .slider::-webkit-slider-thumb {
@@ -1980,7 +1980,7 @@ input:focus-visible {
   height: 16px;
   border: 2px solid var(--paper);
   border-radius: 999px;
-  background: var(--sp-catalina);
+  background: var(--sp-biscay);
 }
 
 .ratiobar__track {
@@ -1989,24 +1989,24 @@ input:focus-visible {
   background-image: none;
 }
 
-/* Catalina Blue, not Satin Linen: the fill has to read against the paper
-   track, and Linen sits only 1.1:1 from it. Catalina is 9.4:1 and is the ink
-   role in this palette anyway. */
+/* Biscay, not Hawkes Blue: the fill has to read against the paper track, and
+   Hawkes sits only 1.1:1 from it. Biscay is 9.3:1 and is the ink role in this
+   palette anyway. */
 .ratiobar__fill {
-  background: var(--sp-catalina);
+  background: var(--sp-biscay);
 }
 
 .ratiobar__min {
-  background: var(--sp-catalina);
+  background: var(--sp-biscay);
 }
 
-/* Reverse blocks: Satin Linen is the label tone on black. */
+/* Reverse blocks: Hawkes Blue is the label tone on black. */
 .home-compact-tvl .tvl__label {
-  color: var(--sp-linen);
+  color: var(--sp-hawkes);
 }
 
 .site-footer__nav a:hover {
-  color: var(--sp-linen);
+  color: var(--sp-hawkes);
   text-decoration: underline;
 }
 
@@ -2016,7 +2016,7 @@ input:focus-visible {
 }
 
 .stat--strong {
-  border-color: var(--sp-catalina);
+  border-color: var(--sp-biscay);
 }
 
 .field__in {
@@ -2030,7 +2030,7 @@ input:focus-visible {
 
 .field__in:focus {
   outline: none;
-  border-color: var(--sp-catalina);
+  border-color: var(--sp-biscay);
   box-shadow: 0 0 0 3px rgba(63, 69, 91, 0.18);
 }
 
@@ -2118,7 +2118,7 @@ input:focus-visible {
 }
 
 .swap__tok {
-  color: var(--sp-catalina);
+  color: var(--sp-biscay);
 }
 
 .swap__field {
@@ -2132,7 +2132,7 @@ input:focus-visible {
 }
 
 .swap__field:focus-within {
-  border-color: var(--sp-catalina);
+  border-color: var(--sp-biscay);
 }
 
 .swap__label {
@@ -2169,19 +2169,28 @@ input:focus-visible {
   color: var(--gray-3);
 }
 
+/* Fixed width, not sized to the text. The slider beside this is `flex: 1`, so
+   a readout that grows with its value steals width from the track it is
+   reporting on: crossing 9.75% -> 10.00% shrank the track ~23px and shifted
+   its left edge by the same amount, mid-drag, under a stationary pointer. The
+   value recomputed against the new geometry (10.00% landed back on 8.75%),
+   which shortened the label again, and the two fed each other. Width is set
+   for the longest reachable string, "25.00%" at MAX_RATE. */
 .swap__amount--rate {
   flex: 0 0 auto;
-  color: var(--sp-catalina);
+  width: 4.7em;
+  color: var(--sp-biscay);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 .swap__pill {
   flex: 0 0 auto;
-  border: 1px solid var(--sp-catalina);
+  border: 1px solid var(--sp-biscay);
   border-radius: 999px;
   padding: 6px 14px;
-  background: var(--sp-linen);
-  color: var(--sp-catalina);
+  background: var(--sp-hawkes);
+  color: var(--sp-biscay);
   font-size: 15px;
   font-weight: 600;
 }
@@ -2265,11 +2274,11 @@ input:focus-visible {
 .swap__max {
   flex: 0 0 auto;
   margin-right: 8px;
-  border: 1px solid var(--sp-catalina);
+  border: 1px solid var(--sp-biscay);
   border-radius: 999px;
   padding: 3px 10px;
   background: transparent;
-  color: var(--sp-catalina);
+  color: var(--sp-biscay);
   font: inherit;
   font-size: 11px;
   font-weight: 600;
@@ -2279,8 +2288,8 @@ input:focus-visible {
 }
 
 .swap__max:hover:not(:disabled) {
-  background: var(--sp-catalina);
-  color: var(--sp-linen);
+  background: var(--sp-biscay);
+  color: var(--sp-hawkes);
 }
 
 .swap__max:disabled {
@@ -2293,7 +2302,7 @@ input:focus-visible {
   border-radius: 12px;
   padding: 12px 16px;
   margin: 6px 0 4px;
-  background: var(--sp-linen);
+  background: var(--sp-hawkes);
   font-size: 13px;
   color: var(--gray-1);
 }
@@ -2301,7 +2310,7 @@ input:focus-visible {
 .swap__note summary {
   cursor: pointer;
   font-weight: 600;
-  color: var(--sp-catalina);
+  color: var(--sp-biscay);
 }
 
 .swap__note p {
@@ -2314,16 +2323,16 @@ input:focus-visible {
   flex-direction: column;
   align-items: center;
   gap: 10px;
-  border: 1px solid var(--sp-catalina);
+  border: 1px solid var(--sp-biscay);
   border-radius: 16px;
   padding: 36px 28px;
-  background: var(--sp-linen);
+  background: var(--sp-hawkes);
   text-align: center;
 }
 
 .swap__done-mark {
   font-size: 30px;
-  color: var(--sp-catalina);
+  color: var(--sp-biscay);
 }
 
 .swap__done h2 {
@@ -2356,7 +2365,7 @@ input:focus-visible {
 }
 
 .risks-trigger:hover {
-  border-color: var(--sp-catalina);
+  border-color: var(--sp-biscay);
 }
 
 .risks-trigger__mark {
@@ -2366,8 +2375,8 @@ input:focus-visible {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--sp-catalina);
-  color: var(--sp-linen);
+  background: var(--sp-biscay);
+  color: var(--sp-hawkes);
   font-size: 13px;
   font-weight: 700;
 }
@@ -2392,7 +2401,7 @@ input:focus-visible {
 .risks-dialog {
   width: min(92vw, 720px);
   max-height: 84vh;
-  border: 1px solid var(--sp-catalina);
+  border: 1px solid var(--sp-biscay);
   border-radius: 16px;
   padding: 0;
   background: var(--paper);
@@ -2401,7 +2410,7 @@ input:focus-visible {
 }
 
 .risks-dialog::backdrop {
-  background: rgba(14, 58, 126, 0.32);
+  background: color-mix(in srgb, var(--sp-biscay) 32%, transparent);
 }
 
 .risks-dialog__head {
@@ -2411,7 +2420,7 @@ input:focus-visible {
   gap: 16px;
   padding: 18px 22px;
   border-bottom: 1px solid var(--line-soft, rgba(30, 30, 30, 0.16));
-  background: var(--sp-linen);
+  background: var(--sp-hawkes);
 }
 
 .risks-dialog__head h2 {
@@ -2423,7 +2432,7 @@ input:focus-visible {
 .risks-dialog__close {
   border: 0;
   background: transparent;
-  color: var(--sp-catalina);
+  color: var(--sp-biscay);
   font-size: 26px;
   line-height: 1;
   cursor: pointer;
@@ -2457,9 +2466,9 @@ input:focus-visible {
 }
 
 .pool {
-  border: 1px solid var(--sp-catalina);
+  border: 1px solid var(--sp-biscay);
   border-radius: 14px;
-  background: var(--sp-linen);
+  background: var(--sp-hawkes);
   overflow: hidden;
   margin-bottom: 10px;
 }
@@ -2476,7 +2485,7 @@ input:focus-visible {
   display: block;
   font-size: 16px;
   font-weight: 600;
-  color: var(--sp-catalina);
+  color: var(--sp-biscay);
 }
 
 .pool__tvl {
@@ -2497,7 +2506,7 @@ input:focus-visible {
 }
 
 .pool__aprs b {
-  color: var(--sp-catalina);
+  color: var(--sp-biscay);
   font-size: 16px;
 }
 
@@ -2512,14 +2521,57 @@ input:focus-visible {
   justify-content: space-between;
   gap: 16px;
   padding: 10px 18px;
-  border-top: 1px solid rgba(14, 58, 126, 0.18);
+  border-top: 1px solid color-mix(in srgb, var(--sp-biscay) 18%, transparent);
   font-size: 12px;
   color: var(--gray-2);
 }
 
 .pool__foot b {
-  color: var(--sp-catalina);
+  color: var(--sp-biscay);
   font-weight: 600;
+}
+
+/* Ratio bar inside the position card. It sits between head and foot, so it
+   carries the foot's hairline rather than a border of its own. */
+.pool__bar {
+  padding: 2px 18px 12px;
+}
+
+/* Segmented control. Deposit/withdraw and borrow/repay are the same field in
+   two directions, not four fields, so they share one input and toggle here. */
+.seg {
+  flex: 0 0 auto;
+  display: inline-flex;
+  border: 1px solid color-mix(in srgb, var(--sp-biscay) 34%, transparent);
+  border-radius: 999px;
+  padding: 2px;
+  background: transparent;
+}
+
+.seg__opt {
+  border: 0;
+  border-radius: 999px;
+  padding: 3px 11px;
+  background: transparent;
+  color: var(--gray-2);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* Not on the selected option: its background is already Biscay, and the two
+   rules carry the same specificity, so the hover colour would win and paint
+   the label in its own background. */
+.seg__opt:not(.seg__opt--on):hover {
+  color: var(--sp-biscay);
+}
+
+.seg__opt--on {
+  background: var(--sp-biscay);
+  color: var(--sp-hawkes);
 }
 
 /* ---- token marks ------------------------------------------------------------- */
@@ -2578,4 +2630,147 @@ input:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+}
+
+/* ---- market tables on small screens ------------------------------------------ */
+/* Five columns will not fit a phone, and `white-space: nowrap` pushed the table
+   straight out through the card's rounded edge. Each row becomes a stack of
+   label/value pairs instead, which also removes the need to discover that a
+   table scrolls sideways. */
+
+@media (max-width: 680px) {
+  .market {
+    padding: 20px 16px 8px;
+  }
+
+  .market .table,
+  .market .table tbody,
+  .market .table tr,
+  .market .table td {
+    display: block;
+    width: 100%;
+  }
+
+  .market .table thead {
+    /* Not `display: none`: the headings still belong to the cells below, and
+       clip keeps them reachable to a screen reader. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .market .table tr + tr {
+    margin-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+
+  .market .table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 7px 0;
+    white-space: normal;
+    border: 0;
+    text-align: right;
+  }
+
+  .market .table td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 10px;
+    font-family: var(--sans);
+    color: var(--gray-2);
+    text-align: left;
+  }
+
+  /* The asset cell leads the stack, so it reads as the row's heading. */
+  .market .table td:first-child {
+    justify-content: flex-start;
+    padding-top: 0;
+    font-size: 15px;
+  }
+
+  .market .table td:first-child::before {
+    content: none;
+  }
+
+  /* The CTA column has no heading; let the link fill the width. */
+  .market .table td:last-child {
+    justify-content: flex-end;
+    padding-bottom: 12px;
+  }
+
+  .market .table td:last-child::before {
+    content: none;
+  }
+}
+
+/* ---- header on small screens -------------------------------------------------- */
+/* The nav was hidden under 760px with nothing replacing it, which left the
+   footer as the only way to reach another page. Four short links fit on their
+   own row, so they wrap under the brand instead of disappearing. */
+
+@media (max-width: 760px) {
+  .site-header__row {
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px 16px;
+    min-height: 0;
+    padding: 14px var(--page-gutter) 10px;
+  }
+
+  .site-header__conn {
+    margin-left: auto;
+  }
+
+  .site-nav {
+    display: flex;
+    order: 3;
+    /* `flex: 0 0 100%`, not `width`: the base rule sets `flex: 1`, whose 0%
+       basis wins over any width and keeps the nav on the first row. */
+    flex: 0 0 100%;
+    justify-content: space-between;
+    gap: 10px;
+    padding-top: 2px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .site-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .site-nav__link {
+    white-space: nowrap;
+  }
+}
+
+/* ---- pool card on small screens ----------------------------------------------- */
+/* Side by side, the name wraps to two lines and the coverage note wraps under
+   the APR. Stacking gives each its own full-width row. */
+
+@media (max-width: 680px) {
+  .pool__head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .pool__aprs {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .pool__foot {
+    flex-wrap: wrap;
+    gap: 8px 16px;
+  }
 }

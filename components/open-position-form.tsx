@@ -197,7 +197,7 @@ export function OpenPositionForm() {
         <div className="swap__row">
           <span className="swap__amount swap__amount--rate">{pct(rate * 100, 2)}</span>
           <input
-            className="swap__slider"
+            className="slider swap__slider"
             type="range"
             min={MIN_RATE}
             max={MAX_RATE}
