@@ -1,10 +1,14 @@
-node_modules
+.claude/settings.local.json
+.env*.local
+.env.local
+.gopath/
+go.sum
+ingestor.ethereum
 .next
+next-env.d.ts
+node_modules
 .npmcache
 out
-.env.local
-.env*.local
+pkg/
+*.swp
 *.tsbuildinfo
-next-env.d.ts
-# Personal Claude Code config (hook registration); the hook scripts are tracked.
-.claude/settings.local.json
