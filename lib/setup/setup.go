@@ -36,3 +36,7 @@ func init() {
 		With("is debug", logLevel == slog.LevelDebug)
 	slog.SetDefault(logger)
 }
+
+func Exitf(format string, args ...any) {
+	log.Fatalf(format, args...)
+}

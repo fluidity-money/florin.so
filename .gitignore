@@ -2,8 +2,7 @@
 .env*.local
 .env.local
 .gopath/
-go.sum
-ingestor.ethereum
+/cmd/ingestor.ethereum/ingestor.ethereum
 .next
 next-env.d.ts
 node_modules
