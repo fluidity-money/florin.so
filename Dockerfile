@@ -9,7 +9,7 @@ RUN go mod download
 COPY . .
 
 RUN CGO_ENABLED=0 go build -o graph ./cmd/graphql
-RUN CGO_ENABLED=0 go build -o ingestor ./cmd/ingestor.ethereum
+RUN CGO_ENABLED=0 go build -o ingestor ./cmd/ingestor
 
 FROM alpine:3.20
 
