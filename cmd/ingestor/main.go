@@ -4,8 +4,8 @@ import (
 	"log/slog"
 	"math/rand"
 
-	"github.com/fluidity-money/florin.so/ingest/lib/config"
-	"github.com/fluidity-money/florin.so/ingest/lib/setup"
+	"github.com/fluidity-money/florin.so/lib/config"
+	"github.com/fluidity-money/florin.so/lib/setup"
 
 	_ "github.com/lib/pq"
 

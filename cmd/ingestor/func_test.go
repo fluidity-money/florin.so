@@ -8,7 +8,7 @@ import (
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 
-	"github.com/fluidity-money/florin.so/ingest/lib/events/liquity"
+	"github.com/fluidity-money/florin.so/lib/events/liquity"
 )
 
 func TestHandleLogCallback(t *testing.T) {

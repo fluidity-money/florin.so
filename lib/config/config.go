@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/fluidity-money/florin.so/ingest/lib/setup"
+	"github.com/fluidity-money/florin.so/lib/setup"
 )
 
 const DefaultChainId = 55244

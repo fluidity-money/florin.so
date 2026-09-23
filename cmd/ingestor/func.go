@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fluidity-money/florin.so/ingest/lib/events/liquity"
-	"github.com/fluidity-money/florin.so/ingest/lib/heartbeat"
-	"github.com/fluidity-money/florin.so/ingest/lib/setup"
-	"github.com/fluidity-money/florin.so/ingest/lib/types"
+	"github.com/fluidity-money/florin.so/lib/events/liquity"
+	"github.com/fluidity-money/florin.so/lib/heartbeat"
+	"github.com/fluidity-money/florin.so/lib/setup"
+	"github.com/fluidity-money/florin.so/lib/types"
 
 	"github.com/ethereum/go-ethereum"
 	ethCommon "github.com/ethereum/go-ethereum/common"

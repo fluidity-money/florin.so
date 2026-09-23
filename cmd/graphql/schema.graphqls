@@ -1,0 +1,47 @@
+
+"""
+String that represents a string that contains a percentage amount that's safe to display
+in the UI.
+"""
+scalar Percent
+
+"""
+Amount in circulation in the system, 18 decimals. Returned as a string.
+"""
+scalar Amount
+
+type Collateral {
+  name: String!,
+}
+
+"""
+Borrow details in circulation. Based on the events Liquity emits.
+"""
+type BorrowDetails {
+  collateral: Collateral!,
+  avgRatePa: Percent!,
+  deposited: Amount!,
+  debtIssued: Amount!
+}
+
+"""
+Earn rewards that we display in the UI.
+"""
+type EarnRewards {
+  collateral: Collateral!,
+  apr: Percent!,
+  poolSize: Amount!,
+  coverage: Percent!
+}
+
+type Query {
+  """
+  Details of the borrowed amount of SPY in circulation with FUSD.
+  """
+  borrowDetails: [BorrowDetails!],
+
+  """
+  Earn rewards details.
+  """
+  earnRewards: [EarnRewards!]!
+}

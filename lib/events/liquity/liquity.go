@@ -11,7 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/fluidity-money/florin.so/ingest/lib/types/events"
+	"github.com/fluidity-money/florin.so/lib/types/events"
 )
 
 var (

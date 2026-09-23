@@ -9,7 +9,7 @@ import (
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 
-	"github.com/fluidity-money/florin.so/ingest/lib/types/events"
+	"github.com/fluidity-money/florin.so/lib/types/events"
 )
 
 func topicAddress(address common.Address) common.Hash {
