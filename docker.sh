@@ -1,4 +1,4 @@
 #!/bin/sh
 set -eu
 
-docker build -t superposition/ingestor.ethereum.florin .
+docker build -t superposition/florin .
