@@ -23,9 +23,14 @@ import (
 // HttpUnixSocket that we listen on using a socket.
 const HttpUnixSocket = "/run/florin.so/http.sock"
 
+const (
 // EnvTimescaleUri to use as the database for private key loading
 // and authentication key loading.
-const EnvTimescaleUri = "SPN_TIMESCALE"
+EnvTimescaleUri = "SPN_TIMESCALE"
+
+// EnvFeatureFakeData if set to anything other than "", renders fake data.
+EnvFeatureFakeData = "SPN_FEATURE_FAKE_DATA"
+)
 
 func main() {
 	db, err := sql.Open("postgres", os.Getenv(EnvTimescaleUri))
@@ -35,7 +40,7 @@ func main() {
 	defer db.Close()
 	srv := handler.New(gen.NewExecutableSchema(gen.Config{
 		Resolvers: &gen.Resolver{
-			FeatureFakeData: true,
+			FeatureFakeData: os.Getenv(EnvFeatureFakeData) != "",
 		},
 	}))
 	srv.AddTransport(transport.Options{})

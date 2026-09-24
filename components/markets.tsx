@@ -1,26 +1,43 @@
-'use client';
-
 import Link from 'next/link';
 import { Table } from './ui';
-import {
-  AVG_RATE,
-  DEBT_CAP_FUSD,
-  PROTOCOL_STATS,
-  collateralValueUSD,
-  stabilityPoolApr,
-} from '../lib/mockData';
 import { Token } from './token-icon';
-import { compact, pct } from '../lib/format';
-import { useSpyPrice } from '../lib/use-spy-price';
+import { fetchFlorinMarkets } from '../lib/florin-graph';
 
-// The two market tables. One row each for now, because SPY is the only
-// collateral and therefore the only pool, but both are tables rather than
-// panels so adding the second asset is a data change and not a layout one.
-export function Markets() {
-  const { price } = useSpyPrice();
+function Collateral({ name }: { name: string }) {
+  if (name === 'SPY' || name === 'FUSD') {
+    return <Token symbol={name} size={20} className="market__asset" />;
+  }
+  return <span className="market__asset">{name}</span>;
+}
 
-  const collateralUsd = collateralValueUSD(PROTOCOL_STATS.spyLocked, price);
-  const apr = stabilityPoolApr();
+const unavailableRow = [
+  <span className="mono" key="asset">—</span>,
+  <span className="mono" key="rate">—</span>,
+  <span className="mono" key="amount">—</span>,
+  <span className="mono" key="coverage">—</span>,
+  null,
+];
+
+// The market values are formatted for display by graph.florin.so. One row is
+// rendered per collateral, so adding another market is a backend data change.
+export async function Markets() {
+  const { borrowDetails, earnRewards } = await fetchFlorinMarkets();
+
+  const borrowRows = borrowDetails.map((details) => [
+    <Collateral name={details.collateral.name} key="asset" />,
+    <span className="mono" key="rate">{details.avgRatePa}</span>,
+    <span className="mono" key="deposited">{details.deposited}</span>,
+    <span className="mono" key="debt">{details.debtIssued}</span>,
+    <Link className="market__cta" href="/open" key="action">Borrow →</Link>,
+  ]);
+
+  const earnRows = earnRewards.map((rewards) => [
+    <Collateral name={rewards.collateral.name} key="asset" />,
+    <span className="mono" key="apr">{rewards.apr}</span>,
+    <span className="mono" key="pool">{rewards.poolSize}</span>,
+    <span className="mono" key="coverage">{rewards.coverage}</span>,
+    <Link className="market__cta" href="/stability" key="action">Earn →</Link>,
+  ]);
 
   return (
     <div className="grid grid-cols-2 markets">
@@ -32,23 +49,7 @@ export function Markets() {
 
         <Table
           head={['Collateral', 'Avg rate, p.a.', 'Deposited', 'Debt issued', '']}
-          rows={[
-            [
-              <Token symbol="SPY" size={20} className="market__asset" key="a" />,
-              <span className="mono" key="r">
-                {pct(AVG_RATE * 100, 2)}
-              </span>,
-              <span className="mono" key="d">
-                {compact(collateralUsd)}
-              </span>,
-              <span className="mono" key="i">
-                {compact(PROTOCOL_STATS.totalDebtUsd)} / {compact(DEBT_CAP_FUSD)}
-              </span>,
-              <Link className="market__cta" href="/open" key="c">
-                Borrow →
-              </Link>,
-            ],
-          ]}
+          rows={borrowRows.length > 0 ? borrowRows : [unavailableRow]}
         />
       </section>
 
@@ -61,26 +62,7 @@ export function Markets() {
 
         <Table
           head={['Pool', 'APR', 'Pool size', 'Coverage', '']}
-          rows={[
-            [
-              <Token symbol="SPY" size={20} className="market__asset" key="a" />,
-              <span className="mono" key="r">
-                {apr > 0 ? pct(apr * 100, 2) : 'n/a'}
-              </span>,
-              <span className="mono" key="s">
-                {compact(PROTOCOL_STATS.stabilityPoolUsd)}
-              </span>,
-              <span className="mono" key="c">
-                {pct(
-                  (PROTOCOL_STATS.stabilityPoolUsd / PROTOCOL_STATS.totalDebtUsd) * 100,
-                  0,
-                )}
-              </span>,
-              <Link className="market__cta" href="/stability" key="e">
-                Earn →
-              </Link>,
-            ],
-          ]}
+          rows={earnRows.length > 0 ? earnRows : [unavailableRow]}
         />
       </section>
     </div>
