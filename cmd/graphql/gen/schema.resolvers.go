@@ -7,19 +7,38 @@ package gen
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/fluidity-money/florin.so/cmd/graphql/gen/model"
 )
 
 // BorrowDetails is the resolver for the borrowDetails field.
 func (r *queryResolver) BorrowDetails(ctx context.Context) ([]*model.BorrowDetails, error) {
-	panic(fmt.Errorf("not implemented: BorrowDetails - borrowDetails"))
+	if r.FeatureFakeData {
+		return []*model.BorrowDetails{&model.BorrowDetails{
+			Collateral: &model.Collateral{
+				Name: "SPY",
+			},
+			AvgRatePa: "5.79%",
+			Deposited: "4.2M",
+			DebtIssued: "2.34M",
+		}}, nil
+	}
+	panic("not implemented")
 }
 
 // EarnRewards is the resolver for the earnRewards field.
 func (r *queryResolver) EarnRewards(ctx context.Context) ([]*model.EarnRewards, error) {
-	panic(fmt.Errorf("not implemented: EarnRewards - earnRewards"))
+	if r.FeatureFakeData {
+		return []*model.EarnRewards{&model.EarnRewards{
+			Collateral: &model.Collateral{
+				Name: "SPY",
+			},
+			Apr: "11.2.9%",
+			PoolSize: "900K",
+			Coverage: "38%",
+		}}, nil
+	}
+	panic("not implemented")
 }
 
 // Query returns QueryResolver implementation.
