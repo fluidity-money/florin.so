@@ -32,9 +32,9 @@
   /* Canonical values live in lib/theme.ts (applied inline on <body>).
      These are fallback defaults so the sheet works on its own. */
   --paradiso: #1e1e1e;
-  --shamrock: #818bfc;
-  --flax: #fcffba;
-  --rose-bud: #fcffba;
+  --shamrock: #0f3d2e;
+  --flax: #dcebe2;
+  --rose-bud: #dcebe2;
 
   --ink: #1e1e1e;
   --paper: #eeeeee;
@@ -732,8 +732,8 @@ a {
   /* Superposition palette — the only colours in the app. */
   --sp-black: #1e1e1e;
   --sp-white: #eeeeee;
-  --sp-biscay: #1f3d6e;
-  --sp-hawkes: #cde2fc;
+  --sp-biscay: #0f3d2e;
+  --sp-hawkes: #dcebe2;
 
   /* Semantic risk scale. Deliberately not the brand pair: "is my position
      safe" is a different question from "is this a Florin surface", and one
@@ -742,10 +742,10 @@ a {
   --risk-warn: #b07d2a;
   --risk-bad: #b0483a;
 
-  /* Role aliases. Names are historical; the value is what matters.
-     Biscay and Hawkes Blue are reserved for the landing-page cards (see
-     .home-action / .market below) is where the brand pair lives; the rest
-     and white, so these three now resolve to the neutrals. */
+  /* Role aliases. Names are historical; the value is what matters. The token
+     names still read `biscay` and `hawkes` from an earlier palette, but they
+     now carry phthalo green and its pale tint. Renaming 78 references buys
+     nothing, so the names stay and this comment carries the truth. */
   --gold: var(--sp-black);
   --blue: var(--sp-white);
   --blush: var(--sp-white);
@@ -842,7 +842,6 @@ input:focus-visible {
 
 .brand__mark,
 .site-footer__mark,
-.hero__mark,
 .story-card__mini-mark {
   display: block;
   border: 0;
@@ -1036,129 +1035,6 @@ input:focus-visible {
 /* Landing hero */
 .home {
   margin-top: clamp(-40px, -3vw, -20px);
-}
-
-.hero {
-  position: relative;
-  display: grid;
-  min-height: min(760px, calc(100vh - 110px));
-  grid-template-columns: minmax(0, 0.92fr) minmax(380px, 1.08fr);
-  align-items: center;
-  isolation: isolate;
-}
-
-.hero__copy {
-  position: relative;
-  z-index: 2;
-  padding: 50px 0 70px;
-}
-
-.hero__eyebrow {
-  margin: 0 0 32px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.17em;
-}
-
-.hero__title {
-  margin: 0;
-  font-size: clamp(78px, 9.5vw, 160px);
-  font-weight: 700;
-  letter-spacing: -0.075em;
-  line-height: 0.78;
-}
-
-.hero__lead {
-  max-width: 510px;
-  margin: 44px 0 32px;
-  font-size: clamp(17px, 1.45vw, 22px);
-  line-height: 1.45;
-}
-
-.hero__cta {
-  display: inline-flex;
-  min-height: 50px;
-  align-items: center;
-  gap: 28px;
-  border: 2px solid var(--gold);
-  border-radius: 999px;
-  padding: 11px 20px 10px 24px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.13em;
-  transition: background 150ms ease, transform 150ms ease;
-}
-
-.hero__cta span {
-  font-size: 20px;
-  line-height: 1;
-}
-
-.hero__cta:hover {
-  background: var(--gold);
-  transform: translateY(-2px);
-}
-
-.hero__art {
-  position: relative;
-  align-self: stretch;
-  min-height: 650px;
-}
-
-.hero__art::before {
-  content: "";
-  position: absolute;
-  inset: 7% -5% 2% -8%;
-  z-index: -2;
-  border-radius: 49% 51% 45% 55% / 58% 38% 62% 42%;
-  background: var(--blue);
-  transform: rotate(-9deg);
-}
-
-.hero__mark {
-  position: absolute;
-  top: 7%;
-  right: -2%;
-  width: min(42vw, 610px);
-  height: 82%;
-  color: var(--ink);
-  transform: rotate(5deg);
-}
-
-.hero__orb {
-  position: absolute;
-  z-index: -1;
-  border-radius: 50%;
-}
-
-.hero__orb--one {
-  top: 14%;
-  left: 0;
-  width: 155px;
-  height: 155px;
-  background: var(--gold);
-}
-
-.hero__orb--two {
-  right: -3%;
-  bottom: 7%;
-  width: 230px;
-  height: 230px;
-  background: var(--blush);
-}
-
-.hero__ticker {
-  position: absolute;
-  right: 3%;
-  bottom: 8%;
-  z-index: 2;
-  margin: 0;
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.13em;
-  transform: rotate(90deg);
-  transform-origin: right bottom;
 }
 
 /* Editorial action rail */
@@ -2772,5 +2648,224 @@ input:focus-visible {
   .pool__foot {
     flex-wrap: wrap;
     gap: 8px 16px;
+  }
+}
+
+/* ---- landing hero ------------------------------------------------------------ */
+/* A single painted field in a rounded frame, with the copy laid over it. The
+   page around it stays white and quiet so the picture is the only thing doing
+   any shouting. */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 22px;
+  min-height: clamp(460px, 74vh, 720px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(40px, 6vw, 72px) clamp(24px, 5vw, 64px) clamp(112px, 13vw, 150px);
+  text-align: center;
+}
+
+.hero__bg {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 62%;
+}
+
+/* The painting is bright at the top and busy at the bottom, so the scrim is
+   weighted to both ends rather than applied flat: enough to hold white type
+   without draining the colour out of the middle. */
+.hero__scrim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(ellipse 78% 56% at 50% 42%,
+      color-mix(in srgb, var(--sp-black) 46%, transparent) 0%,
+      color-mix(in srgb, var(--sp-black) 26%, transparent) 55%,
+      transparent 78%),
+    linear-gradient(to bottom,
+      color-mix(in srgb, var(--sp-black) 30%, transparent) 0%,
+      color-mix(in srgb, var(--sp-black) 14%, transparent) 34%,
+      color-mix(in srgb, var(--sp-black) 30%, transparent) 70%,
+      color-mix(in srgb, var(--sp-black) 66%, transparent) 100%);
+}
+
+.hero__inner {
+  width: min(100%, 720px);
+  margin: 0 auto;
+}
+
+.hero__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: clamp(18px, 3vw, 28px);
+  border: 1px solid color-mix(in srgb, var(--sp-white) 55%, transparent);
+  border-radius: 999px;
+  padding: 7px 16px;
+  background: color-mix(in srgb, var(--sp-black) 26%, transparent);
+  color: var(--sp-white);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  backdrop-filter: blur(6px);
+}
+
+/* Sized by height so the supplied lockup keeps its own proportions. The
+   wordmark occupies 0.683 of the artwork's box, so 16px puts its cap height
+   a shade above the 13px label beside it: matched exactly, a logo reads as
+   shrunken text rather than as a mark. */
+.hero__badge-logo {
+  display: block;
+  height: 16px;
+  width: auto;
+}
+
+.hero__title {
+  margin: 0 0 clamp(16px, 2.4vw, 24px);
+  color: #fff;
+  text-shadow: 0 2px 26px color-mix(in srgb, var(--sp-black) 42%, transparent);
+  font-size: clamp(44px, 7.4vw, 92px);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 0.98;
+  text-wrap: balance;
+}
+
+.hero__lead {
+  margin: 0 auto clamp(26px, 4vw, 38px);
+  max-width: 560px;
+  color: #fff;
+  text-shadow: 0 1px 14px color-mix(in srgb, var(--sp-black) 55%, transparent);
+  font-size: clamp(15px, 1.5vw, 18px);
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.hero__cta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.hero__btn {
+  border-radius: 10px;
+  padding: 13px 26px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.hero__btn:hover {
+  transform: translateY(-1px);
+}
+
+.hero__btn--solid {
+  background: var(--sp-white);
+  color: var(--sp-biscay);
+}
+
+.hero__btn--solid:hover {
+  background: #fff;
+}
+
+.hero__btn--ghost {
+  border: 1px solid color-mix(in srgb, var(--sp-white) 62%, transparent);
+  background: color-mix(in srgb, var(--sp-black) 22%, transparent);
+  color: var(--sp-white);
+  backdrop-filter: blur(6px);
+}
+
+.hero__btn--ghost:hover {
+  background: color-mix(in srgb, var(--sp-black) 38%, transparent);
+}
+
+/* Numbers sit on the picture rather than under it, so the hero reads as one
+   object instead of a banner with a strip bolted beneath. */
+.hero__stats {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid color-mix(in srgb, var(--sp-white) 24%, transparent);
+  padding: clamp(18px, 2.6vw, 26px) clamp(16px, 4vw, 48px);
+}
+
+.hero__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.hero__stat + .hero__stat {
+  border-left: 1px solid color-mix(in srgb, var(--sp-white) 18%, transparent);
+}
+
+.hero__stat-label {
+  color: color-mix(in srgb, var(--sp-white) 76%, transparent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hero__stat-value {
+  color: #fff;
+  font-size: clamp(22px, 3vw, 34px);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The hero is the page's opening frame, so it sits close under the header
+   rather than below the usual page padding. */
+.home--hero {
+  width: min(100%, 1180px);
+  margin: 0 auto;
+}
+
+.main:has(.home--hero) {
+  padding-top: clamp(16px, 2vw, 28px);
+}
+
+@media (max-width: 680px) {
+  .hero {
+    padding-bottom: 168px;
+  }
+
+  .hero__stats {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 18px 20px 20px;
+  }
+
+  .hero__stat {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+
+  /* Stacked, the vertical rules would sit across the rows rather than
+     between the columns they were drawn for. */
+  .hero__stat + .hero__stat {
+    border-left: 0;
+  }
+
+  .hero__stat-value {
+    font-size: 20px;
   }
 }

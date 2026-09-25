@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Overline } from '../components/ui';
+import { Hero } from '../components/hero';
 import { Markets } from '../components/markets';
 import { RisksDialog } from '../components/risks-dialog';
 
@@ -7,20 +7,8 @@ export const dynamic = 'force-dynamic';
 
 export default function HomePage() {
   return (
-    <div className="home home--compact">
-      <Overline>florin protocol</Overline>
-
-      <section className="home-pitch">
-        <h1 className="page-title">Deposit SPY and mint FUSD.</h1>
-        <p className="lead">
-          Deposit SPY (SPDR S&amp;P 500 ETF TRUST) on Robinhood Chain. Mint FUSD.
-          Borrow dollars without selling a share.
-        </p>
-        <p className="lead home-pitch__last">
-          When dividends land they compound into your collateral, so your stocks
-          grow while you borrow.
-        </p>
-      </section>
+    <div className="home home--hero">
+      <Hero />
 
       <div className="home-action-grid">
         <Link href="/open" className="card home-action">

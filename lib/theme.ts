@@ -11,11 +11,11 @@
 // hierarchy.
 //   Black      #1E1E1E  rgb(30,30,30)     text, rules, reverse blocks
 //   White      #EEEEEE  rgb(238,238,238)  paper
-//   Biscay      #1F3D6E  rgb(31,61,110)    landing-card ink
-//   Hawkes Blue #CDE2FC  rgb(205,226,252)  landing-card surface
+//   Phthalo     #0F3D2E  rgb(15,61,46)     brand ink
+//   Phthalo pale #DCEBE2 rgb(220,235,226)  brand surface
 //
-// Contrast: black on white 14.4  |  Biscay on Hawkes 8.1 (AAA)
-//           black on Hawkes 12.6  |  Biscay on white 9.3
+// Contrast: black on white 14.4  |  Phthalo on pale 9.9 (AAA)
+//           black on pale 13.5   |  Phthalo on white 10.5
 // -----------------------------------------------------------------------------
 
 export interface Theme {
@@ -50,9 +50,9 @@ export interface Theme {
 export const THEME: Theme = {
   // raw palette — the four Superposition brand colours
   paradiso: '#1e1e1e',
-  shamrock: '#1f3d6e',
-  flax: '#cde2fc',
-  roseBud: '#cde2fc',
+  shamrock: '#0f3d2e',
+  flax: '#dcebe2',
+  roseBud: '#dcebe2',
 
   // PP Neue Montreal for display/UI (self-hosted, see app/globals.css),
   // mono kept for protocol values
@@ -72,8 +72,8 @@ export const THEME: Theme = {
   line: '#1e1e1e',
   lineSoft: 'rgba(30, 30, 30, 0.16)',
   gridDot: 'transparent',
-  // Biscay and Hawkes Blue are reserved for the landing-page cards, so the
-  // shared accent / tint tokens stay neutral
+  // The brand pair is reserved for the landing page and the app's own
+  // surfaces, so the shared accent / tint tokens stay neutral
   accent: '#1e1e1e',
   tintSoft: '#eeeeee',
   tintWarm: '#eeeeee',

@@ -48,8 +48,8 @@ export function gatePage({
   :root {
     --paper: #eeeeee;
     --ink: #1e1e1e;
-    --biscay: #1f3d6e;
-    --hawkes: #cde2fc;
+    --biscay: #0f3d2e;
+    --hawkes: #dcebe2;
     --bad: #b0483a;
     --gray-2: #5a5a5a;
   }
@@ -104,7 +104,7 @@ export function gatePage({
     font: inherit; font-size: 13px; font-weight: 700;
     letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
   }
-  .gate__btn:hover { background: #172f57; }
+  .gate__btn:hover { background: #0a2c20; }
   .gate__err {
     margin: 0; min-height: 18px; font-size: 13px; font-weight: 400; color: var(--bad);
   }
