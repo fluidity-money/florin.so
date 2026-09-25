@@ -12,8 +12,15 @@ import { gatePage } from './lib/beta-gate-page';
 // would have to ship the thing it is checking against.
 
 // The gate's own assets and the endpoint that clears it. These are a brand
-// mark and two fonts; serving them to a locked-out visitor gives nothing away.
-const PUBLIC_PATHS = new Set(['/api/gate', '/florin.svg', '/favicon.ico']);
+// mark, the tab icons and two fonts; serving them to a locked-out visitor
+// gives nothing away, and gating them left the gate page with no favicon.
+const PUBLIC_PATHS = new Set([
+  '/api/gate',
+  '/florin.svg',
+  '/favicon.ico',
+  '/icon.svg',
+  '/apple-icon.png',
+]);
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.has(pathname) || pathname.startsWith('/fonts/');
