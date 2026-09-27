@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { FLORIN_GRAPH_URL, MARKET_QUERY } from '../lib/florin-market-query';
 import { isFlorinMarkets, hasMarketData, type FlorinMarkets } from '../lib/florin-markets';
 import { Table } from './ui';
 import { Token } from './token-icon';
@@ -47,10 +48,23 @@ export function MarketsClient({ initialData }: { initialData: FlorinMarkets }) {
 
     async function refresh() {
       try {
-        const response = await fetch('/api/florin-markets', { cache: 'no-store' });
+        const response = await fetch(FLORIN_GRAPH_URL, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ query: MARKET_QUERY }),
+          cache: 'no-store',
+        });
         if (!response.ok) throw new Error(`market refresh returned HTTP ${response.status}`);
 
-        const latest: unknown = await response.json();
+        const result = (await response.json()) as {
+          data?: unknown;
+          errors?: { message: string }[];
+        };
+        if (result.errors?.length) {
+          throw new Error(result.errors.map(({ message }) => message).join('; '));
+        }
+
+        const latest = result.data;
         if (!isFlorinMarkets(latest)) throw new Error('market refresh returned invalid data');
         if (cancelled) return;
 

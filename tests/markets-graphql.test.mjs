@@ -1,15 +1,16 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 test('server-rendered market data uses the Next data cache', () => {
   const graph = read('lib/florin-graph.ts');
+  const query = read('lib/florin-market-query.ts');
   const markets = read('components/markets.tsx');
   const home = read('app/page.tsx');
 
-  assert.match(graph, /https:\/\/graph\.florin\.so/);
+  assert.match(query, /https:\/\/graph\.florin\.so/);
   for (const field of [
     'borrowDetails',
     'avgRatePa',
@@ -20,7 +21,7 @@ test('server-rendered market data uses the Next data cache', () => {
     'poolSize',
     'coverage',
   ]) {
-    assert.match(graph, new RegExp(`\\b${field}\\b`), `query should request ${field}`);
+    assert.match(query, new RegExp(`\\b${field}\\b`), `query should request ${field}`);
   }
 
   assert.match(graph, /next:\s*\{\s*revalidate:\s*60\s*\}/);
@@ -29,18 +30,22 @@ test('server-rendered market data uses the Next data cache', () => {
   assert.doesNotMatch(home, /force-dynamic/);
 });
 
-test('browser refreshes through a same-origin route and persists the latest data', () => {
-  const graph = read('lib/florin-graph.ts');
-  const route = read('app/api/florin-markets/route.ts');
+test('browser refreshes directly from Florin GraphQL and persists the latest data', () => {
+  const query = read('lib/florin-market-query.ts');
   const client = read('components/markets-client.tsx');
 
-  assert.match(graph, /fetchFreshFlorinMarkets/);
-  assert.match(graph, /cache:\s*'no-store'/);
-  assert.match(route, /fetchFreshFlorinMarkets\(\)/);
-  assert.match(route, /cache-control[^\n]*no-store/i);
-
   assert.match(client, /^'use client';/);
-  assert.match(client, /fetch\('\/api\/florin-markets'/);
+  assert.match(client, /fetch\(FLORIN_GRAPH_URL/);
+  assert.match(client, /method:\s*'POST'/);
+  assert.match(client, /body:\s*JSON\.stringify\(\{\s*query:\s*MARKET_QUERY\s*\}\)/);
+  assert.match(client, /cache:\s*'no-store'/);
+  assert.match(query, /https:\/\/graph\.florin\.so/);
+  assert.doesNotMatch(client, /\/api\/florin-markets/);
+  assert.equal(
+    existsSync(new URL('../app/api/florin-markets/route.ts', import.meta.url)),
+    false,
+    'the Next.js market API route should not exist',
+  );
   assert.match(client, /localStorage\.getItem/);
   assert.match(client, /localStorage\.setItem/);
   assert.match(client, /useState\(initialData\)/);
