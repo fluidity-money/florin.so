@@ -3,8 +3,6 @@ import { Hero } from '../components/hero';
 import { Markets } from '../components/markets';
 import { RisksDialog } from '../components/risks-dialog';
 
-export const dynamic = 'force-dynamic';
-
 export default function HomePage() {
   return (
     <div className="home home--hero">
