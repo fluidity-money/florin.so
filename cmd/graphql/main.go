@@ -32,6 +32,27 @@ EnvTimescaleUri = "SPN_TIMESCALE"
 EnvFeatureFakeData = "SPN_FEATURE_FAKE_DATA"
 )
 
+type middleware struct {
+	srv http.Handler
+}
+
+func (m middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	origin := r.Header.Get("Origin")
+	if origin != "" {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "*")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+		w.Header().Set("Access-Control-Max-Age", "86400")
+		w.Header().Set("Access-Control-Expose-Headers", "*")
+	}
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(204)
+		return
+	}
+	m.srv.ServeHTTP(w, r)
+}
+
 func main() {
 	db, err := sql.Open("postgres", os.Getenv(EnvTimescaleUri))
 	if err != nil {
@@ -52,7 +73,7 @@ func main() {
 		Cache: lru.New[string](100),
 	})
 	http.Handle("/playground", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/", srv)
+	http.Handle("/", middleware{srv})
 	_ = os.Remove(HttpUnixSocket)
 	l, err := net.Listen("unix", HttpUnixSocket)
 	if err != nil {
