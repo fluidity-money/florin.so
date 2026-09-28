@@ -51,6 +51,9 @@ export function Hero() {
           <Link href="/stability" className="hero__btn hero__btn--ghost">
             Earn with FUSD
           </Link>
+          <Link href="https://faucet.florin.so" className="hero__btn hero__btn--ghost">
+            Florin SPY Faucet
+          </Link>
         </div>
       </div>
 
