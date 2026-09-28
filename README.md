@@ -1,5 +1,17 @@
 # Florin
 
+## Robinhood testnet borrowing
+
+The `/open` flow talks directly to the canonical Bold Stylus deployment on
+Robinhood Chain Testnet (chain ID `46630`). It reads the SPY balance, allowance,
+oracle price and predicted upfront fee, obtains sorted-trove hints, approves the
+exact SPY requirement, then calls `BorrowerOperations.openTrove`.
+
+An injected browser wallet works without configuration. Set
+`NEXT_PUBLIC_REOWN_PROJECT_ID` to enable the Reown/WalletConnect modal as well.
+The connected wallet needs testnet ETH and testnet SPY. Opening a trove also
+requires the protocol's separate `0.0375 SPY` gas-compensation deposit.
+
 ## Beta gate
 
 The whole site sits behind a password while it is in beta. `middleware.ts`

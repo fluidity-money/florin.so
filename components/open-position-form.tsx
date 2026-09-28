@@ -1,253 +1,406 @@
 'use client';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  createPublicClient,
+  createWalletClient,
+  custom,
+  formatUnits,
+  http,
+  parseUnits,
+  zeroAddress,
+  type Address,
+  type Hash,
+} from 'viem';
+import { robinhoodTestnet } from '@reown/appkit/networks';
 import { Button } from './ui';
 import { RisksDialog } from './risks-dialog';
 import { Token, TokenIcon } from './token-icon';
-import {
-  metrics,
-  MIN_COLLATERAL_RATIO,
-  maxBorrowableFUSD,
-  collateralValueUSD,
-  debtAfterFee,
-  queueAhead,
-  RATE_BOOK_TOTAL,
-  AVG_RATE,
-  ORIGINATION_FEE,
-  MIN_DEBT_FUSD,
-  MIN_RATE,
-  MAX_RATE,
-  DEFAULT_RATE,
-} from '../lib/mockData';
-import { money, pct, xnum, compact } from '../lib/format';
+import { money, pct, xnum } from '../lib/format';
 import { useWallet } from './wallet/wallet';
-import { useSpyPrice } from '../lib/use-spy-price';
+import {
+  borrowerOperationsAbi,
+  CONTRACTS,
+  erc20Abi,
+  GAS_COMPENSATION,
+  hintHelpersAbi,
+  hintTrials,
+  maxUpfrontFee,
+  MIN_DEBT,
+  priceFeedAbi,
+  randomOwnerIndex,
+  requiredSpyApproval,
+  ROBINHOOD_TESTNET_CHAIN_ID,
+  sortedTrovesAbi,
+  validateOpenTrove,
+} from '../lib/borrow-contract';
 
-// Max LTV is the reciprocal of the minimum collateral ratio. The form speaks
-// in LTV because that is the question a borrower actually asks ("how much can
-// I get"), and shows the ratio alongside it since that is what the protocol
-// and the liquidation rule are written in.
-const MAX_LTV = 1 / MIN_COLLATERAL_RATIO;
+const publicClient = createPublicClient({ chain: robinhoodTestnet, transport: http() });
+const MIN_RATE = 0.005;
+const MAX_RATE = 0.25;
+const DEFAULT_RATE = 0.06;
+const MCR = 1.1;
+const MAX_LTV = 1 / MCR;
+
+type TxStage = 'idle' | 'switching' | 'approving' | 'opening' | 'confirming';
+
+function parseToken(value: string): bigint {
+  if (!value.trim()) return 0n;
+  try {
+    return parseUnits(value, 18);
+  } catch {
+    return 0n;
+  }
+}
+
+function messageFrom(error: unknown): string {
+  if (error instanceof Error) {
+    const candidate = error as Error & { shortMessage?: string };
+    return candidate.shortMessage ?? candidate.message;
+  }
+  return 'The wallet request failed.';
+}
+
+async function ensureRobinhoodTestnet(provider: NonNullable<ReturnType<typeof useWallet>['provider']>) {
+  const current = await provider.request({ method: 'eth_chainId' });
+  if (Number(current) === ROBINHOOD_TESTNET_CHAIN_ID) return;
+
+  const chainId = `0x${ROBINHOOD_TESTNET_CHAIN_ID.toString(16)}`;
+  try {
+    await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId }] });
+  } catch (error) {
+    const code = (error as { code?: number }).code;
+    if (code !== 4902) throw error;
+    await provider.request({
+      method: 'wallet_addEthereumChain',
+      params: [{
+        chainId,
+        chainName: robinhoodTestnet.name,
+        nativeCurrency: robinhoodTestnet.nativeCurrency,
+        rpcUrls: [...robinhoodTestnet.rpcUrls.default.http],
+        blockExplorerUrls: [robinhoodTestnet.blockExplorers.default.url],
+      }],
+    });
+  }
+}
 
 export function OpenPositionForm() {
-  const w = useWallet();
-  const { price: spyPrice, live } = useSpyPrice();
+  const wallet = useWallet();
+  const account = wallet.address as Address | null;
   const [spyStr, setSpyStr] = useState('');
   const [debtStr, setDebtStr] = useState('');
   const [rate, setRate] = useState(DEFAULT_RATE);
+  const [stage, setStage] = useState<TxStage>('idle');
+  const [error, setError] = useState<string | null>(null);
+  const [txHash, setTxHash] = useState<Hash | null>(null);
   const [minted, setMinted] = useState(false);
 
+  const collateralWei = useMemo(() => parseToken(spyStr), [spyStr]);
+  const borrowedWei = useMemo(() => parseToken(debtStr), [debtStr]);
+  const rateWei = BigInt(Math.round(rate * 1e18));
+
+  const chainState = useQuery({
+    queryKey: ['open-trove-state', account],
+    enabled: Boolean(account),
+    refetchInterval: 15_000,
+    queryFn: async () => {
+      const [balance, allowance, price] = await Promise.all([
+        publicClient.readContract({
+          address: CONTRACTS.spyToken,
+          abi: erc20Abi,
+          functionName: 'balanceOf',
+          args: [account!],
+        }),
+        publicClient.readContract({
+          address: CONTRACTS.spyToken,
+          abi: erc20Abi,
+          functionName: 'allowance',
+          args: [account!, CONTRACTS.borrowerOperations],
+        }),
+        publicClient.readContract({
+          address: CONTRACTS.spyPriceFeed,
+          abi: priceFeedAbi,
+          functionName: 'lastGoodPrice',
+        }),
+      ]);
+      return { balance, allowance, price };
+    },
+  });
+
+  const upfrontFee = useQuery({
+    queryKey: ['open-trove-fee', borrowedWei.toString(), rateWei.toString()],
+    enabled: borrowedWei >= MIN_DEBT,
+    queryFn: () => publicClient.readContract({
+      address: CONTRACTS.hintHelpers,
+      abi: hintHelpersAbi,
+      functionName: 'predictOpenTroveUpfrontFee',
+      args: [0n, borrowedWei, rateWei],
+    }),
+  });
+
+  const chainReady = Boolean(chainState.data);
+  const feeReady = borrowedWei < MIN_DEBT || upfrontFee.data !== undefined;
+  const spyPrice = chainState.data ? Number(formatUnits(chainState.data.price, 18)) : 0;
   const spy = Math.max(0, xnum(spyStr));
   const borrow = Math.max(0, xnum(debtStr));
-  const cap = maxBorrowableFUSD(spy, spyPrice);
-  const clampedBorrow = Math.min(borrow, cap);
+  const fee = Number(formatUnits(upfrontFee.data ?? 0n, 18));
+  const totalDebt = borrow + fee;
+  const collateralUsd = spy * spyPrice;
+  const collateralRatio = totalDebt > 0 ? collateralUsd / totalDebt : 0;
+  const ltv = collateralUsd > 0 ? totalDebt / collateralUsd : 0;
+  const maxBorrow = collateralUsd / MCR;
+  const annualInterest = totalDebt * rate;
+  const pending = stage !== 'idle';
+  const walletBalance = chainState.data ? Number(formatUnits(chainState.data.balance, 18)) : 0;
+  const protocolError = validateOpenTrove(collateralWei, borrowedWei, rateWei);
+  const insufficientSpy = chainState.data
+    ? chainState.data.balance < requiredSpyApproval(collateralWei)
+    : false;
+  const unsafe = totalDebt > 0 && collateralRatio < MCR;
+  const active = collateralWei > 0n && borrowedWei > 0n;
 
-  // You receive `clampedBorrow`; you owe that plus the one-time origination
-  // fee, and every health figure is measured against what you owe.
-  const debt = debtAfterFee(clampedBorrow);
-  const fee = debt - clampedBorrow;
-  const m = metrics(spy, debt, spyPrice);
-  const collUsd = collateralValueUSD(spy, spyPrice);
-  const ltv = collUsd > 0 ? debt / collUsd : 0;
-  const annualInterest = debt * rate;
-  const ahead = queueAhead(rate) * RATE_BOOK_TOTAL;
-  const belowFloor = debt > 0 && debt < MIN_DEBT_FUSD;
-  const overCap = borrow > cap + 0.005;
-  const active = spy > 0 && debt > 0;
+  async function openTrove() {
+    if (!wallet.connected || !account || !wallet.provider) {
+      setError(null);
+      try {
+        await wallet.connect();
+      } catch (cause) {
+        setError(messageFrom(cause));
+      }
+      return;
+    }
+    if (pending || protocolError || unsafe || insufficientSpy) return;
 
-  const redemptionRisk = rate >= AVG_RATE ? 'low' : rate >= AVG_RATE * 0.6 ? 'medium' : 'high';
+    setError(null);
+    setTxHash(null);
+    try {
+      setStage('switching');
+      await ensureRobinhoodTestnet(wallet.provider);
+      const walletClient = createWalletClient({
+        account,
+        chain: robinhoodTestnet,
+        transport: custom(wallet.provider),
+      });
 
-  // Green while there is room, amber sitting on the floor, red once you have
-  // asked for more than the collateral allows. Without the last case the
-  // clamp keeps the position legal and red would never appear at all.
-  const liqRisk = overCap ? 'liquidation' : m.health;
+      const requiredApproval = requiredSpyApproval(collateralWei);
+      const [balance, allowance, predictedFee, troveCount] = await Promise.all([
+        publicClient.readContract({
+          address: CONTRACTS.spyToken,
+          abi: erc20Abi,
+          functionName: 'balanceOf',
+          args: [account],
+        }),
+        publicClient.readContract({
+          address: CONTRACTS.spyToken,
+          abi: erc20Abi,
+          functionName: 'allowance',
+          args: [account, CONTRACTS.borrowerOperations],
+        }),
+        publicClient.readContract({
+          address: CONTRACTS.hintHelpers,
+          abi: hintHelpersAbi,
+          functionName: 'predictOpenTroveUpfrontFee',
+          args: [0n, borrowedWei, rateWei],
+        }),
+        publicClient.readContract({
+          address: CONTRACTS.sortedTroves,
+          abi: sortedTrovesAbi,
+          functionName: 'size',
+        }),
+      ]);
 
-  if (minted) {
+      if (balance < requiredApproval) {
+        throw new Error(`You need ${formatUnits(requiredApproval, 18)} SPY, including the 0.0375 SPY gas-compensation deposit.`);
+      }
+
+      let upperHint = 0n;
+      let lowerHint = 0n;
+      if (troveCount > 0n) {
+        const [approxHint] = await publicClient.readContract({
+          address: CONTRACTS.hintHelpers,
+          abi: hintHelpersAbi,
+          functionName: 'getApproxHint',
+          args: [0n, rateWei, hintTrials(troveCount), BigInt(Date.now())],
+        });
+        [upperHint, lowerHint] = await publicClient.readContract({
+          address: CONTRACTS.sortedTroves,
+          abi: sortedTrovesAbi,
+          functionName: 'findInsertPosition',
+          args: [rateWei, approxHint, approxHint],
+        });
+      }
+
+      if (allowance < requiredApproval) {
+        setStage('approving');
+        const approval = await publicClient.simulateContract({
+          account,
+          address: CONTRACTS.spyToken,
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [CONTRACTS.borrowerOperations, requiredApproval],
+        });
+        const approvalHash = await walletClient.writeContract(approval.request);
+        setTxHash(approvalHash);
+        setStage('confirming');
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: approvalHash,
+          onReplaced: (replacement) => setTxHash(replacement.transaction.hash),
+        });
+        if (receipt.status !== 'success') throw new Error('The SPY approval transaction reverted.');
+      }
+
+      setStage('opening');
+      const ownerIndex = randomOwnerIndex();
+      const simulation = await publicClient.simulateContract({
+        account,
+        address: CONTRACTS.borrowerOperations,
+        abi: borrowerOperationsAbi,
+        functionName: 'openTrove',
+        args: [
+          account,
+          ownerIndex,
+          collateralWei,
+          borrowedWei,
+          upperHint,
+          lowerHint,
+          rateWei,
+          maxUpfrontFee(predictedFee),
+          zeroAddress,
+          zeroAddress,
+          zeroAddress,
+        ],
+      });
+      const hash = await walletClient.writeContract(simulation.request);
+      setTxHash(hash);
+      setStage('confirming');
+      const receipt = await publicClient.waitForTransactionReceipt({
+        hash,
+        onReplaced: (replacement) => setTxHash(replacement.transaction.hash),
+      });
+      if (receipt.status !== 'success') throw new Error('The open-trove transaction reverted.');
+
+      await chainState.refetch();
+      setMinted(true);
+    } catch (cause) {
+      setError(messageFrom(cause));
+    } finally {
+      setStage('idle');
+    }
+  }
+
+  if (minted && txHash) {
     return (
       <div className="swap">
         <div className="swap__done">
-          <span className="swap__done-mark" aria-hidden="true">
-            ✓
-          </span>
-          <h2>FUSD minted</h2>
-          <p>
-            Demo only, no transaction was sent. {money(clampedBorrow, 0)} FUSD against{' '}
-            {money(spy, 2)} SPY at {pct(rate * 100, 2)}.
-          </p>
-          <div className="row">
-            <Button variant="ghost" onClick={() => setMinted(false)}>
-              Back
-            </Button>
-            <a className="btn btn--primary" href="/position">
-              Go to Manage →
-            </a>
-          </div>
+          <span className="swap__done-mark" aria-hidden="true">✓</span>
+          <h2>BOLD minted</h2>
+          <p>{money(borrow, 2)} BOLD was minted against {money(spy, 4)} SPY.</p>
+          <a
+            className="btn btn--primary"
+            href={`${robinhoodTestnet.blockExplorers.default.url}/tx/${txHash}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            View transaction ↗
+          </a>
         </div>
       </div>
     );
   }
 
+  const buttonLabel = !wallet.connected
+    ? 'Connect wallet to continue'
+    : stage === 'switching'
+      ? 'Switching network…'
+      : stage === 'approving'
+        ? 'Approve SPY in wallet…'
+        : stage === 'opening'
+          ? 'Confirm position in wallet…'
+          : stage === 'confirming'
+            ? 'Waiting for confirmation…'
+            : 'Mint BOLD →';
+
   return (
     <div className="swap">
       <h1 className="swap__title">
         <span>Borrow</span>
-        <span className="swap__pair">
-          <TokenIcon symbol="FUSD" size={30} />
-          <span className="swap__tok">FUSD</span>
-        </span>
+        <span className="swap__pair"><TokenIcon symbol="BOLD" size={30} /><span className="swap__tok">BOLD</span></span>
         <span>with</span>
-        <span className="swap__pair">
-          <TokenIcon symbol="SPY" size={30} />
-          <span className="swap__tok">SPY</span>
-        </span>
+        <span className="swap__pair"><TokenIcon symbol="SPY" size={30} /><span className="swap__tok">SPY</span></span>
       </h1>
 
-      {/* Collateral in */}
       <div className="swap__field">
         <span className="swap__label">Collateral</span>
         <div className="swap__row">
-          <input
-            className="swap__amount"
-            inputMode="decimal"
-            placeholder="0.00"
-            value={spyStr}
-            onChange={(e) => setSpyStr(e.target.value)}
-            aria-label="SPY collateral"
-          />
+          <input className="swap__amount" inputMode="decimal" placeholder="0.00" value={spyStr}
+            onChange={(event) => setSpyStr(event.target.value)} aria-label="SPY collateral" />
           <span className="swap__pill"><Token symbol="SPY" size={18} /></span>
         </div>
-        <span className="swap__usd">${money(collUsd)}</span>
+        <span className="swap__usd">
+          ${money(collateralUsd)} · wallet {wallet.connected ? `${money(walletBalance, 4)} SPY` : 'not connected'}
+        </span>
       </div>
       <div className="swap__meta">
         <span>
-          SPY price <b>${money(spyPrice)}</b>{' '}
-          <i className={live ? 'swap__dot swap__dot--ok' : 'swap__dot'} />
-          {live ? 'live' : 'fallback'}
+          Oracle price <b>{chainReady ? `$${money(spyPrice)}` : 'loading…'}</b>{' '}
+          {chainReady && <><i className="swap__dot swap__dot--ok" /> onchain</>}
         </span>
-        <span>
-          Max LTV <b>{pct(MAX_LTV * 100, 1)}</b>
-        </span>
+        <span>Max LTV <b>{pct(MAX_LTV * 100, 1)}</b></span>
       </div>
 
-      {/* Loan out */}
       <div className="swap__field">
         <span className="swap__label">Loan</span>
         <div className="swap__row">
-          <input
-            className="swap__amount"
-            inputMode="decimal"
-            placeholder="0.00"
-            value={debtStr}
-            onChange={(e) => setDebtStr(e.target.value)}
-            aria-label="FUSD to borrow"
-          />
-          <button
-            type="button"
-            className="swap__max"
-            disabled={cap <= 0}
-            onClick={() => setDebtStr(cap > 0 ? cap.toFixed(2) : '')}
-          >
-            Max
-          </button>
-          <span className="swap__pill"><Token symbol="FUSD" size={18} /></span>
+          <input className="swap__amount" inputMode="decimal" placeholder="2,000.00" value={debtStr}
+            onChange={(event) => setDebtStr(event.target.value.replaceAll(',', ''))} aria-label="BOLD to borrow" />
+          <span className="swap__pill"><Token symbol="FUSD" size={18} /> BOLD</span>
         </div>
         <span className="swap__usd">
-          ${money(clampedBorrow)}
-          {clampedBorrow > 0 && (
-            <>
-              {' '}
-              received · <b>${money(debt)}</b> owed after the{' '}
-              {pct(ORIGINATION_FEE * 100, 1)} fee
-            </>
-          )}
+          ${money(borrow)} received{fee > 0 ? ` · ${money(totalDebt)} debt including ${money(fee)} upfront interest` : ''}
         </span>
       </div>
-      {overCap && (
-        <p className="swap__over">
-          Above the maximum for this collateral. {money(cap, 2)} FUSD is the most
-          you can borrow against {money(spy, 2)} SPY at {pct(MAX_LTV * 100, 1)} LTV.
-        </p>
-      )}
       <div className="swap__meta">
-        <span>
-          <i className={`swap__dot swap__dot--${liqRisk}`} /> Liquidation risk
-        </span>
-        <span>
-          Max borrow <b>{spy > 0 ? `$${money(cap, 2)}` : '−'}</b>
-        </span>
+        <span><i className={`swap__dot swap__dot--${unsafe ? 'liquidation' : collateralRatio < 1.3 && active ? 'warning' : 'healthy'}`} /> Liquidation risk</span>
+        <span>Approx. max borrow <b>{spy > 0 ? `$${money(maxBorrow, 2)}` : '−'}</b></span>
       </div>
       <div className="swap__meta swap__meta--right">
-        <span>
-          Liquidation price <b>{active ? `$${money(m.liquidationPriceUsd)}` : '−'}</b>
-        </span>
-      </div>
-      <div className="swap__meta swap__meta--right">
-        <span>
-          LTV <b>{active ? pct(ltv * 100, 1) : '−'}</b>
-          {active && <em> ({pct(m.collateralRatioPct, 0)} CR)</em>}
-        </span>
+        <span>LTV <b>{active ? pct(ltv * 100, 1) : '−'}</b>{active && <em> ({pct(collateralRatio * 100, 0)} CR)</em>}</span>
       </div>
 
-      {/* Rate */}
       <div className="swap__field swap__field--rate">
-        <div className="swap__row">
-          <span className="swap__label">
-            Set interest rate <em>(avg. {pct(AVG_RATE * 100, 2)})</em>
-          </span>
-        </div>
+        <div className="swap__row"><span className="swap__label">Set annual interest rate</span></div>
         <div className="swap__row">
           <span className="swap__amount swap__amount--rate">{pct(rate * 100, 2)}</span>
-          <input
-            className="slider swap__slider"
-            type="range"
-            min={MIN_RATE}
-            max={MAX_RATE}
-            step={0.0025}
-            value={rate}
-            onChange={(e) => setRate(parseFloat(e.target.value))}
-            aria-label="Interest rate"
-          />
+          <input className="slider swap__slider" type="range" min={MIN_RATE} max={MAX_RATE} step={0.0025}
+            value={rate} onChange={(event) => setRate(parseFloat(event.target.value))} aria-label="Interest rate" />
         </div>
-        <span className="swap__usd">
-          ${money(annualInterest)} FUSD / year
-          {active && <> on the <b>${money(debt)}</b> you owe</>}
-        </span>
-      </div>
-      <div className="swap__meta">
-        <span>
-          <i className={`swap__dot swap__dot--${redemptionRisk}`} /> {redemptionRisk} redemption
-          risk
-        </span>
-        <span>
-          Redeemable before you <b>{compact(ahead)}</b>
-        </span>
+        <span className="swap__usd">${money(annualInterest)} BOLD / year</span>
       </div>
 
-      {/* Explainer, the one thing a first-time borrower will not guess */}
       <details className="swap__note">
-        <summary>Redemptions in a nutshell</summary>
-        <p>
-          Redemptions hold FUSD at a dollar. Anyone can swap 1 FUSD for a dollar
-          of collateral, and those swaps are filled from the cheapest troves
-          first, so your rate is also your place in the queue.
-        </p>
-        <p>
-          Being redeemed is not a liquidation and costs you nothing directly:
-          your debt falls by the same amount your collateral does. What you lose
-          is exposure, at a moment you did not pick. Raise your rate to move
-          back in the queue.
-        </p>
+        <summary>What happens when you open a position?</summary>
+        <p>Your wallet first approves exactly the SPY needed for this position plus the protocol&apos;s 0.0375 SPY gas-compensation deposit. A second transaction deposits SPY and mints BOLD.</p>
+        <p>Your interest rate also determines your place in the redemption queue: lower-rate positions are redeemed first.</p>
       </details>
 
-      {belowFloor && (
-        <p className="warn">Positions must carry at least ${money(MIN_DEBT_FUSD, 0)} of debt.</p>
+      {protocolError && active && <p className="warn">{protocolError}</p>}
+      {unsafe && <p className="warn">This position is below the protocol&apos;s 110% minimum collateral ratio.</p>}
+      {insufficientSpy && <p className="warn">Your wallet does not have enough testnet SPY for the collateral and 0.0375 SPY gas-compensation deposit.</p>}
+      {chainState.isError && <p className="warn">Could not read the Robinhood testnet contracts. Try again before submitting.</p>}
+      {upfrontFee.isError && <p className="warn">Could not quote the onchain upfront fee. Try again before submitting.</p>}
+      {error && <p className="warn" role="alert">{error}</p>}
+      {txHash && pending && (
+        <p className="swap__usd">
+          <a href={`${robinhoodTestnet.blockExplorers.default.url}/tx/${txHash}`} target="_blank" rel="noreferrer">View pending transaction ↗</a>
+        </p>
       )}
 
       <Button
         variant="primary"
-        disabled={!active || belowFloor || !w.connected}
-        onClick={() => setMinted(true)}
+        disabled={wallet.connected && (!active || Boolean(protocolError) || unsafe || insufficientSpy || pending || !chainReady || !feeReady || chainState.isError || upfrontFee.isError)}
+        onClick={() => void openTrove()}
       >
-        {w.connected ? 'Mint FUSD →' : 'Connect wallet to continue'}
+        {buttonLabel}
       </Button>
 
       <RisksDialog />

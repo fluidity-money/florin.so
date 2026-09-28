@@ -1,10 +1,8 @@
 'use client';
 import { createContext, useContext } from 'react';
+import type { EIP1193Provider } from 'viem';
 
-// WalMocked demo address used when no real Reown project id is configured.
-export const MOCK_ADDRESS = '0xF1Or1n51DeADbeef0000000000005C0FFEE';
-
-export type WalletKind = 'real' | 'mock' | 'none';
+export type WalletKind = 'reown' | 'injected' | 'none';
 
 export interface Wallet {
   connected: boolean;
@@ -12,8 +10,9 @@ export interface Wallet {
   short: string | null;
   kind: WalletKind;
   mock: boolean;
-  connect(): void;
-  disconnect(): void;
+  provider: EIP1193Provider | null;
+  connect(): void | Promise<void>;
+  disconnect(): void | Promise<void>;
 }
 
 export const NULL_WALLET: Wallet = {
@@ -22,6 +21,7 @@ export const NULL_WALLET: Wallet = {
   short: null,
   kind: 'none',
   mock: false,
+  provider: null,
   connect() {},
   disconnect() {},
 };

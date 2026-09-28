@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { useAppKit, useAppKitNetworkCore } from '@reown/appkit/react';
 import { useWallet } from './wallet/wallet';
 import { Button } from './ui';
@@ -29,6 +30,16 @@ function NetworkControl() {
 export function Header() {
   const w = useWallet();
   const path = usePathname();
+  const [walletError, setWalletError] = useState(false);
+
+  async function toggleWallet() {
+    setWalletError(false);
+    try {
+      await (w.connected ? w.disconnect() : w.connect());
+    } catch {
+      setWalletError(true);
+    }
+  }
 
   return (
     <header className="site-header">
@@ -52,10 +63,11 @@ export function Header() {
 
         <div className="site-header__conn">
           {w.connected && w.short && <span className="addr-chip">{w.short}</span>}
-          {w.kind === 'real' && <NetworkControl />}
+          {walletError && <span className="addr-chip">Wallet unavailable</span>}
+          {w.kind === 'reown' && <NetworkControl />}
           <Button
             variant={w.connected ? 'ghost' : 'primary'}
-            onClick={() => (w.connected ? w.disconnect() : w.connect())}
+            onClick={() => void toggleWallet()}
           >
             {w.connected ? 'Disconnect' : 'Connect wallet'}
           </Button>

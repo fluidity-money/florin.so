@@ -1,71 +1,97 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   AppKitProvider,
   useAppKitAccount,
   useAppKit,
+  useAppKitProvider,
   useDisconnect,
 } from '@reown/appkit/react';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
-import { robinhood } from '@reown/appkit/networks';
-import { Wallet, WalletContext, MOCK_ADDRESS } from './wallet';
-
-/*
- * Wallet bridge.
- *
- * Two modes:
- *   - REAL  : Reown AppKit + wagmi adapter (injected wallets, WC QR, network
- *             switching). Enabled when NEXT_PUBLIC_REOWN_PROJECT_ID is a real
- *             project id. This is the "full wallet" — the only REAL part.
- *   - MOCK  : offline fallback with a fixed demo address so the whole UI stays
- *             clickable even without a Reown Cloud project id.
- *
- * Flip modes by setting .env.local -> NEXT_PUBLIC_REOWN_PROJECT_ID.
- */
+import { robinhoodTestnet } from '@reown/appkit/networks';
+import type { EIP1193Provider } from 'viem';
+import { Wallet, WalletContext } from './wallet';
 
 const PROJECT_ID = (process.env.NEXT_PUBLIC_REOWN_PROJECT_ID ?? '').trim();
-const HAS_REAL =
+const HAS_REOWN =
   PROJECT_ID.length > 0 &&
   PROJECT_ID !== 'YOUR_REOWN_PROJECT_ID' &&
   PROJECT_ID !== 'REPLACE_ME' &&
   PROJECT_ID !== 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 
-function shortAddr(a: string): string {
-  return a.length > 12 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a;
+function shortAddr(address: string): string {
+  return address.length > 12 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address;
 }
 
-// --- Mock mode ---------------------------------------------------------------
-function MockWalletProvider({ children }: { children: ReactNode }) {
+type InjectedWindow = Window & { ethereum?: EIP1193Provider };
+
+// A real injected-wallet fallback keeps local builds functional without a
+// WalletConnect project id. It deliberately never invents a connected account.
+function InjectedWalletProvider({ children }: { children: ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
+  const [provider, setProvider] = useState<EIP1193Provider | null>(null);
+
+  useEffect(() => {
+    const injected = (window as InjectedWindow).ethereum ?? null;
+    setProvider(injected);
+    if (!injected) return;
+
+    const setFirstAccount = (accounts: unknown) => {
+      const first = Array.isArray(accounts) && typeof accounts[0] === 'string' ? accounts[0] : null;
+      setAddress(first);
+    };
+
+    void injected.request({ method: 'eth_accounts' }).then(setFirstAccount).catch(() => setAddress(null));
+    injected.on?.('accountsChanged', setFirstAccount);
+    return () => injected.removeListener?.('accountsChanged', setFirstAccount);
+  }, []);
+
   const wallet: Wallet = {
     connected: address !== null,
     address,
     short: address ? shortAddr(address) : null,
-    kind: 'mock',
-    mock: true,
-    connect() {
-      setAddress(MOCK_ADDRESS);
+    kind: provider ? 'injected' : 'none',
+    mock: false,
+    provider,
+    async connect() {
+      if (!provider) {
+        throw new Error('No browser wallet found. Install an injected wallet or configure Reown.');
+      }
+      const accounts = await provider.request({ method: 'eth_requestAccounts' });
+      const first = Array.isArray(accounts) && typeof accounts[0] === 'string' ? accounts[0] : null;
+      setAddress(first);
     },
-    disconnect() {
+    async disconnect() {
+      try {
+        await provider?.request({
+          method: 'wallet_revokePermissions',
+          params: [{ eth_accounts: {} }],
+        });
+      } catch {
+        // Not every injected provider implements EIP-2255. Local state still
+        // disconnects this session, while supported wallets revoke permission.
+      }
       setAddress(null);
     },
   };
+
   return <WalletContext.Provider value={wallet}>{children}</WalletContext.Provider>;
 }
 
-// --- Real mode ---------------------------------------------------------------
 function RealWalletBridge({ children }: { children: ReactNode }) {
-  const acc = useAppKitAccount();
+  const account = useAppKitAccount();
   const { open } = useAppKit();
   const { disconnect } = useDisconnect();
+  const { walletProvider } = useAppKitProvider<EIP1193Provider>('eip155');
   const wallet: Wallet = {
-    connected: acc.isConnected,
-    address: acc.address ?? null,
-    short: acc.address ? shortAddr(acc.address) : null,
-    kind: 'real',
+    connected: account.isConnected,
+    address: account.address ?? null,
+    short: account.address ? shortAddr(account.address) : null,
+    kind: 'reown',
     mock: false,
-    connect: () => void open({ view: 'Networks' }),
+    provider: walletProvider ?? null,
+    connect: () => void open({ view: 'Connect' }),
     disconnect: () => void disconnect(),
   };
   return <WalletContext.Provider value={wallet}>{children}</WalletContext.Provider>;
@@ -73,23 +99,22 @@ function RealWalletBridge({ children }: { children: ReactNode }) {
 
 function RealWalletProvider({ children }: { children: ReactNode }) {
   const adapter = useMemo(
-    () => new WagmiAdapter({ projectId: PROJECT_ID, networks: [robinhood] }),
-    []
+    () => new WagmiAdapter({ projectId: PROJECT_ID, networks: [robinhoodTestnet] }),
+    [],
   );
-  // Don't block/nag on wrong network — the user picks their chain on demand
-  // via the header "Connect network" button.
+
   return (
     <AppKitProvider
       projectId={PROJECT_ID}
       adapters={[adapter]}
-      networks={[robinhood]}
-      defaultNetwork={robinhood}
-      allowUnsupportedChain={true}
+      networks={[robinhoodTestnet]}
+      defaultNetwork={robinhoodTestnet}
+      allowUnsupportedChain={false}
       themeMode="light"
       metadata={{
         name: 'Florin',
-        description: 'Mint FUSD by borrowing SPY',
-        url: 'http://localhost:3000',
+        description: 'Mint BOLD by borrowing against SPY',
+        url: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
         icons: [],
       }}
     >
@@ -98,8 +123,7 @@ function RealWalletProvider({ children }: { children: ReactNode }) {
   );
 }
 
-// --- Entry -------------------------------------------------------------------
 export function WalletProvider({ children }: { children: ReactNode }) {
-  if (HAS_REAL) return <RealWalletProvider>{children}</RealWalletProvider>;
-  return <MockWalletProvider>{children}</MockWalletProvider>;
+  if (HAS_REOWN) return <RealWalletProvider>{children}</RealWalletProvider>;
+  return <InjectedWalletProvider>{children}</InjectedWalletProvider>;
 }
