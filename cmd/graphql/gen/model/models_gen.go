@@ -22,5 +22,17 @@ type EarnRewards struct {
 	Coverage   string      `json:"coverage"`
 }
 
+// An open Florin borrowing position owned by an address.
+type Position struct {
+	TroveID              string  `json:"troveId"`
+	TroveManager         string  `json:"troveManager"`
+	Owner                string  `json:"owner"`
+	Debt                 string  `json:"debt"`
+	Collateral           string  `json:"collateral"`
+	Stake                string  `json:"stake"`
+	AnnualInterestRate   string  `json:"annualInterestRate"`
+	InterestBatchManager *string `json:"interestBatchManager,omitempty"`
+}
+
 type Query struct {
 }

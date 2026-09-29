@@ -24,7 +24,6 @@ export const ORIGINATION_FEE = 0.005; // one-time, added to debt at mint
 // the redemption queue: cheaper means redeemed against sooner.
 export const MIN_RATE = 0.005;
 export const MAX_RATE = 0.25;
-export const DEFAULT_RATE = 0.06;
 
 // Share of borrower interest routed to stability-pool depositors.
 export const SP_INTEREST_SHARE = 0.75;
@@ -72,13 +71,6 @@ export function queueAhead(rate: number): number {
   const cheaper = RATE_BOOK.filter((b) => b.rate < rate).reduce((t, b) => t + b.debtFUSD, 0);
   return cheaper / RATE_BOOK_TOTAL;
 }
-
-// -- Sample position (used on /position to demonstrate a live Trove) ---------
-export const SAMPLE_POSITION = {
-  collateralSPY: 120,
-  debtFUSD: 40_000,
-  rate: DEFAULT_RATE, // the borrower's own choice, repriceable on /position
-};
 
 // Pool yield is not a set number: it is the borrower interest routed to the
 // pool, divided across whoever is in it. A high figure means the pool is small

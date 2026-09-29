@@ -7,6 +7,8 @@ package gen
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 
 	"github.com/fluidity-money/florin.so/cmd/graphql/gen/model"
 )
@@ -14,31 +16,170 @@ import (
 // BorrowDetails is the resolver for the borrowDetails field.
 func (r *queryResolver) BorrowDetails(ctx context.Context) ([]*model.BorrowDetails, error) {
 	if r.FeatureFakeData {
-		return []*model.BorrowDetails{&model.BorrowDetails{
-			Collateral: &model.Collateral{
-				Name: "SPY",
-			},
+		return []*model.BorrowDetails{{
+			Collateral: &model.Collateral{Name: "SPY"},
 			AvgRatePa:  "5.79%",
 			Deposited:  "4.2M",
 			DebtIssued: "2.34M",
 		}}, nil
 	}
-	panic("not implemented")
+	if r.DB == nil {
+		return nil, fmt.Errorf("database is not configured")
+	}
+	var collateral, debt, averageRateRaw string
+	err := r.DB.QueryRowContext(ctx, `
+SELECT
+	collateral.amount::text,
+	fusd.amount::text,
+	COALESCE((
+		SELECT SUM(position.debt * position.annual_interest_rate)
+			/ NULLIF(SUM(position.debt), 0)
+		FROM florin_outstanding_positions_1 position
+	), 0)::text
+FROM florin_collateral_deposited_1 collateral
+CROSS JOIN florin_fusd_outstanding_1 fusd`).Scan(
+		&collateral,
+		&debt,
+		&averageRateRaw,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query borrow details: %w", err)
+	}
+	deposited, err := formatAmount(collateral)
+	if err != nil {
+		return nil, fmt.Errorf("format collateral deposited: %w", err)
+	}
+	debtIssued, err := formatAmount(debt)
+	if err != nil {
+		return nil, fmt.Errorf("format debt issued: %w", err)
+	}
+	averageRate, err := formatPercent(averageRateRaw)
+	if err != nil {
+		return nil, fmt.Errorf("format average rate: %w", err)
+	}
+	return []*model.BorrowDetails{{
+		Collateral: &model.Collateral{Name: "SPY"},
+		AvgRatePa:  averageRate,
+		Deposited:  deposited,
+		DebtIssued: debtIssued,
+	}}, nil
 }
 
 // EarnRewards is the resolver for the earnRewards field.
 func (r *queryResolver) EarnRewards(ctx context.Context) ([]*model.EarnRewards, error) {
 	if r.FeatureFakeData {
-		return []*model.EarnRewards{&model.EarnRewards{
-			Collateral: &model.Collateral{
-				Name: "SPY",
-			},
-			Apr:      "11.2.9%",
-			PoolSize: "900K",
-			Coverage: "38%",
+		return []*model.EarnRewards{{
+			Collateral: &model.Collateral{Name: "SPY"},
+			Apr:        "11.29%",
+			PoolSize:   "900K",
+			Coverage:   "38%",
 		}}, nil
 	}
-	panic("not implemented")
+	if r.DB == nil {
+		return nil, fmt.Errorf("database is not configured")
+	}
+	var poolSizeRaw, aprRaw, coverageRaw string
+	err := r.DB.QueryRowContext(ctx, `
+SELECT
+	pool.amount::text,
+	COALESCE((
+		SELECT SUM(position.debt * position.annual_interest_rate) * 75
+			/ NULLIF(pool.amount * 100, 0)
+		FROM florin_outstanding_positions_1 position
+	), 0)::text,
+	CASE
+		WHEN fusd.amount > 0 THEN pool.amount * 1000000000000000000 / fusd.amount
+		ELSE 0
+	END::text
+FROM florin_stability_pool_1 pool
+CROSS JOIN florin_fusd_outstanding_1 fusd`).Scan(
+		&poolSizeRaw,
+		&aprRaw,
+		&coverageRaw,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("query earn rewards: %w", err)
+	}
+	poolSize, err := formatAmount(poolSizeRaw)
+	if err != nil {
+		return nil, fmt.Errorf("format stability pool size: %w", err)
+	}
+	apr, err := formatPercent(aprRaw)
+	if err != nil {
+		return nil, fmt.Errorf("format stability pool APR: %w", err)
+	}
+	coverage, err := formatPercent(coverageRaw)
+	if err != nil {
+		return nil, fmt.Errorf("format stability pool coverage: %w", err)
+	}
+	return []*model.EarnRewards{{
+		Collateral: &model.Collateral{Name: "SPY"},
+		Apr:        apr,
+		PoolSize:   poolSize,
+		Coverage:   coverage,
+	}}, nil
+}
+
+// OpenPositions is the resolver for the openPositions field.
+func (r *queryResolver) OpenPositions(ctx context.Context, owner string) ([]*model.Position, error) {
+	normalizedOwner, err := normalizeAddress(owner)
+	if err != nil {
+		return nil, fmt.Errorf("invalid owner address: %w", err)
+	}
+	if r.FeatureFakeData {
+		return []*model.Position{}, nil
+	}
+	if r.DB == nil {
+		return nil, fmt.Errorf("database is not configured")
+	}
+	rows, err := r.DB.QueryContext(ctx, `
+SELECT
+	trove_id::text,
+	TRIM(trove_manager::text),
+	TRIM(owner::text),
+	debt::text,
+	coll::text,
+	stake::text,
+	annual_interest_rate::text,
+	NULLIF(TRIM(interest_batch_manager::text), '')
+FROM florin_outstanding_positions_1
+WHERE LOWER(owner::text) = LOWER($1)
+ORDER BY block_number DESC, trove_id`, normalizedOwner)
+	if err != nil {
+		return nil, fmt.Errorf("query open positions: %w", err)
+	}
+	defer rows.Close()
+
+	positions := make([]*model.Position, 0)
+	for rows.Next() {
+		var position model.Position
+		var annualInterestRateRaw string
+		var batchManager sql.NullString
+		if err := rows.Scan(
+			&position.TroveID,
+			&position.TroveManager,
+			&position.Owner,
+			&position.Debt,
+			&position.Collateral,
+			&position.Stake,
+			&annualInterestRateRaw,
+			&batchManager,
+		); err != nil {
+			return nil, fmt.Errorf("scan open position: %w", err)
+		}
+		position.AnnualInterestRate, err = formatPercent(annualInterestRateRaw)
+		if err != nil {
+			return nil, fmt.Errorf("format annual interest rate for trove %s: %w", position.TroveID, err)
+		}
+		if batchManager.Valid {
+			position.InterestBatchManager = &batchManager.String
+		}
+		positions = append(positions, &position)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate open positions: %w", err)
+	}
+	return positions, nil
 }
 
 // Query returns QueryResolver implementation.

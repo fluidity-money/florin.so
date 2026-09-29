@@ -33,14 +33,12 @@ test('leverage card is non-navigable and marked disabled', () => {
   assert.doesNotMatch(home, /<Link href="\/open" className="card home-action home-action--blue">/);
 });
 
-test('sample trove is gated to the designated address', () => {
-  const access = read('lib/position-access.ts');
+test('manage page uses live positions for the connected address', () => {
   const manage = read('components/manage-position.tsx');
   const positionPage = read('app/position/page.tsx');
 
-  assert.match(access, /0x6221a9c005f6e47eb398fd867784cacfdcfff4e7/i);
-  assert.match(access, /toLowerCase\(\)/);
-  assert.match(manage, /canViewSamplePosition\(w\.address\)/);
+  assert.match(manage, /useOpenPositions\(w\.address\)/);
   assert.match(manage, /No position found/);
+  assert.doesNotMatch(manage, /SAMPLE_POSITION|canViewSamplePosition/);
   assert.doesNotMatch(positionPage, /A live \(mocked\) Trove/);
 });

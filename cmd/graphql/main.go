@@ -62,6 +62,7 @@ func main() {
 	srv := handler.New(gen.NewExecutableSchema(gen.Config{
 		Resolvers: &gen.Resolver{
 			FeatureFakeData: os.Getenv(EnvFeatureFakeData) != "",
+			DB:              db,
 		},
 	}))
 	srv.AddTransport(transport.Options{})

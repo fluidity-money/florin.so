@@ -53,9 +53,21 @@ type ComplexityRoot struct {
 		PoolSize   func(childComplexity int) int
 	}
 
+	Position struct {
+		AnnualInterestRate   func(childComplexity int) int
+		Collateral           func(childComplexity int) int
+		Debt                 func(childComplexity int) int
+		InterestBatchManager func(childComplexity int) int
+		Owner                func(childComplexity int) int
+		Stake                func(childComplexity int) int
+		TroveID              func(childComplexity int) int
+		TroveManager         func(childComplexity int) int
+	}
+
 	Query struct {
 		BorrowDetails func(childComplexity int) int
 		EarnRewards   func(childComplexity int) int
+		OpenPositions func(childComplexity int, owner string) int
 	}
 }
 
@@ -66,6 +78,7 @@ type ComplexityRoot struct {
 type QueryResolver interface {
 	BorrowDetails(ctx context.Context) ([]*model.BorrowDetails, error)
 	EarnRewards(ctx context.Context) ([]*model.EarnRewards, error)
+	OpenPositions(ctx context.Context, owner string) ([]*model.Position, error)
 }
 
 // endregion ************************** generated!.gotpl **************************
@@ -143,6 +156,55 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.EarnRewards.PoolSize(childComplexity), true
 
+	case "Position.annualInterestRate":
+		if e.ComplexityRoot.Position.AnnualInterestRate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Position.AnnualInterestRate(childComplexity), true
+	case "Position.collateral":
+		if e.ComplexityRoot.Position.Collateral == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Position.Collateral(childComplexity), true
+	case "Position.debt":
+		if e.ComplexityRoot.Position.Debt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Position.Debt(childComplexity), true
+	case "Position.interestBatchManager":
+		if e.ComplexityRoot.Position.InterestBatchManager == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Position.InterestBatchManager(childComplexity), true
+	case "Position.owner":
+		if e.ComplexityRoot.Position.Owner == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Position.Owner(childComplexity), true
+	case "Position.stake":
+		if e.ComplexityRoot.Position.Stake == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Position.Stake(childComplexity), true
+	case "Position.troveId":
+		if e.ComplexityRoot.Position.TroveID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Position.TroveID(childComplexity), true
+	case "Position.troveManager":
+		if e.ComplexityRoot.Position.TroveManager == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Position.TroveManager(childComplexity), true
+
 	case "Query.borrowDetails":
 		if e.ComplexityRoot.Query.BorrowDetails == nil {
 			break
@@ -155,6 +217,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.EarnRewards(childComplexity), true
+
+	case "Query.openPositions":
+		if e.ComplexityRoot.Query.OpenPositions == nil {
+			break
+		}
+
+		args, err := ec.field_Query_openPositions_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.OpenPositions(childComplexity, args["owner"].(string)), true
 
 	}
 	return 0, false
@@ -231,9 +305,19 @@ in the UI.
 scalar Percent
 
 """
-Amount in circulation in the system, 18 decimals. Returned as a string.
+An exact 18-decimal token amount, returned as an integer string in base units.
 """
 scalar Amount
+
+"""
+A compact, human-readable token amount for display (for example, 4.2M).
+"""
+scalar DisplayAmount
+
+"""
+Address on Robinhood Testnet.
+"""
+scalar Address
 
 type Collateral {
   name: String!,
@@ -245,8 +329,8 @@ Borrow details in circulation. Based on the events Liquity emits.
 type BorrowDetails {
   collateral: Collateral!,
   avgRatePa: Percent!,
-  deposited: Amount!,
-  debtIssued: Amount!
+  deposited: DisplayAmount!,
+  debtIssued: DisplayAmount!
 }
 
 """
@@ -255,8 +339,22 @@ Earn rewards that we display in the UI.
 type EarnRewards {
   collateral: Collateral!,
   apr: Percent!,
-  poolSize: Amount!,
+  poolSize: DisplayAmount!,
   coverage: Percent!
+}
+
+"""
+An open Florin borrowing position owned by an address.
+"""
+type Position {
+  troveId: String!
+  troveManager: Address!
+  owner: Address!
+  debt: Amount!
+  collateral: Amount!
+  stake: Amount!
+  annualInterestRate: Percent!
+  interestBatchManager: Address
 }
 
 type Query {
@@ -269,6 +367,11 @@ type Query {
   Earn rewards details.
   """
   earnRewards: [EarnRewards!]!
+
+  """
+  Open positions for a specific address given.
+  """
+  openPositions(owner: Address!): [Position!]!
 }
 `, BuiltIn: false},
 }
@@ -312,6 +415,28 @@ func (ec *executionContext) childFields_EarnRewards(ctx context.Context, field g
 		return ec.fieldContext_EarnRewards_coverage(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type EarnRewards", field.Name)
+}
+
+func (ec *executionContext) childFields_Position(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "troveId":
+		return ec.fieldContext_Position_troveId(ctx, field)
+	case "troveManager":
+		return ec.fieldContext_Position_troveManager(ctx, field)
+	case "owner":
+		return ec.fieldContext_Position_owner(ctx, field)
+	case "debt":
+		return ec.fieldContext_Position_debt(ctx, field)
+	case "collateral":
+		return ec.fieldContext_Position_collateral(ctx, field)
+	case "stake":
+		return ec.fieldContext_Position_stake(ctx, field)
+	case "annualInterestRate":
+		return ec.fieldContext_Position_annualInterestRate(ctx, field)
+	case "interestBatchManager":
+		return ec.fieldContext_Position_interestBatchManager(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type Position", field.Name)
 }
 
 func (ec *executionContext) childFields___Directive(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -444,6 +569,20 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_openPositions_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "owner",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNAddress2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["owner"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field___Directive_args_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -572,14 +711,14 @@ func (ec *executionContext) _BorrowDetails_deposited(ctx context.Context, field 
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNAmount2string(ctx, selections, v)
+			return ec.marshalNDisplayAmount2string(ctx, selections, v)
 		},
 		true,
 		true,
 	)
 }
 func (ec *executionContext) fieldContext_BorrowDetails_deposited(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("BorrowDetails", field, false, false, errors.New("field of type Amount does not have child fields"))
+	return graphql.NewScalarFieldContext("BorrowDetails", field, false, false, errors.New("field of type DisplayAmount does not have child fields"))
 }
 
 func (ec *executionContext) _BorrowDetails_debtIssued(ctx context.Context, field graphql.CollectedField, obj *model.BorrowDetails) (ret graphql.Marshaler) {
@@ -595,14 +734,14 @@ func (ec *executionContext) _BorrowDetails_debtIssued(ctx context.Context, field
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNAmount2string(ctx, selections, v)
+			return ec.marshalNDisplayAmount2string(ctx, selections, v)
 		},
 		true,
 		true,
 	)
 }
 func (ec *executionContext) fieldContext_BorrowDetails_debtIssued(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("BorrowDetails", field, false, false, errors.New("field of type Amount does not have child fields"))
+	return graphql.NewScalarFieldContext("BorrowDetails", field, false, false, errors.New("field of type DisplayAmount does not have child fields"))
 }
 
 func (ec *executionContext) _Collateral_name(ctx context.Context, field graphql.CollectedField, obj *model.Collateral) (ret graphql.Marshaler) {
@@ -696,14 +835,14 @@ func (ec *executionContext) _EarnRewards_poolSize(ctx context.Context, field gra
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNAmount2string(ctx, selections, v)
+			return ec.marshalNDisplayAmount2string(ctx, selections, v)
 		},
 		true,
 		true,
 	)
 }
 func (ec *executionContext) fieldContext_EarnRewards_poolSize(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("EarnRewards", field, false, false, errors.New("field of type Amount does not have child fields"))
+	return graphql.NewScalarFieldContext("EarnRewards", field, false, false, errors.New("field of type DisplayAmount does not have child fields"))
 }
 
 func (ec *executionContext) _EarnRewards_coverage(ctx context.Context, field graphql.CollectedField, obj *model.EarnRewards) (ret graphql.Marshaler) {
@@ -727,6 +866,190 @@ func (ec *executionContext) _EarnRewards_coverage(ctx context.Context, field gra
 }
 func (ec *executionContext) fieldContext_EarnRewards_coverage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("EarnRewards", field, false, false, errors.New("field of type Percent does not have child fields"))
+}
+
+func (ec *executionContext) _Position_troveId(ctx context.Context, field graphql.CollectedField, obj *model.Position) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Position_troveId(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TroveID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Position_troveId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Position", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _Position_troveManager(ctx context.Context, field graphql.CollectedField, obj *model.Position) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Position_troveManager(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.TroveManager, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNAddress2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Position_troveManager(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Position", field, false, false, errors.New("field of type Address does not have child fields"))
+}
+
+func (ec *executionContext) _Position_owner(ctx context.Context, field graphql.CollectedField, obj *model.Position) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Position_owner(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Owner, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNAddress2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Position_owner(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Position", field, false, false, errors.New("field of type Address does not have child fields"))
+}
+
+func (ec *executionContext) _Position_debt(ctx context.Context, field graphql.CollectedField, obj *model.Position) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Position_debt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Debt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNAmount2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Position_debt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Position", field, false, false, errors.New("field of type Amount does not have child fields"))
+}
+
+func (ec *executionContext) _Position_collateral(ctx context.Context, field graphql.CollectedField, obj *model.Position) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Position_collateral(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Collateral, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNAmount2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Position_collateral(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Position", field, false, false, errors.New("field of type Amount does not have child fields"))
+}
+
+func (ec *executionContext) _Position_stake(ctx context.Context, field graphql.CollectedField, obj *model.Position) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Position_stake(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Stake, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNAmount2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Position_stake(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Position", field, false, false, errors.New("field of type Amount does not have child fields"))
+}
+
+func (ec *executionContext) _Position_annualInterestRate(ctx context.Context, field graphql.CollectedField, obj *model.Position) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Position_annualInterestRate(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.AnnualInterestRate, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNPercent2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Position_annualInterestRate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Position", field, false, false, errors.New("field of type Percent does not have child fields"))
+}
+
+func (ec *executionContext) _Position_interestBatchManager(ctx context.Context, field graphql.CollectedField, obj *model.Position) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Position_interestBatchManager(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.InterestBatchManager, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOAddress2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Position_interestBatchManager(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("Position", field, false, false, errors.New("field of type Address does not have child fields"))
 }
 
 func (ec *executionContext) _Query_borrowDetails(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -789,6 +1112,50 @@ func (ec *executionContext) fieldContext_Query_earnRewards(_ context.Context, fi
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return ec.childFields_EarnRewards(ctx, field)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_openPositions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_openPositions(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().OpenPositions(ctx, fc.Args["owner"].(string))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.Position) graphql.Marshaler {
+			return ec.marshalNPosition2ᚕᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐPositionᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_openPositions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_Position(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_openPositions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -2080,6 +2447,79 @@ func (ec *executionContext) _EarnRewards(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
+var positionImplementors = []string{"Position"}
+
+func (ec *executionContext) _Position(ctx context.Context, sel ast.SelectionSet, obj *model.Position) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, positionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Position")
+		case "troveId":
+			out.Values[i] = ec._Position_troveId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "troveManager":
+			out.Values[i] = ec._Position_troveManager(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "owner":
+			out.Values[i] = ec._Position_owner(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "debt":
+			out.Values[i] = ec._Position_debt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "collateral":
+			out.Values[i] = ec._Position_collateral(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "stake":
+			out.Values[i] = ec._Position_stake(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "annualInterestRate":
+			out.Values[i] = ec._Position_annualInterestRate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "interestBatchManager":
+			out.Values[i] = ec._Position_interestBatchManager(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var queryImplementors = []string{"Query"}
 
 func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -2132,6 +2572,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_earnRewards(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "openPositions":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_openPositions(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -2571,6 +3033,22 @@ func (ec *executionContext) ___Type(ctx context.Context, sel ast.SelectionSet, o
 
 // region    ***************************** type.gotpl *****************************
 
+func (ec *executionContext) unmarshalNAddress2string(ctx context.Context, v any) (string, error) {
+	res, err := graphql.UnmarshalString(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAddress2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalString(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) unmarshalNAmount2string(ctx context.Context, v any) (string, error) {
 	res, err := graphql.UnmarshalString(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -2623,6 +3101,22 @@ func (ec *executionContext) marshalNCollateral2ᚖgithubᚗcomᚋfluidityᚑmone
 	return ec._Collateral(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNDisplayAmount2string(ctx context.Context, v any) (string, error) {
+	res, err := graphql.UnmarshalString(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNDisplayAmount2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalString(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) marshalNEarnRewards2ᚕᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐEarnRewardsᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.EarnRewards) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -2663,6 +3157,32 @@ func (ec *executionContext) marshalNPercent2string(ctx context.Context, sel ast.
 		}
 	}
 	return res
+}
+
+func (ec *executionContext) marshalNPosition2ᚕᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐPositionᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.Position) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNPosition2ᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐPosition(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPosition2ᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐPosition(ctx context.Context, sel ast.SelectionSet, v *model.Position) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Position(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v any) (string, error) {
@@ -2818,6 +3338,24 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
 		}
 	}
+	return res
+}
+
+func (ec *executionContext) unmarshalOAddress2ᚖstring(ctx context.Context, v any) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalString(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOAddress2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	_ = sel
+	_ = ctx
+	res := graphql.MarshalString(*v)
 	return res
 }
 

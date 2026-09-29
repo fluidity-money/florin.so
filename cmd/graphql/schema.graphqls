@@ -6,9 +6,19 @@ in the UI.
 scalar Percent
 
 """
-Amount in circulation in the system, 18 decimals. Returned as a string.
+An exact 18-decimal token amount, returned as an integer string in base units.
 """
 scalar Amount
+
+"""
+A compact, human-readable token amount for display (for example, 4.2M).
+"""
+scalar DisplayAmount
+
+"""
+Address on Robinhood Testnet.
+"""
+scalar Address
 
 type Collateral {
   name: String!,
@@ -20,8 +30,8 @@ Borrow details in circulation. Based on the events Liquity emits.
 type BorrowDetails {
   collateral: Collateral!,
   avgRatePa: Percent!,
-  deposited: Amount!,
-  debtIssued: Amount!
+  deposited: DisplayAmount!,
+  debtIssued: DisplayAmount!
 }
 
 """
@@ -30,8 +40,22 @@ Earn rewards that we display in the UI.
 type EarnRewards {
   collateral: Collateral!,
   apr: Percent!,
-  poolSize: Amount!,
+  poolSize: DisplayAmount!,
   coverage: Percent!
+}
+
+"""
+An open Florin borrowing position owned by an address.
+"""
+type Position {
+  troveId: String!
+  troveManager: Address!
+  owner: Address!
+  debt: Amount!
+  collateral: Amount!
+  stake: Amount!
+  annualInterestRate: Percent!
+  interestBatchManager: Address
 }
 
 type Query {
@@ -44,4 +68,9 @@ type Query {
   Earn rewards details.
   """
   earnRewards: [EarnRewards!]!
+
+  """
+  Open positions for a specific address given.
+  """
+  openPositions(owner: Address!): [Position!]!
 }

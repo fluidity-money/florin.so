@@ -7,7 +7,6 @@ import {
   metrics,
   MIN_COLLATERAL_RATIO,
   maxBorrowableFUSD,
-  SAMPLE_POSITION,
   MOCK_WALLET,
   queueAhead,
   RATE_BOOK_TOTAL,
@@ -18,7 +17,8 @@ import {
 import { money, pct, xnum, compact } from '../lib/format';
 import { useWallet } from './wallet/wallet';
 import { useSpyPrice } from '../lib/use-spy-price';
-import { canViewSamplePosition } from '../lib/position-access';
+import { useOpenPositions } from '../lib/use-open-positions';
+import type { FlorinPosition } from '../lib/florin-positions';
 
 type CollMode = 'deposit' | 'withdraw';
 type DebtMode = 'borrow' | 'repay';
@@ -49,12 +49,87 @@ function Seg<T extends string>({
   );
 }
 
+function PositionNotice({
+  title,
+  children,
+  retry,
+}: {
+  title: string;
+  children: React.ReactNode;
+  retry?: () => void;
+}) {
+  return (
+    <div className="swap">
+      <h1 className="swap__title"><span>Your position</span></h1>
+      <div className="swap__done">
+        <span className="swap__done-mark" aria-hidden="true">○</span>
+        <h2>{title}</h2>
+        <p>{children}</p>
+        {retry ? (
+          <Button variant="primary" onClick={retry}>Try again</Button>
+        ) : title === 'No position found' ? (
+          <a className="btn btn--primary" href="/open">Open position →</a>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function ManagePosition() {
   const w = useWallet();
+  const { status, positions, error, refresh } = useOpenPositions(w.address);
+  const [selectedTroveId, setSelectedTroveId] = useState<string | null>(null);
+
+  if (!w.connected || !w.address) {
+    return (
+      <PositionNotice title="No position found">
+        Connect a wallet to view and manage its positions.
+      </PositionNotice>
+    );
+  }
+  if (status === 'idle' || status === 'loading') {
+    return <PositionNotice title="Loading position">Looking up this wallet’s open positions…</PositionNotice>;
+  }
+  if (status === 'error') {
+    return (
+      <PositionNotice title="Unable to load position" retry={refresh}>
+        Florin GraphQL could not load this wallet’s positions{error ? `: ${error}` : '.'}
+      </PositionNotice>
+    );
+  }
+  if (positions.length === 0) {
+    return (
+      <PositionNotice title="No position found">
+        This address does not have an open Florin position.
+      </PositionNotice>
+    );
+  }
+
+  const position = positions.find(({ troveId }) => troveId === selectedTroveId) ?? positions[0];
+  return (
+    <PositionEditor
+      key={position.troveId}
+      position={position}
+      positions={positions}
+      onSelect={setSelectedTroveId}
+    />
+  );
+}
+
+function PositionEditor({
+  position,
+  positions,
+  onSelect,
+}: {
+  position: FlorinPosition;
+  positions: FlorinPosition[];
+  onSelect: (troveId: string) => void;
+}) {
+  const w = useWallet();
   const { price: spyPrice } = useSpyPrice();
-  const [collateral, setCollateral] = useState(SAMPLE_POSITION.collateralSPY);
-  const [debt, setDebt] = useState(SAMPLE_POSITION.debtFUSD);
-  const [rate, setRate] = useState(SAMPLE_POSITION.rate);
+  const [collateral, setCollateral] = useState(position.collateralSPY);
+  const [debt, setDebt] = useState(position.debtFUSD);
+  const [rate, setRate] = useState(position.rate);
   const [hasClosed, setHasClosed] = useState(false);
 
   const [collMode, setCollMode] = useState<CollMode>('deposit');
@@ -101,30 +176,6 @@ export function ManagePosition() {
     setDebtStr('');
   }
 
-  if (!canViewSamplePosition(w.address)) {
-    return (
-      <div className="swap">
-        <h1 className="swap__title">
-          <span>Your position</span>
-        </h1>
-        <div className="swap__done">
-          <span className="swap__done-mark" aria-hidden="true">
-            ○
-          </span>
-          <h2>No position found</h2>
-          <p>
-            {w.connected
-              ? 'This address does not have an open Florin position.'
-              : 'Connect a wallet to view and manage its position.'}
-          </p>
-          <a className="btn btn--primary" href="/open">
-            Open position →
-          </a>
-        </div>
-      </div>
-    );
-  }
-
   if (closed) {
     return (
       <div className="swap">
@@ -155,6 +206,24 @@ export function ManagePosition() {
         </span>
         <span>position</span>
       </h1>
+
+      {positions.length > 1 && (
+        <label className="swap__field">
+          <span className="swap__label">Position</span>
+          <select
+            className="swap__amount"
+            value={position.troveId}
+            onChange={(event) => onSelect(event.target.value)}
+            aria-label="Open position"
+          >
+            {positions.map((candidate) => (
+              <option key={candidate.troveId} value={candidate.troveId}>
+                Trove #{candidate.troveId} · {money(candidate.collateralSPY, 2)} SPY · ${money(candidate.debtFUSD)} debt
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       {/* Summary, in the same card as the pool on Earn */}
       <div className="pool">
