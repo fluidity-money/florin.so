@@ -1,4 +1,4 @@
-import { parseAbi, type Address } from 'viem';
+import { parseAbi, parseUnits, type Address } from 'viem';
 
 export const ROBINHOOD_TESTNET_CHAIN_ID = 46_630;
 export const TOKEN_DECIMALS = 18;
@@ -127,6 +127,27 @@ export function validatePositionAmount(
 
 export function maxRepayableDebt(debt: bigint): bigint {
   return debt > MIN_DEBT ? debt - MIN_DEBT : 0n;
+}
+
+export function annualRateFromDisplayPercent(displayPercent: string): bigint | null {
+  try {
+    // Graph exposes a display percent (for example "5.25%"). Dividing by 100
+    // while converting to WAD is equivalent to parsing with 16 decimals.
+    const normalized = displayPercent.trim().replace(/%$/, '').trim();
+    if (!normalized) return null;
+    return parseUnits(normalized, 16);
+  } catch {
+    return null;
+  }
+}
+
+export function maxBorrowPrincipal(
+  debtCapacity: bigint,
+  currentDebt: bigint,
+  feeQuotedAtCapacity: bigint,
+): bigint {
+  const debtRoom = debtCapacity > currentDebt ? debtCapacity - currentDebt : 0n;
+  return debtRoom > feeQuotedAtCapacity ? debtRoom - feeQuotedAtCapacity : 0n;
 }
 
 export function validateStabilityPoolAmount(

@@ -48,7 +48,8 @@ test('position screen submits every supported borrower operation onchain', () =>
   const manage = read('components/manage-position.tsx');
   const stability = read('components/stability-pool.tsx');
 
-  assert.match(manage, /useWalletBalances\(w\.address\)/);
+  assert.match(manage, /queryKey:\s*\['manage-position-state', account\]/);
+  assert.match(manage, /functionName:\s*'lastGoodPrice'/);
   assert.doesNotMatch(manage, /MOCK_WALLET|queueAhead|RATE_BOOK_TOTAL|AVG_RATE/);
   assert.doesNotMatch(manage, /setCollateral\(nextCollateral\)|setDebt\(nextDebt\)|setHasClosed\(true\)/);
   assert.doesNotMatch(manage, /Position transactions coming soon/);
@@ -62,6 +63,9 @@ test('position screen submits every supported borrower operation onchain', () =>
   assert.match(manage, /predictAdjustTroveUpfrontFee/);
   assert.match(manage, /predictAdjustInterestRateUpfrontFee/);
   assert.match(manage, /waitForTransactionReceipt/);
+  assert.match(manage, /replacement\.reason !== 'repriced'/);
+  assert.match(manage, /formatUnits\(collMaxWei, 18\)/);
+  assert.match(manage, /formatUnits\(debtMaxWei, 18\)/);
   assert.match(manage, /View (pending )?transaction/);
   assert.match(manage, /priceReady/);
   assert.match(manage, /oracle unavailable/);
