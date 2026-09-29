@@ -6,6 +6,7 @@ export const MIN_DEBT = 10n * 10n ** 18n;
 export const MIN_ANNUAL_INTEREST_RATE = 5n * 10n ** 15n;
 export const MAX_ANNUAL_INTEREST_RATE = 25n * 10n ** 17n;
 export const LIQUIDATOR_COMPENSATION_WETH = 1_000_000_000_000_000n;
+export const MIN_FUSD_IN_STABILITY_POOL = 10n ** 18n;
 
 export const CONTRACTS = {
   spyToken: '0x8823b40A23387Df76E127744FFB38b26eB012A5c',
@@ -56,6 +57,8 @@ export const wethAbi = parseAbi([
 export const hintHelpersAbi = parseAbi([
   'function getApproxHint(uint256 collIndex, uint256 interestRate, uint256 numTrials, uint256 inputRandomSeed) view returns (uint256 hintId, uint256 diff, uint256 latestRandomSeed)',
   'function predictOpenTroveUpfrontFee(uint256 collIndex, uint256 borrowed, uint256 annualInterestRate) view returns (uint256)',
+  'function predictAdjustTroveUpfrontFee(uint256 collIndex, uint256 troveId, uint256 debtIncrease) view returns (uint256)',
+  'function predictAdjustInterestRateUpfrontFee(uint256 collIndex, uint256 troveId, uint256 newAnnualInterestRate) view returns (uint256)',
 ]);
 
 export const sortedTrovesAbi = parseAbi([

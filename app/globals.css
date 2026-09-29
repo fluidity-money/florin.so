@@ -2907,6 +2907,134 @@ input:focus-visible {
   background: color-mix(in srgb, var(--sp-black) 38%, transparent);
 }
 
+.hero__faucet {
+  position: relative;
+  display: inline-flex;
+}
+
+.hero__btn--faucet {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid color-mix(in srgb, #fff 76%, transparent);
+  background: linear-gradient(135deg, #fff3a8 0%, #b9fbc0 48%, #7ee8d2 100%);
+  color: #10271f;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, #b9fbc0 24%, transparent),
+    0 8px 26px color-mix(in srgb, #74e4c5 34%, transparent);
+  animation: faucet-pulse 2.8s ease-in-out infinite;
+}
+
+.hero__btn--faucet:hover {
+  background: linear-gradient(135deg, #fff8c8 0%, #d4ffd8 48%, #a4f5e4 100%);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, #fff 44%, transparent),
+    0 12px 34px color-mix(in srgb, #74e4c5 52%, transparent);
+  transform: translateY(-2px) scale(1.02);
+}
+
+.hero__btn-spark {
+  font-size: 13px;
+}
+
+.hero__btn-arrow {
+  font-size: 17px;
+  line-height: 0;
+  transition: transform 0.15s ease;
+}
+
+.hero__btn--faucet:hover .hero__btn-arrow {
+  transform: translate(2px, -2px);
+}
+
+.hero__faucet-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 14px);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: max-content;
+  max-width: min(270px, calc(100vw - 48px));
+  border: 1px solid color-mix(in srgb, var(--sp-black) 12%, transparent);
+  border-radius: 12px;
+  padding: 10px 10px 10px 14px;
+  background: #fff;
+  color: #17352b;
+  box-shadow: 0 12px 34px color-mix(in srgb, var(--sp-black) 24%, transparent);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  transform: translateX(-50%);
+  animation: faucet-tip-in 0.38s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.hero__faucet-tip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  border-right: 1px solid color-mix(in srgb, var(--sp-black) 12%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--sp-black) 12%, transparent);
+  background: #fff;
+  transform: translate(-50%, -6px) rotate(45deg);
+}
+
+.hero__faucet-tip-close {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  padding: 0;
+  background: #eaf5ef;
+  color: #17352b;
+  font: inherit;
+  line-height: 24px;
+  cursor: pointer;
+}
+
+.hero__faucet-tip-close:hover {
+  background: #d8ede1;
+}
+
+@keyframes faucet-tip-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+@keyframes faucet-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, #b9fbc0 24%, transparent),
+      0 8px 26px color-mix(in srgb, #74e4c5 34%, transparent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 4px color-mix(in srgb, #b9fbc0 12%, transparent),
+      0 10px 32px color-mix(in srgb, #74e4c5 48%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__btn--faucet,
+  .hero__faucet-tip {
+    animation: none;
+  }
+}
+
 /* Numbers sit on the picture rather than under it, so the hero reads as one
    object instead of a banner with a strip bolted beneath. */
 .hero__stats {

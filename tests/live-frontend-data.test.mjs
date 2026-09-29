@@ -44,14 +44,25 @@ test('SPY price and wallet balances come from Robinhood contracts without consta
   assert.equal(existsSync(new URL('../app/api/spy-price/route.ts', import.meta.url)), false);
 });
 
-test('position screens do not present local state changes as transactions', () => {
+test('position screen submits every supported borrower operation onchain', () => {
   const manage = read('components/manage-position.tsx');
   const stability = read('components/stability-pool.tsx');
 
   assert.match(manage, /useWalletBalances\(w\.address\)/);
   assert.doesNotMatch(manage, /MOCK_WALLET|queueAhead|RATE_BOOK_TOTAL|AVG_RATE/);
   assert.doesNotMatch(manage, /setCollateral\(nextCollateral\)|setDebt\(nextDebt\)|setHasClosed\(true\)/);
-  assert.match(manage, /Position transactions coming soon/);
+  assert.doesNotMatch(manage, /Position transactions coming soon/);
+  assert.match(manage, /functionName:\s*'addColl'/);
+  assert.match(manage, /functionName:\s*'withdrawColl'/);
+  assert.match(manage, /functionName:\s*'withdrawBold'/);
+  assert.match(manage, /functionName:\s*'repayBold'/);
+  assert.match(manage, /functionName:\s*'adjustTroveInterestRate'/);
+  assert.match(manage, /functionName:\s*'closeTrove'/);
+  assert.match(manage, /functionName:\s*'approve'/);
+  assert.match(manage, /predictAdjustTroveUpfrontFee/);
+  assert.match(manage, /predictAdjustInterestRateUpfrontFee/);
+  assert.match(manage, /waitForTransactionReceipt/);
+  assert.match(manage, /View (pending )?transaction/);
   assert.match(manage, /priceReady/);
   assert.match(manage, /oracle unavailable/);
 

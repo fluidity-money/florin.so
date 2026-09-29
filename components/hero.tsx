@@ -1,8 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { spyMarket, type FlorinMarkets } from '../lib/florin-markets';
 import { useFlorinMarkets } from '../lib/use-florin-markets';
+
+const FAUCET_INTRO_COOKIE = 'florin_faucet_intro_seen';
+const FAUCET_INTRO_MAX_AGE = 60 * 60 * 24 * 365;
 
 // Landing hero: one painted field, one sentence, two ways in.
 //
@@ -13,6 +17,19 @@ import { useFlorinMarkets } from '../lib/use-florin-markets';
 export function Hero({ markets }: { markets: FlorinMarkets }) {
   const liveMarkets = useFlorinMarkets(markets);
   const { borrow, earn } = spyMarket(liveMarkets);
+  const [showFaucetIntro, setShowFaucetIntro] = useState(false);
+
+  useEffect(() => {
+    const hasSeenFaucetIntro = document.cookie
+      .split(';')
+      .some((cookie) => cookie.trim().startsWith(`${FAUCET_INTRO_COOKIE}=`));
+
+    if (hasSeenFaucetIntro) return;
+
+    setShowFaucetIntro(true);
+    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `${FAUCET_INTRO_COOKIE}=1; Path=/; Max-Age=${FAUCET_INTRO_MAX_AGE}; SameSite=Lax${secure}`;
+  }, []);
 
   const stats: [string, string][] = [
     ['Collateral deposited', borrow ? `${borrow.deposited} SPY` : '—'],
@@ -50,9 +67,30 @@ export function Hero({ markets }: { markets: FlorinMarkets }) {
           <Link href="/stability" className="hero__btn hero__btn--ghost">
             Earn with FUSD
           </Link>
-          <Link href="https://faucet.florin.so" className="hero__btn hero__btn--ghost">
-            Florin SPY Faucet
-          </Link>
+          <div className="hero__faucet">
+            {showFaucetIntro && (
+              <span className="hero__faucet-tip" role="status">
+                <span>Start your testnet journey here</span>
+                <button
+                  className="hero__faucet-tip-close"
+                  type="button"
+                  aria-label="Dismiss faucet introduction"
+                  onClick={() => setShowFaucetIntro(false)}
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            <Link
+              href="https://faucet.florin.so"
+              className="hero__btn hero__btn--faucet"
+              onClick={() => setShowFaucetIntro(false)}
+            >
+              <span className="hero__btn-spark" aria-hidden="true">✦</span>
+              Florin SPY Faucet
+              <span className="hero__btn-arrow" aria-hidden="true">↗</span>
+            </Link>
+          </div>
         </div>
       </div>
 

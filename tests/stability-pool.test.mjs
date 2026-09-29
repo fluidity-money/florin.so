@@ -9,6 +9,8 @@ test('stability page reads the connected wallet position and rewards', () => {
   assert.match(stability, /getDepositorCollGain/);
   assert.match(stability, /getDepositorYieldGainWithPending/);
   assert.match(stability, /stashedColl/);
+  assert.match(stability, /functionName: 'getTotalBoldDeposits'/);
+  assert.match(stability, /functionName: 'deposits'/);
   assert.match(stability, /Your pool position/);
 });
 
@@ -31,5 +33,7 @@ test('stability transactions expose progress, errors, and explorer links', () =>
   assert.match(stability, /Waiting for confirmation/);
   assert.match(stability, /role="alert"/);
   assert.match(stability, /blockExplorers\.default\.url/);
+  assert.match(stability, /setAmountStr\(formatUnits\(maxAmount, 18\)\)/);
+  assert.doesNotMatch(stability, /replaceAll\(','/);
   assert.doesNotMatch(stability, /transactions coming soon/i);
 });
