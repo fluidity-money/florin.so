@@ -88,6 +88,56 @@ body::before {
   background-size: 22px 22px;
 }
 
+/* ---- cookie consent ------------------------------------------------------ */
+.cookie-consent {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1000;
+  border-top: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.cookie-consent__content {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 16px 20px;
+}
+
+.cookie-consent__copy {
+  flex: 1;
+  margin: 0;
+  color: var(--gray-1);
+  font-size: 14px;
+}
+
+.cookie-consent__copy a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cookie-consent__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+@media (max-width: 620px) {
+  .cookie-consent__content {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .cookie-consent__actions .btn {
+    flex: 1;
+  }
+}
+
 a {
   color: inherit;
   text-decoration: none;

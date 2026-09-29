@@ -17,8 +17,10 @@ requires the protocol's separate `0.0375 SPY` gas-compensation deposit.
 Set `NEXT_PUBLIC_POSTHOG_KEY` to enable PostHog analytics in the web app.
 `NEXT_PUBLIC_POSTHOG_HOST` defaults to `https://us.i.posthog.com`; set it to
 `https://eu.i.posthog.com` for PostHog EU Cloud or to your self-hosted endpoint.
-Page views (including client-side route changes), page leaves, and PostHog's
-automatic interaction events are captured once configured.
+Visitors are shown a cookie consent banner. PostHog is not initialized and no
+analytics data is sent until they allow analytics. Once allowed, page views
+(including client-side route changes), page leaves, exceptions, and PostHog's
+automatic interaction events are captured.
 
 ## Beta gate
 

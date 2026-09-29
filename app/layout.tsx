@@ -4,6 +4,7 @@ import './globals.css';
 import { Providers } from '../components/Providers';
 import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
+import { CookieConsent } from '../components/CookieConsent';
 import { themeVars } from '../lib/theme';
 
 export const metadata: Metadata = {
@@ -27,6 +28,7 @@ export default function RootLayout({
           <main className="main">{children}</main>
           <Footer />
         </Providers>
+        <CookieConsent />
       </body>
     </html>
   );
