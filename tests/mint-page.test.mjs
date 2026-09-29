@@ -43,3 +43,14 @@ test('mint transaction pays liquidator compensation in ETH', () => {
   assert.match(open, /0\.0375 ETH liquidator-compensation deposit/);
   assert.doesNotMatch(open, /0\.0375 SPY gas-compensation deposit/);
 });
+
+test('mint failures show an explanation and report the error to PostHog', () => {
+  const open = read('components/open-position-form.tsx');
+
+  assert.match(open, /posthog\.capture\('open_trove_failed'/);
+  assert.match(open, /error\.explanation/);
+  assert.match(open, /Technical details/);
+  assert.match(open, /<code>\{error\.technicalDetails\}<\/code>/);
+  assert.match(open, /txHash && \(pending \|\| error\)/);
+  assert.match(open, /stage: description\.stage/);
+});

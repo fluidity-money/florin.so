@@ -2277,6 +2277,39 @@ input:focus-visible {
   line-height: 1.5;
 }
 
+.swap__error {
+  margin-top: 4px;
+}
+
+.swap__error .warn {
+  margin-bottom: 0;
+}
+
+.swap__error-explanation {
+  margin: 8px 2px 0;
+  color: var(--gray-1);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.swap__error-details {
+  margin: 8px 2px 0;
+  color: var(--gray-2);
+  font-size: 12px;
+}
+
+.swap__error-details summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.swap__error-details code {
+  display: block;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
 .swap__done {
   display: flex;
   flex-direction: column;

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "test": "node --test lib/borrow-contract.test.cjs tests/mint-page.test.mjs tests/positions-graphql.test.mjs",
+    "test": "node --test lib/borrow-contract.test.cjs lib/transaction-error.test.cjs tests/mint-page.test.mjs tests/positions-graphql.test.mjs",
     "start": "next start",
     "lint": "next lint"
   },

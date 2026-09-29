@@ -1,6 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import posthog from 'posthog-js';
 import {
   createPublicClient,
   createWalletClient,
@@ -18,6 +19,11 @@ import { RisksDialog } from './risks-dialog';
 import { Token, TokenIcon } from './token-icon';
 import { compact, money, pct, xnum } from '../lib/format';
 import { AVG_RATE, queueAhead, RATE_BOOK_TOTAL } from '../lib/mockData';
+import {
+  describeTransactionError,
+  type TransactionErrorDescription,
+  type TransactionFailureStage,
+} from '../lib/transaction-error';
 import { useWallet } from './wallet/wallet';
 import {
   borrowerOperationsAbi,
@@ -54,14 +60,6 @@ function parseToken(value: string): bigint {
   }
 }
 
-function messageFrom(error: unknown): string {
-  if (error instanceof Error) {
-    const candidate = error as Error & { shortMessage?: string };
-    return candidate.shortMessage ?? candidate.message;
-  }
-  return 'The wallet request failed.';
-}
-
 async function ensureRobinhoodTestnet(provider: NonNullable<ReturnType<typeof useWallet>['provider']>) {
   const current = await provider.request({ method: 'eth_chainId' });
   if (Number(current) === ROBINHOOD_TESTNET_CHAIN_ID) return;
@@ -92,7 +90,7 @@ export function OpenPositionForm() {
   const [debtStr, setDebtStr] = useState('');
   const [rate, setRate] = useState(DEFAULT_RATE);
   const [stage, setStage] = useState<TxStage>('idle');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<TransactionErrorDescription | null>(null);
   const [txHash, setTxHash] = useState<Hash | null>(null);
   const [minted, setMinted] = useState(false);
 
@@ -163,13 +161,31 @@ export function OpenPositionForm() {
   const unsafe = totalDebt > 0 && collateralRatio < MCR;
   const active = collateralWei > 0n && borrowedWei > 0n;
 
+  function reportError(cause: unknown, failureStage: TransactionFailureStage, transactionHash: Hash | null = null) {
+    const description = describeTransactionError(cause, failureStage);
+    setError(description);
+
+    if (posthog.__loaded) {
+      posthog.capture('open_trove_failed', {
+        stage: description.stage,
+        error_title: description.title,
+        error_explanation: description.explanation,
+        error_details: description.technicalDetails,
+        error_code: description.code,
+        chain_id: ROBINHOOD_TESTNET_CHAIN_ID,
+        contract: CONTRACTS.borrowerOperations,
+        transaction_hash: transactionHash,
+      });
+    }
+  }
+
   async function openTrove() {
     if (!wallet.connected || !account || !wallet.provider) {
       setError(null);
       try {
         await wallet.connect();
       } catch (cause) {
-        setError(messageFrom(cause));
+        reportError(cause, 'connecting');
       }
       return;
     }
@@ -177,6 +193,8 @@ export function OpenPositionForm() {
 
     setError(null);
     setTxHash(null);
+    let failureStage: TransactionFailureStage = 'switching';
+    let transactionHash: Hash | null = null;
     try {
       setStage('switching');
       await ensureRobinhoodTestnet(wallet.provider);
@@ -186,6 +204,7 @@ export function OpenPositionForm() {
         transport: custom(wallet.provider),
       });
 
+      failureStage = 'preparing';
       const requiredApproval = requiredSpyApproval(collateralWei);
       const [balance, allowance, predictedFee, troveCount] = await Promise.all([
         publicClient.readContract({
@@ -235,6 +254,7 @@ export function OpenPositionForm() {
       }
 
       if (allowance < requiredApproval) {
+        failureStage = 'approving';
         setStage('approving');
         const approval = await publicClient.simulateContract({
           account,
@@ -244,15 +264,21 @@ export function OpenPositionForm() {
           args: [CONTRACTS.borrowerOperations, requiredApproval],
         });
         const approvalHash = await walletClient.writeContract(approval.request);
+        transactionHash = approvalHash;
         setTxHash(approvalHash);
         setStage('confirming');
         const receipt = await publicClient.waitForTransactionReceipt({
           hash: approvalHash,
-          onReplaced: (replacement) => setTxHash(replacement.transaction.hash),
+          onReplaced: (replacement) => {
+            transactionHash = replacement.transaction.hash;
+            setTxHash(transactionHash);
+          },
         });
         if (receipt.status !== 'success') throw new Error('The SPY approval transaction reverted.');
+        transactionHash = null;
       }
 
+      failureStage = 'opening';
       setStage('opening');
       const ownerIndex = randomOwnerIndex();
       const simulation = await publicClient.simulateContract({
@@ -276,18 +302,23 @@ export function OpenPositionForm() {
         ],
       });
       const hash = await walletClient.writeContract(simulation.request);
+      transactionHash = hash;
       setTxHash(hash);
+      failureStage = 'confirming';
       setStage('confirming');
       const receipt = await publicClient.waitForTransactionReceipt({
         hash,
-        onReplaced: (replacement) => setTxHash(replacement.transaction.hash),
+        onReplaced: (replacement) => {
+          transactionHash = replacement.transaction.hash;
+          setTxHash(transactionHash);
+        },
       });
       if (receipt.status !== 'success') throw new Error('The open-trove transaction reverted.');
 
       await chainState.refetch();
       setMinted(true);
     } catch (cause) {
-      setError(messageFrom(cause));
+      reportError(cause, failureStage, transactionHash);
     } finally {
       setStage('idle');
     }
@@ -408,10 +439,21 @@ export function OpenPositionForm() {
       {insufficientSpy && <p className="warn">Your wallet does not have enough testnet SPY for the collateral.</p>}
       {chainState.isError && <p className="warn">Could not read the Robinhood testnet contracts. Try again before submitting.</p>}
       {upfrontFee.isError && <p className="warn">Could not quote the onchain upfront fee. Try again before submitting.</p>}
-      {error && <p className="warn" role="alert">{error}</p>}
-      {txHash && pending && (
+      {error && (
+        <div className="swap__error" role="alert">
+          <p className="warn">{error.title}</p>
+          <p className="swap__error-explanation">{error.explanation}</p>
+          <details className="swap__error-details">
+            <summary>Technical details</summary>
+            <code>{error.technicalDetails}</code>
+          </details>
+        </div>
+      )}
+      {txHash && (pending || error) && (
         <p className="swap__usd">
-          <a href={`${robinhoodTestnet.blockExplorers.default.url}/tx/${txHash}`} target="_blank" rel="noreferrer">View pending transaction ↗</a>
+          <a href={`${robinhoodTestnet.blockExplorers.default.url}/tx/${txHash}`} target="_blank" rel="noreferrer">
+            {pending ? 'View pending transaction ↗' : 'View transaction details ↗'}
+          </a>
         </p>
       )}
 

@@ -46,6 +46,16 @@ export const sortedTrovesAbi = parseAbi([
 
 export const borrowerOperationsAbi = parseAbi([
   'function openTrove(address owner, uint256 ownerIndex, uint256 collAmount, uint256 boldAmount, uint256 upperHint, uint256 lowerHint, uint256 annualInterestRate, uint256 maxUpfrontFee, address addManager, address removeManager, address receiver) payable returns (uint256 troveId)',
+  'error TroveExists()',
+  'error ICRBelowMCRPlusBCR()',
+  'error DebtBelowMin()',
+  'error ICRBelowMCR()',
+  'error TCRBelowCCR()',
+  'error UpfrontFeeTooHigh()',
+  'error InterestRateTooLow()',
+  'error InterestRateTooHigh()',
+  'error NewOracleFailureDetected()',
+  'error IsShutDown()',
 ]);
 
 export const priceFeedAbi = parseAbi([
