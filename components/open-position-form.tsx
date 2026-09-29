@@ -23,9 +23,9 @@ import {
   borrowerOperationsAbi,
   CONTRACTS,
   erc20Abi,
-  GAS_COMPENSATION,
   hintHelpersAbi,
   hintTrials,
+  LIQUIDATOR_COMPENSATION_ETH,
   maxUpfrontFee,
   MIN_DEBT,
   priceFeedAbi,
@@ -214,7 +214,7 @@ export function OpenPositionForm() {
       ]);
 
       if (balance < requiredApproval) {
-        throw new Error(`You need ${formatUnits(requiredApproval, 18)} SPY, including the 0.0375 SPY gas-compensation deposit.`);
+        throw new Error(`You need ${formatUnits(requiredApproval, 18)} SPY for this position.`);
       }
 
       let upperHint = 0n;
@@ -260,6 +260,7 @@ export function OpenPositionForm() {
         address: CONTRACTS.borrowerOperations,
         abi: borrowerOperationsAbi,
         functionName: 'openTrove',
+        value: LIQUIDATOR_COMPENSATION_ETH,
         args: [
           account,
           ownerIndex,
@@ -398,13 +399,13 @@ export function OpenPositionForm() {
 
       <details className="swap__note">
         <summary>What happens when you open a position?</summary>
-        <p>Your wallet first approves exactly the SPY needed for this position plus the protocol&apos;s 0.0375 SPY gas-compensation deposit. A second transaction deposits SPY and mints FUSD.</p>
+        <p>Your wallet first approves exactly the SPY needed for this position. A second transaction deposits the SPY, sends a 0.0375 ETH liquidator-compensation deposit, and mints FUSD.</p>
         <p>Your interest rate also determines your place in the redemption queue: lower-rate positions are redeemed first.</p>
       </details>
 
       {protocolError && active && <p className="warn">{protocolError}</p>}
       {unsafe && <p className="warn">This position is below the protocol&apos;s 110% minimum collateral ratio.</p>}
-      {insufficientSpy && <p className="warn">Your wallet does not have enough testnet SPY for the collateral and 0.0375 SPY gas-compensation deposit.</p>}
+      {insufficientSpy && <p className="warn">Your wallet does not have enough testnet SPY for the collateral.</p>}
       {chainState.isError && <p className="warn">Could not read the Robinhood testnet contracts. Try again before submitting.</p>}
       {upfrontFee.isError && <p className="warn">Could not quote the onchain upfront fee. Try again before submitting.</p>}
       {error && <p className="warn" role="alert">{error}</p>}

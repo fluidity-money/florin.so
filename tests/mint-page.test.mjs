@@ -35,3 +35,11 @@ test('mint page shows redemption risk and debt ahead in the queue', () => {
   assert.match(open, /redemption risk/);
   assert.match(open, /Redeemable before you/);
 });
+
+test('mint transaction pays liquidator compensation in ETH', () => {
+  const open = read('components/open-position-form.tsx');
+
+  assert.match(open, /value: LIQUIDATOR_COMPENSATION_ETH/);
+  assert.match(open, /0\.0375 ETH liquidator-compensation deposit/);
+  assert.doesNotMatch(open, /0\.0375 SPY gas-compensation deposit/);
+});

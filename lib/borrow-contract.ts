@@ -5,7 +5,7 @@ export const TOKEN_DECIMALS = 18;
 export const MIN_DEBT = 10n * 10n ** 18n;
 export const MIN_ANNUAL_INTEREST_RATE = 5n * 10n ** 15n;
 export const MAX_ANNUAL_INTEREST_RATE = 25n * 10n ** 17n;
-export const GAS_COMPENSATION = 37_500_000_000_000_000n;
+export const LIQUIDATOR_COMPENSATION_ETH = 37_500_000_000_000_000n;
 
 export const CONTRACTS = {
   spyToken: '0xb176FA7377B7AFe5f51627F69D09e5aa52D3c6f8',
@@ -45,7 +45,7 @@ export const sortedTrovesAbi = parseAbi([
 ]);
 
 export const borrowerOperationsAbi = parseAbi([
-  'function openTrove(address owner, uint256 ownerIndex, uint256 collAmount, uint256 boldAmount, uint256 upperHint, uint256 lowerHint, uint256 annualInterestRate, uint256 maxUpfrontFee, address addManager, address removeManager, address receiver) returns (uint256 troveId)',
+  'function openTrove(address owner, uint256 ownerIndex, uint256 collAmount, uint256 boldAmount, uint256 upperHint, uint256 lowerHint, uint256 annualInterestRate, uint256 maxUpfrontFee, address addManager, address removeManager, address receiver) payable returns (uint256 troveId)',
 ]);
 
 export const priceFeedAbi = parseAbi([
@@ -58,7 +58,7 @@ export function maxUpfrontFee(predictedFee: bigint): bigint {
 }
 
 export function requiredSpyApproval(collateral: bigint): bigint {
-  return collateral + GAS_COMPENSATION;
+  return collateral;
 }
 
 export function validateOpenTrove(
