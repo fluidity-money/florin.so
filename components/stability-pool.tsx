@@ -1,39 +1,32 @@
 'use client';
+
 import { useState } from 'react';
 import { Button } from './ui';
 import { RisksDialog } from './risks-dialog';
 import { Token, TokenIcon } from './token-icon';
-import {
-  PROTOCOL_STATS,
-  stabilityPoolApr,
-  MOCK_WALLET,
-  SP_INTEREST_SHARE,
-  MIN_COLLATERAL_RATIO,
-  ANNUAL_INTEREST_FUSD,
-} from '../lib/mockData';
-import { money, pct, xnum, compact } from '../lib/format';
+import type { EarnRewards } from '../lib/florin-markets';
+import { parseDisplayPercent } from '../lib/florin-markets';
+import { money, xnum } from '../lib/format';
+import { MIN_COLLATERAL_RATIO } from '../lib/protocol-constants';
+import { useWalletBalances } from '../lib/use-wallet-balances';
 import { useWallet } from './wallet/wallet';
 
-export function StabilityPool() {
+export function StabilityPool({ rewards }: { rewards: EarnRewards | null }) {
   const w = useWallet();
-  const [deposited, setDeposited] = useState(0);
+  const balances = useWalletBalances(w.address);
   const [depStr, setDepStr] = useState('');
 
-  const apr = stabilityPoolApr();
   const amt = Math.max(0, xnum(depStr));
-  const pool = PROTOCOL_STATS.stabilityPoolUsd;
-  const maxDeposit = Math.max(0, MOCK_WALLET.fusd - deposited);
+  const maxDeposit = balances.fusd;
   const overWallet = amt > maxDeposit + 0.005;
-
-  // Pool against the debt it may have to absorb. A high APR means this is low:
-  // the same interest split among fewer depositors, which is a warning rather
-  // than a reward.
-  const coverage = PROTOCOL_STATS.totalDebtUsd > 0 ? pool / PROTOCOL_STATS.totalDebtUsd : 0;
-  const coverageRisk = coverage >= 0.5 ? 'ok' : coverage >= 0.25 ? 'medium' : 'high';
-
-  // Your slice of the pool after this deposit, which is your slice of both the
-  // interest and the next liquidation.
-  const shareAfter = pool + amt > 0 ? (deposited + amt) / (pool + amt) : 0;
+  const coverage = parseDisplayPercent(rewards?.coverage);
+  const coverageRisk = coverage === null
+    ? 'high'
+    : coverage >= 0.5
+      ? 'ok'
+      : coverage >= 0.25
+        ? 'medium'
+        : 'high';
 
   return (
     <div className="swap">
@@ -51,39 +44,33 @@ export function StabilityPool() {
         burned and you are handed the seized SPY at a discount.
       </p>
 
-      {/* The pool. One branch today; this is a list so a second is a row. */}
       <div className="pool">
         <div className="pool__head">
           <div className="pool__ident">
             <TokenIcon symbol="SPY" size={30} />
             <span>
-            <span className="pool__name">SPY Stability Pool</span>
-            <span className="pool__tvl">
-              TVL <b>{compact(pool)}</b> FUSD
-            </span>
+              <span className="pool__name">SPY Stability Pool</span>
+              <span className="pool__tvl">
+                TVL <b>{rewards?.poolSize ?? '—'}</b> FUSD
+              </span>
             </span>
           </div>
           <div className="pool__aprs">
-            <span>
-              APR <b>{apr > 0 ? pct(apr * 100) : '—'}</b>
-            </span>
+            <span>APR <b>{rewards?.apr ?? '—'}</b></span>
             <span className="pool__apr-sub">
               <i className={`swap__dot swap__dot--${coverageRisk}`} />
-              covers {pct(coverage * 100, 0)} of debt
+              covers {rewards?.coverage ?? '—'} of FUSD supply
             </span>
           </div>
         </div>
         <div className="pool__foot">
-          <span className="tok-row">
-            Deposit <Token symbol="FUSD" size={16} />
-          </span>
+          <span className="tok-row">Deposit <Token symbol="FUSD" size={16} /></span>
           <span className="tok-row">
             Rewards <Token symbol="FUSD" size={16} /> <Token symbol="SPY" size={16} />
           </span>
         </div>
       </div>
 
-      {/* Deposit */}
       <div className="swap__field">
         <span className="swap__label">Your deposit</span>
         <div className="swap__row">
@@ -92,7 +79,7 @@ export function StabilityPool() {
             inputMode="decimal"
             placeholder="0.00"
             value={depStr}
-            onChange={(e) => setDepStr(e.target.value)}
+            onChange={(event) => setDepStr(event.target.value)}
             aria-label="FUSD to deposit"
           />
           <button
@@ -105,35 +92,23 @@ export function StabilityPool() {
           </button>
           <span className="swap__pill"><Token symbol="FUSD" size={18} /></span>
         </div>
-        <span className="swap__usd">
-          ${money(amt)}
-          {deposited > 0 && <> · ${money(deposited)} already in</>}
-        </span>
+        <span className="swap__usd">${money(amt)}</span>
       </div>
+
       {overWallet && (
-        <p className="swap__over">
-          You hold ${money(MOCK_WALLET.fusd, 2)} FUSD, of which ${money(maxDeposit, 2)} is
-          still free to deposit.
-        </p>
+        <p className="swap__over">You hold ${money(balances.fusd, 2)} FUSD.</p>
       )}
       <div className="swap__meta">
         <span>
-          You hold <b>${money(MOCK_WALLET.fusd, 2)}</b> FUSD
+          You hold <b>{balances.loading ? 'loading…' : `$${money(balances.fusd, 2)}`}</b> FUSD
         </span>
-        <span>
-          Pool share after <b>{pct(shareAfter * 100, 2)}</b>
-        </span>
-      </div>
-      <div className="swap__meta swap__meta--right">
-        <span>
-          Projected <b>${money((deposited + amt) * apr)}</b> / year
-        </span>
+        {balances.error && <span>Balance unavailable</span>}
       </div>
 
       <details className="swap__note">
         <summary>What the pool actually does</summary>
         <p>
-          It clears positions that fall below {pct(MIN_COLLATERAL_RATIO * 100, 0)}. The
+          It clears positions that fall below {Math.round(MIN_COLLATERAL_RATIO * 100)}%. The
           pool burns the trove&apos;s debt and receives its collateral, and the
           difference is your compensation for absorbing it.
         </p>
@@ -142,29 +117,11 @@ export function StabilityPool() {
           redemption, a separate mechanism that swaps FUSD for collateral from
           the cheapest-rate troves.
         </p>
-        <p>
-          Rewards come from {pct(SP_INTEREST_SHARE * 100, 0)} of borrower interest,
-          currently {compact(ANNUAL_INTEREST_FUSD * SP_INTEREST_SHARE)} a year across
-          the pool, plus the discount on every liquidation.
-        </p>
       </details>
 
-      <Button
-        variant="primary"
-        disabled={!w.connected || amt <= 0 || overWallet}
-        onClick={() => {
-          setDeposited((d) => d + amt);
-          setDepStr('');
-        }}
-      >
-        {w.connected ? 'Deposit FUSD →' : 'Connect wallet to continue'}
+      <Button variant="primary" disabled>
+        Stability Pool transactions coming soon
       </Button>
-
-      {deposited > 0 && (
-        <Button variant="ghost" onClick={() => setDeposited(0)}>
-          Withdraw all
-        </Button>
-      )}
 
       <RisksDialog label="A deposit can be converted to SPY" />
     </div>

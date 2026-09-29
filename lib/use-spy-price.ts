@@ -1,37 +1,46 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { SPY_PRICE_USD } from './mockData';
+import { formatUnits } from 'viem';
+import { CONTRACTS, priceFeedAbi } from './borrow-contract';
+import { robinhoodPublicClient } from './robinhood-client';
 
 export interface SpyPrice {
   price: number;
-  live: boolean; // false while loading, and if CoinGecko is unreachable
+  live: boolean;
   change24h: number | null;
 }
 
-// Reads the live token price once per mount, falling back to the constant so
-// every consumer always has a number to render. Nothing here blocks: the page
-// paints with the fallback and swaps to live when it arrives.
 export function useSpyPrice(): SpyPrice {
   const [state, setState] = useState<SpyPrice>({
-    price: SPY_PRICE_USD,
+    price: 0,
     live: false,
     change24h: null,
   });
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/spy-price')
-      .then((r) => r.json())
-      .then((d) => {
-        if (cancelled || typeof d?.usd !== 'number') return;
-        setState({ price: d.usd, live: true, change24h: d.change24h ?? null });
-      })
-      .catch(() => {
-        /* keep the fallback */
-      });
+
+    async function refresh() {
+      try {
+        const value = await robinhoodPublicClient.readContract({
+          address: CONTRACTS.spyPriceFeed,
+          abi: priceFeedAbi,
+          functionName: 'lastGoodPrice',
+        });
+        if (!cancelled) {
+          setState({ price: Number(formatUnits(value, 18)), live: true, change24h: null });
+        }
+      } catch {
+        if (!cancelled) setState({ price: 0, live: false, change24h: null });
+      }
+    }
+
+    void refresh();
+    const interval = window.setInterval(refresh, 30_000);
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
     };
   }, []);
 

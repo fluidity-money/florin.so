@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { MIN_COLLATERAL_RATIO } from '../lib/mockData';
+import { MIN_COLLATERAL_RATIO } from '../lib/protocol-constants';
 import { pct } from '../lib/format';
 
 // Single source for the risk copy, rendered inside the dialog that opens

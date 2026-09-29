@@ -1,9 +1,5 @@
-'use client';
-
 import Link from 'next/link';
-import { PROTOCOL_STATS, collateralValueUSD } from '../lib/mockData';
-import { compact } from '../lib/format';
-import { useSpyPrice } from '../lib/use-spy-price';
+import type { FlorinMarkets } from '../lib/florin-markets';
 
 // Landing hero: one painted field, one sentence, two ways in.
 //
@@ -11,14 +7,14 @@ import { useSpyPrice } from '../lib/use-spy-price';
 // deliberately plain: a badge, a headline, a line of copy, two buttons, and
 // the protocol's three numbers along the foot. Anything more competes with
 // the picture and none of it would win.
-export function Hero() {
-  const { price } = useSpyPrice();
-  const collateralUsd = collateralValueUSD(PROTOCOL_STATS.spyLocked, price);
+export function Hero({ markets }: { markets: FlorinMarkets }) {
+  const borrow = markets.borrowDetails[0];
+  const earn = markets.earnRewards[0];
 
   const stats: [string, string][] = [
-    ['Collateral deposited', compact(collateralUsd)],
-    ['FUSD in circulation', compact(PROTOCOL_STATS.fusdSupply)],
-    ['Stability Pool', compact(PROTOCOL_STATS.stabilityPoolUsd)],
+    ['Collateral deposited', borrow ? `${borrow.deposited} SPY` : '—'],
+    ['FUSD in circulation', borrow ? `${borrow.debtIssued} FUSD` : '—'],
+    ['Stability Pool', earn ? `${earn.poolSize} FUSD` : '—'],
   ];
 
   return (

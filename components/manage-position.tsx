@@ -3,22 +3,14 @@ import { useState } from 'react';
 import { Button, RatioBar } from './ui';
 import { RisksDialog } from './risks-dialog';
 import { Token, TokenIcon } from './token-icon';
-import {
-  metrics,
-  MIN_COLLATERAL_RATIO,
-  maxBorrowableFUSD,
-  MOCK_WALLET,
-  queueAhead,
-  RATE_BOOK_TOTAL,
-  AVG_RATE,
-  MIN_RATE,
-  MAX_RATE,
-} from '../lib/mockData';
-import { money, pct, xnum, compact } from '../lib/format';
+import { money, pct, xnum } from '../lib/format';
 import { useWallet } from './wallet/wallet';
 import { useSpyPrice } from '../lib/use-spy-price';
 import { useOpenPositions } from '../lib/use-open-positions';
 import type { FlorinPosition } from '../lib/florin-positions';
+import { maxBorrowableFUSD, positionMetrics } from '../lib/protocol-math';
+import { MAX_RATE, MIN_COLLATERAL_RATIO, MIN_RATE } from '../lib/protocol-constants';
+import { useWalletBalances } from '../lib/use-wallet-balances';
 
 type CollMode = 'deposit' | 'withdraw';
 type DebtMode = 'borrow' | 'repay';
@@ -75,7 +67,7 @@ function PositionNotice({
   );
 }
 
-export function ManagePosition() {
+export function ManagePosition({ marketAverageRate }: { marketAverageRate: number | null }) {
   const w = useWallet();
   const { status, positions, error, refresh } = useOpenPositions(w.address);
   const [selectedTroveId, setSelectedTroveId] = useState<string | null>(null);
@@ -112,6 +104,7 @@ export function ManagePosition() {
       position={position}
       positions={positions}
       onSelect={setSelectedTroveId}
+      marketAverageRate={marketAverageRate}
     />
   );
 }
@@ -120,28 +113,28 @@ function PositionEditor({
   position,
   positions,
   onSelect,
+  marketAverageRate,
 }: {
   position: FlorinPosition;
   positions: FlorinPosition[];
   onSelect: (troveId: string) => void;
+  marketAverageRate: number | null;
 }) {
   const w = useWallet();
+  const balances = useWalletBalances(w.address);
   const { price: spyPrice } = useSpyPrice();
-  const [collateral, setCollateral] = useState(position.collateralSPY);
-  const [debt, setDebt] = useState(position.debtFUSD);
+  const collateral = position.collateralSPY;
+  const debt = position.debtFUSD;
   const [rate, setRate] = useState(position.rate);
-  const [hasClosed, setHasClosed] = useState(false);
 
   const [collMode, setCollMode] = useState<CollMode>('deposit');
   const [debtMode, setDebtMode] = useState<DebtMode>('repay');
   const [collStr, setCollStr] = useState('');
   const [debtStr, setDebtStr] = useState('');
 
-  const m = metrics(collateral, debt, spyPrice);
+  const m = positionMetrics(collateral, debt, spyPrice);
   const cap = maxBorrowableFUSD(collateral, spyPrice);
   const freeUsd = Math.max(0, cap - debt);
-  const ahead = queueAhead(rate) * RATE_BOOK_TOTAL;
-  const closed = hasClosed || (collateral <= 0 && debt <= 0);
   const ltv = m.collateralUsd > 0 ? debt / m.collateralUsd : 0;
 
   const collAmt = Math.max(0, xnum(collStr));
@@ -153,11 +146,11 @@ function PositionEditor({
   const nextCollateral =
     collMode === 'deposit' ? collateral + collAmt : Math.max(0, collateral - collAmt);
   const nextDebt = debtMode === 'borrow' ? debt + debtAmt : Math.max(0, debt - debtAmt);
-  const preview = metrics(nextCollateral, nextDebt, spyPrice);
+  const preview = positionMetrics(nextCollateral, nextDebt, spyPrice);
   const pending = collAmt > 0 || debtAmt > 0;
 
-  const collMax = collMode === 'deposit' ? MOCK_WALLET.spy : collateral;
-  const debtMax = debtMode === 'borrow' ? freeUsd : Math.min(debt, MOCK_WALLET.fusd);
+  const collMax = collMode === 'deposit' ? balances.spy : collateral;
+  const debtMax = debtMode === 'borrow' ? freeUsd : Math.min(debt, balances.fusd);
   const collOver = collAmt > collMax + 1e-6;
   const debtOver = debtAmt > debtMax + 0.005;
 
@@ -165,36 +158,6 @@ function PositionEditor({
   const wouldBreach =
     pending && nextDebt > 0 && preview.collateralRatio < MIN_COLLATERAL_RATIO;
 
-  function applyCollateral() {
-    if (!collAmt || collOver || wouldBreach) return;
-    setCollateral(nextCollateral);
-    setCollStr('');
-  }
-  function applyDebt() {
-    if (!debtAmt || debtOver || wouldBreach) return;
-    setDebt(nextDebt);
-    setDebtStr('');
-  }
-
-  if (closed) {
-    return (
-      <div className="swap">
-        <h1 className="swap__title">
-          <span>Position closed</span>
-        </h1>
-        <div className="swap__done">
-          <span className="swap__done-mark" aria-hidden="true">
-            ✓
-          </span>
-          <h2>Trove closed</h2>
-          <p>All SPY reclaimed and FUSD repaid. Demo only, no transaction was sent.</p>
-          <a className="btn btn--primary" href="/open">
-            Open position →
-          </a>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="swap">
@@ -277,7 +240,7 @@ function PositionEditor({
           Interest <b>${money(debt * rate / 12)}</b> / mo
         </span>
         <span>
-          Redeemable before you <b>{compact(ahead)}</b>
+          Market average <b>{marketAverageRate === null ? '—' : pct(marketAverageRate * 100, 2)}</b>
         </span>
       </div>
 
@@ -320,23 +283,22 @@ function PositionEditor({
         </div>
         <span className="swap__usd">
           {collMode === 'deposit'
-            ? `you hold ${money(MOCK_WALLET.spy, 2)} SPY`
+            ? `you hold ${money(balances.spy, 2)} SPY`
             : `${money(collateral, 2)} SPY in the position`}
         </span>
       </div>
       {collOver && (
         <p className="swap__over">
           {collMode === 'deposit'
-            ? `You hold ${money(MOCK_WALLET.spy, 2)} SPY.`
+            ? `You hold ${money(balances.spy, 2)} SPY.`
             : `Only ${money(collateral, 2)} SPY is in the position.`}
         </p>
       )}
       <Button
         variant={collMode === 'deposit' ? 'primary' : 'ghost'}
-        disabled={!w.connected || collAmt <= 0 || collOver || wouldBreach}
-        onClick={applyCollateral}
+        disabled
       >
-        {collMode === 'deposit' ? 'Deposit SPY' : 'Withdraw SPY'}
+        Position transactions coming soon
       </Button>
 
       {/* Debt */}
@@ -379,7 +341,7 @@ function PositionEditor({
         <span className="swap__usd">
           {debtMode === 'borrow'
             ? `$${money(freeUsd)} free to borrow`
-            : `you hold $${money(MOCK_WALLET.fusd)} FUSD · $${money(debt)} owed`}
+            : `you hold $${money(balances.fusd)} FUSD · $${money(debt)} owed`}
         </span>
       </div>
       {debtOver && (
@@ -391,10 +353,9 @@ function PositionEditor({
       )}
       <Button
         variant={debtMode === 'repay' ? 'primary' : 'ghost'}
-        disabled={!w.connected || debtAmt <= 0 || debtOver || wouldBreach}
-        onClick={applyDebt}
+        disabled
       >
-        {debtMode === 'borrow' ? 'Borrow FUSD' : 'Repay FUSD'}
+        Position transactions coming soon
       </Button>
 
       {/* What the pending change does, before it is applied */}
@@ -421,7 +382,7 @@ function PositionEditor({
       <div className="swap__field swap__field--rate">
         <div className="swap__row">
           <span className="swap__label">
-            Your interest rate <em>(avg. {pct(AVG_RATE * 100, 2)})</em>
+            Your interest rate <em>(avg. {marketAverageRate === null ? '—' : pct(marketAverageRate * 100, 2)})</em>
           </span>
         </div>
         <div className="swap__row">
@@ -443,16 +404,16 @@ function PositionEditor({
       </div>
 
       <details className="swap__note">
-        <summary>Repricing is how you leave the redemption queue</summary>
+        <summary>Interest rate and redemption order</summary>
         <p>
           Redemptions are filled from the cheapest troves first. Raising your
           rate costs more but moves troves cheaper than yours in front of you.
-          Right now <b>{compact(ahead)}</b> of protocol debt sits ahead of you.
+          Exact queue depth is not available from the current market API.
         </p>
       </details>
 
-      <Button variant="danger" disabled={!w.connected} onClick={() => setHasClosed(true)}>
-        Close position
+      <Button variant="danger" disabled>
+        Position transactions coming soon
       </Button>
 
       <RisksDialog label="What can take this position" />

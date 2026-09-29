@@ -61,3 +61,9 @@ export function isFlorinMarkets(value: unknown): value is FlorinMarkets {
 export function hasMarketData(markets: FlorinMarkets): boolean {
   return markets.borrowDetails.length > 0 || markets.earnRewards.length > 0;
 }
+
+export function parseDisplayPercent(value: string | undefined): number | null {
+  if (!value) return null;
+  const parsed = Number.parseFloat(value.replace('%', ''));
+  return Number.isFinite(parsed) ? parsed / 100 : null;
+}

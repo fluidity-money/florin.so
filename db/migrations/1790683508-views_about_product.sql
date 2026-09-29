@@ -169,8 +169,3 @@ FROM positions
 WHERE debt > 0 AND coll > 0;
 
 -- migrate:down
-
-DROP VIEW florin_outstanding_positions_1;
-DROP VIEW florin_stability_pool_1;
-DROP VIEW florin_collateral_deposited_1;
-DROP VIEW florin_fusd_outstanding_1;

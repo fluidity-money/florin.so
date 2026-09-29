@@ -28,12 +28,13 @@ test('mint page offers a maximum FUSD amount', () => {
   assert.match(open, />\s*Max\s*</);
 });
 
-test('mint page shows redemption risk and debt ahead in the queue', () => {
+test('mint page uses the live market average without inventing queue depth', () => {
   const open = read('components/open-position-form.tsx');
 
   assert.match(open, /redemptionRisk/);
   assert.match(open, /redemption risk/);
-  assert.match(open, /Redeemable before you/);
+  assert.match(open, /marketAverageRate/);
+  assert.doesNotMatch(open, /Redeemable before you|queueAhead|RATE_BOOK_TOTAL/);
 });
 
 test('mint flow wraps ETH and approves WETH for liquidator compensation', () => {

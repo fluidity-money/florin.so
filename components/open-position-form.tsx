@@ -17,8 +17,13 @@ import { robinhoodTestnet } from '@reown/appkit/networks';
 import { Button } from './ui';
 import { RisksDialog } from './risks-dialog';
 import { Token, TokenIcon } from './token-icon';
-import { compact, money, pct, xnum } from '../lib/format';
-import { AVG_RATE, queueAhead, RATE_BOOK_TOTAL } from '../lib/mockData';
+import { money, pct, xnum } from '../lib/format';
+import {
+  DEFAULT_RATE,
+  MAX_RATE,
+  MIN_COLLATERAL_RATIO,
+  MIN_RATE,
+} from '../lib/protocol-constants';
 import {
   describeTransactionError,
   type TransactionErrorDescription,
@@ -45,11 +50,7 @@ import {
 } from '../lib/borrow-contract';
 
 const publicClient = createPublicClient({ chain: robinhoodTestnet, transport: http() });
-const MIN_RATE = 0.005;
-const MAX_RATE = 0.25;
-const DEFAULT_RATE = 0.06;
-const MCR = 1.1;
-const MAX_LTV = 1 / MCR;
+const MAX_LTV = 1 / MIN_COLLATERAL_RATIO;
 
 type TxStage = 'idle' | 'switching' | 'wrapping' | 'approving-weth' | 'approving' | 'opening' | 'confirming';
 
@@ -85,7 +86,7 @@ async function ensureRobinhoodTestnet(provider: NonNullable<ReturnType<typeof us
   }
 }
 
-export function OpenPositionForm() {
+export function OpenPositionForm({ marketAverageRate }: { marketAverageRate: number | null }) {
   const wallet = useWallet();
   const account = wallet.address as Address | null;
   const [spyStr, setSpyStr] = useState('');
@@ -149,18 +150,23 @@ export function OpenPositionForm() {
   const collateralUsd = spy * spyPrice;
   const collateralRatio = totalDebt > 0 ? collateralUsd / totalDebt : 0;
   const ltv = collateralUsd > 0 ? totalDebt / collateralUsd : 0;
-  const maxBorrow = collateralUsd / MCR;
-  const liquidationPrice = spy > 0 && totalDebt > 0 ? MCR * totalDebt / spy : 0;
+  const maxBorrow = collateralUsd / MIN_COLLATERAL_RATIO;
+  const liquidationPrice = spy > 0 && totalDebt > 0 ? MIN_COLLATERAL_RATIO * totalDebt / spy : 0;
   const annualInterest = totalDebt * rate;
-  const ahead = queueAhead(rate) * RATE_BOOK_TOTAL;
-  const redemptionRisk = rate >= AVG_RATE ? 'low' : rate >= AVG_RATE * 0.6 ? 'medium' : 'high';
+  const redemptionRisk = marketAverageRate === null
+    ? null
+    : rate >= marketAverageRate
+      ? 'low'
+      : rate >= marketAverageRate * 0.6
+        ? 'medium'
+        : 'high';
   const pending = stage !== 'idle';
   const walletBalance = chainState.data ? Number(formatUnits(chainState.data.balance, 18)) : 0;
   const protocolError = validateOpenTrove(collateralWei, borrowedWei, rateWei);
   const insufficientSpy = chainState.data
     ? chainState.data.balance < requiredSpyApproval(collateralWei)
     : false;
-  const unsafe = totalDebt > 0 && collateralRatio < MCR;
+  const unsafe = totalDebt > 0 && collateralRatio < MIN_COLLATERAL_RATIO;
   const active = collateralWei > 0n && borrowedWei > 0n;
 
   function reportError(cause: unknown, failureStage: TransactionFailureStage, transactionHash: Hash | null = null) {
@@ -496,8 +502,12 @@ export function OpenPositionForm() {
         <span className="swap__usd">${money(annualInterest)} FUSD / year</span>
       </div>
       <div className="swap__meta">
-        <span><i className={`swap__dot swap__dot--${redemptionRisk}`} /> {redemptionRisk} redemption risk</span>
-        <span>Redeemable before you <b>{compact(ahead)}</b></span>
+        {redemptionRisk ? (
+          <span><i className={`swap__dot swap__dot--${redemptionRisk}`} /> {redemptionRisk} redemption risk</span>
+        ) : (
+          <span>Market average rate unavailable</span>
+        )}
+        <span>Market average <b>{marketAverageRate === null ? '—' : pct(marketAverageRate * 100, 2)}</b></span>
       </div>
 
       <details className="swap__note">

@@ -36,7 +36,7 @@ export function Footer() {
           <p className="site-footer__legal">
             FLORIN © 2026
             <br />
-            SPY ${money(price)} · {live ? 'COINGECKO' : 'FALLBACK'}
+            SPY {live ? `$${money(price)}` : '—'} · {live ? 'ONCHAIN' : 'UNAVAILABLE'}
           </p>
 
           <a

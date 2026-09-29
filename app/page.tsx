@@ -2,11 +2,13 @@ import Link from 'next/link';
 import { Hero } from '../components/hero';
 import { Markets } from '../components/markets';
 import { RisksDialog } from '../components/risks-dialog';
+import { fetchFlorinMarkets } from '../lib/florin-graph';
 
-export default function HomePage() {
+export default async function HomePage() {
+  const markets = await fetchFlorinMarkets();
   return (
     <div className="home home--hero">
-      <Hero />
+      <Hero markets={markets} />
 
       <div className="home-action-grid">
         <Link href="/open" className="card home-action">
@@ -41,7 +43,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      <Markets />
+      <Markets initialData={markets} />
 
       <RisksDialog label="Before you borrow, read what can go wrong" />
     </div>
