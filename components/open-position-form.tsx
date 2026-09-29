@@ -24,6 +24,8 @@ import {
   MIN_COLLATERAL_RATIO,
   MIN_RATE,
 } from '../lib/protocol-constants';
+import { parseDisplayPercent, spyMarket, type FlorinMarkets } from '../lib/florin-markets';
+import { useFlorinMarkets } from '../lib/use-florin-markets';
 import {
   describeTransactionError,
   type TransactionErrorDescription,
@@ -86,8 +88,11 @@ async function ensureRobinhoodTestnet(provider: NonNullable<ReturnType<typeof us
   }
 }
 
-export function OpenPositionForm({ marketAverageRate }: { marketAverageRate: number | null }) {
+export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMarkets }) {
   const wallet = useWallet();
+  const markets = useFlorinMarkets(initialMarkets);
+  const { borrow: spyMarketDetails } = spyMarket(markets);
+  const marketAverageRate = parseDisplayPercent(spyMarketDetails?.avgRatePa);
   const account = wallet.address as Address | null;
   const [spyStr, setSpyStr] = useState('');
   const [debtStr, setDebtStr] = useState('');
@@ -140,6 +145,23 @@ export function OpenPositionForm({ marketAverageRate }: { marketAverageRate: num
     }),
   });
 
+  // Quote a fee at the total debt ceiling, then subtract it from principal.
+  // This is conservative because the resulting principal is lower than the
+  // amount used for the fee quote.
+  const maxTotalDebtWei = chainState.data
+    ? (collateralWei * chainState.data.price * 10n) / (10n ** 18n * 11n)
+    : 0n;
+  const maxBorrowFee = useQuery({
+    queryKey: ['open-trove-max-fee', maxTotalDebtWei.toString(), rateWei.toString()],
+    enabled: maxTotalDebtWei >= MIN_DEBT,
+    queryFn: () => publicClient.readContract({
+      address: CONTRACTS.hintHelpers,
+      abi: hintHelpersAbi,
+      functionName: 'predictOpenTroveUpfrontFee',
+      args: [0n, maxTotalDebtWei, rateWei],
+    }),
+  });
+
   const chainReady = Boolean(chainState.data);
   const feeReady = borrowedWei < MIN_DEBT || upfrontFee.data !== undefined;
   const spyPrice = chainState.data ? Number(formatUnits(chainState.data.price, 18)) : 0;
@@ -150,7 +172,10 @@ export function OpenPositionForm({ marketAverageRate }: { marketAverageRate: num
   const collateralUsd = spy * spyPrice;
   const collateralRatio = totalDebt > 0 ? collateralUsd / totalDebt : 0;
   const ltv = collateralUsd > 0 ? totalDebt / collateralUsd : 0;
-  const maxBorrow = collateralUsd / MIN_COLLATERAL_RATIO;
+  const maxBorrowWei = maxTotalDebtWei > (maxBorrowFee.data ?? maxTotalDebtWei)
+    ? maxTotalDebtWei - (maxBorrowFee.data ?? 0n)
+    : 0n;
+  const maxBorrow = Number(formatUnits(maxBorrowWei, 18));
   const liquidationPrice = spy > 0 && totalDebt > 0 ? MIN_COLLATERAL_RATIO * totalDebt / spy : 0;
   const annualInterest = totalDebt * rate;
   const redemptionRisk = marketAverageRate === null

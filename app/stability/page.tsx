@@ -6,5 +6,5 @@ export const metadata: Metadata = { title: 'Earn — Florin' };
 
 export default async function StabilityPage() {
   const markets = await fetchFlorinMarkets();
-  return <StabilityPool rewards={markets.earnRewards[0] ?? null} />;
+  return <StabilityPool initialMarkets={markets} />;
 }

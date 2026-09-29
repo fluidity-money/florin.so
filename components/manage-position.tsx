@@ -11,6 +11,8 @@ import type { FlorinPosition } from '../lib/florin-positions';
 import { maxBorrowableFUSD, positionMetrics } from '../lib/protocol-math';
 import { MAX_RATE, MIN_COLLATERAL_RATIO, MIN_RATE } from '../lib/protocol-constants';
 import { useWalletBalances } from '../lib/use-wallet-balances';
+import { parseDisplayPercent, spyMarket, type FlorinMarkets } from '../lib/florin-markets';
+import { useFlorinMarkets } from '../lib/use-florin-markets';
 
 type CollMode = 'deposit' | 'withdraw';
 type DebtMode = 'borrow' | 'repay';
@@ -67,8 +69,11 @@ function PositionNotice({
   );
 }
 
-export function ManagePosition({ marketAverageRate }: { marketAverageRate: number | null }) {
+export function ManagePosition({ initialMarkets }: { initialMarkets: FlorinMarkets }) {
   const w = useWallet();
+  const markets = useFlorinMarkets(initialMarkets);
+  const { borrow: spyMarketDetails } = spyMarket(markets);
+  const marketAverageRate = parseDisplayPercent(spyMarketDetails?.avgRatePa);
   const { status, positions, error, refresh } = useOpenPositions(w.address);
   const [selectedTroveId, setSelectedTroveId] = useState<string | null>(null);
 
@@ -122,7 +127,8 @@ function PositionEditor({
 }) {
   const w = useWallet();
   const balances = useWalletBalances(w.address);
-  const { price: spyPrice } = useSpyPrice();
+  const { price: spyPrice, live: priceLive } = useSpyPrice();
+  const priceReady = priceLive && spyPrice > 0;
   const collateral = position.collateralSPY;
   const debt = position.debtFUSD;
   const [rate, setRate] = useState(position.rate);
@@ -134,7 +140,7 @@ function PositionEditor({
 
   const m = positionMetrics(collateral, debt, spyPrice);
   const cap = maxBorrowableFUSD(collateral, spyPrice);
-  const freeUsd = Math.max(0, cap - debt);
+  const freeUsd = priceReady ? Math.max(0, cap - debt) : 0;
   const ltv = m.collateralUsd > 0 ? debt / m.collateralUsd : 0;
 
   const collAmt = Math.max(0, xnum(collStr));
@@ -150,13 +156,15 @@ function PositionEditor({
   const pending = collAmt > 0 || debtAmt > 0;
 
   const collMax = collMode === 'deposit' ? balances.spy : collateral;
-  const debtMax = debtMode === 'borrow' ? freeUsd : Math.min(debt, balances.fusd);
-  const collOver = collAmt > collMax + 1e-6;
-  const debtOver = debtAmt > debtMax + 0.005;
+  const debtMax = debtMode === 'borrow' ? (priceReady ? freeUsd : 0) : Math.min(debt, balances.fusd);
+  const collOver = (collMode !== 'deposit' || (!balances.loading && !balances.error))
+    && collAmt > collMax + 1e-6;
+  const debtOver = (debtMode === 'borrow' ? priceReady : !balances.loading && !balances.error)
+    && debtAmt > debtMax + 0.005;
 
   // Withdrawing or borrowing must not push the position under the floor.
   const wouldBreach =
-    pending && nextDebt > 0 && preview.collateralRatio < MIN_COLLATERAL_RATIO;
+    priceReady && pending && nextDebt > 0 && preview.collateralRatio < MIN_COLLATERAL_RATIO;
 
 
   return (
@@ -196,43 +204,44 @@ function PositionEditor({
             <span>
               <span className="pool__name">{money(collateral, 2)} SPY deposited</span>
               <span className="pool__tvl">
-                worth <b>${money(m.collateralUsd)}</b>
+                worth <b>{priceReady ? `$${money(m.collateralUsd)}` : '—'}</b>
               </span>
             </span>
           </div>
           <div className="pool__aprs">
             <span>
-              LTV <b>{pct(ltv * 100, 1)}</b>
+              LTV <b>{priceReady ? pct(ltv * 100, 1) : '—'}</b>
             </span>
             <span className="pool__apr-sub">
-              <i className={`swap__dot swap__dot--${m.health}`} />
-              {m.health}
+              {priceReady ? <><i className={`swap__dot swap__dot--${m.health}`} />{m.health}</> : 'oracle unavailable'}
             </span>
           </div>
         </div>
         <div className="pool__bar">
-          <RatioBar
-            ratioPct={m.collateralRatioPct}
-            minPct={MIN_COLLATERAL_RATIO * 100}
-            health={m.health}
-          />
+          {priceReady && (
+            <RatioBar
+              ratioPct={m.collateralRatioPct}
+              minPct={MIN_COLLATERAL_RATIO * 100}
+              health={m.health}
+            />
+          )}
         </div>
         <div className="pool__foot">
           <span className="tok-row">
             Debt <b>${money(debt)}</b> <Token symbol="FUSD" size={16} />
           </span>
           <span className="tok-row">
-            Free to borrow <b>${money(freeUsd)}</b>
+            Free to borrow <b>{priceReady ? `$${money(freeUsd)}` : '—'}</b>
           </span>
         </div>
       </div>
 
       <div className="swap__meta">
         <span>
-          Liquidation price <b>${money(m.liquidationPriceUsd)}</b>
+          Liquidation price <b>{priceReady ? `$${money(m.liquidationPriceUsd)}` : '—'}</b>
         </span>
         <span>
-          SPY price <b>${money(spyPrice)}</b>
+          SPY price <b>{priceReady ? `$${money(spyPrice)}` : '—'}</b>
         </span>
       </div>
       <div className="swap__meta">
@@ -283,7 +292,9 @@ function PositionEditor({
         </div>
         <span className="swap__usd">
           {collMode === 'deposit'
-            ? `you hold ${money(balances.spy, 2)} SPY`
+            ? balances.loading || balances.error
+              ? 'Wallet balance unavailable'
+              : `you hold ${money(balances.spy, 2)} SPY`
             : `${money(collateral, 2)} SPY in the position`}
         </span>
       </div>
@@ -340,8 +351,10 @@ function PositionEditor({
         </div>
         <span className="swap__usd">
           {debtMode === 'borrow'
-            ? `$${money(freeUsd)} free to borrow`
-            : `you hold $${money(balances.fusd)} FUSD · $${money(debt)} owed`}
+            ? priceReady ? `$${money(freeUsd)} free to borrow` : 'Oracle price unavailable'
+            : balances.loading || balances.error
+              ? 'Wallet balance unavailable'
+              : `you hold $${money(balances.fusd)} FUSD · $${money(debt)} owed`}
         </span>
       </div>
       {debtOver && (
@@ -359,7 +372,7 @@ function PositionEditor({
       </Button>
 
       {/* What the pending change does, before it is applied */}
-      {pending && (
+      {pending && priceReady && (
         <div className={`swap__meta${wouldBreach ? ' swap__meta--bad' : ''}`}>
           <span>
             <i className={`swap__dot swap__dot--${wouldBreach ? 'liquidation' : preview.health}`} />

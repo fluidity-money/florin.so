@@ -1,13 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { FLORIN_GRAPH_URL, MARKET_QUERY } from '../lib/florin-market-query';
-import { isFlorinMarkets, hasMarketData, type FlorinMarkets } from '../lib/florin-markets';
+import type { FlorinMarkets } from '../lib/florin-markets';
+import { useFlorinMarkets } from '../lib/use-florin-markets';
 import { Table } from './ui';
 import { Token } from './token-icon';
 
-const STORAGE_KEY = 'florin:markets:v1';
 
 function Collateral({ name }: { name: string }) {
   if (name === 'SPY' || name === 'FUSD') {
@@ -25,65 +23,7 @@ const unavailableRow = [
 ];
 
 export function MarketsClient({ initialData }: { initialData: FlorinMarkets }) {
-  const [markets, setMarkets] = useState(initialData);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    // Preserve useful server data immediately. If the server had no data, use
-    // the browser's last successful result while the fresh request is in flight.
-    try {
-      if (hasMarketData(initialData)) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(initialData));
-      } else {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const parsed: unknown = JSON.parse(stored);
-          if (isFlorinMarkets(parsed)) setMarkets(parsed);
-        }
-      }
-    } catch {
-      // Storage can be disabled or full; live refresh should still proceed.
-    }
-
-    async function refresh() {
-      try {
-        const response = await fetch(FLORIN_GRAPH_URL, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ query: MARKET_QUERY }),
-          cache: 'no-store',
-        });
-        if (!response.ok) throw new Error(`market refresh returned HTTP ${response.status}`);
-
-        const result = (await response.json()) as {
-          data?: unknown;
-          errors?: { message: string }[];
-        };
-        if (result.errors?.length) {
-          throw new Error(result.errors.map(({ message }) => message).join('; '));
-        }
-
-        const latest = result.data;
-        if (!isFlorinMarkets(latest)) throw new Error('market refresh returned invalid data');
-        if (cancelled) return;
-
-        setMarkets(latest);
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(latest));
-        } catch {
-          // Rendering fresh data does not depend on storage being available.
-        }
-      } catch (error) {
-        console.error('Unable to refresh Florin market data:', error);
-      }
-    }
-
-    void refresh();
-    return () => {
-      cancelled = true;
-    };
-  }, [initialData]);
+  const markets = useFlorinMarkets(initialData);
 
   const borrowRows = markets.borrowDetails.map((details) => [
     <Collateral name={details.collateral.name} key="asset" />,

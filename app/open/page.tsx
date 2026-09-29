@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { OpenPositionForm } from '../../components/open-position-form';
 import { fetchFlorinMarkets } from '../../lib/florin-graph';
-import { parseDisplayPercent } from '../../lib/florin-markets';
 
 export const metadata: Metadata = { title: 'Open position — Florin' };
 
@@ -9,6 +8,5 @@ export const metadata: Metadata = { title: 'Open position — Florin' };
 // it just said the same thing twice.
 export default async function OpenPage() {
   const markets = await fetchFlorinMarkets();
-  const marketAverageRate = parseDisplayPercent(markets.borrowDetails[0]?.avgRatePa);
-  return <OpenPositionForm marketAverageRate={marketAverageRate} />;
+  return <OpenPositionForm initialMarkets={markets} />;
 }

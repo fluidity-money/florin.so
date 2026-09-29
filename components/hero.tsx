@@ -1,5 +1,8 @@
+'use client';
+
 import Link from 'next/link';
-import type { FlorinMarkets } from '../lib/florin-markets';
+import { spyMarket, type FlorinMarkets } from '../lib/florin-markets';
+import { useFlorinMarkets } from '../lib/use-florin-markets';
 
 // Landing hero: one painted field, one sentence, two ways in.
 //
@@ -8,8 +11,8 @@ import type { FlorinMarkets } from '../lib/florin-markets';
 // the protocol's three numbers along the foot. Anything more competes with
 // the picture and none of it would win.
 export function Hero({ markets }: { markets: FlorinMarkets }) {
-  const borrow = markets.borrowDetails[0];
-  const earn = markets.earnRewards[0];
+  const liveMarkets = useFlorinMarkets(markets);
+  const { borrow, earn } = spyMarket(liveMarkets);
 
   const stats: [string, string][] = [
     ['Collateral deposited', borrow ? `${borrow.deposited} SPY` : '—'],

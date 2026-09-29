@@ -30,23 +30,24 @@ export function useWalletBalances(owner: string | null): WalletBalances {
 
     let cancelled = false;
     const address = owner as Address;
-    setBalances((current) => ({ ...current, loading: true, error: false }));
+    setBalances({ ...EMPTY_BALANCES, loading: true });
 
-    Promise.all([
-      robinhoodPublicClient.readContract({
-        address: CONTRACTS.spyToken,
-        abi: erc20Abi,
-        functionName: 'balanceOf',
-        args: [address],
-      }),
-      robinhoodPublicClient.readContract({
-        address: CONTRACTS.boldToken,
-        abi: erc20Abi,
-        functionName: 'balanceOf',
-        args: [address],
-      }),
-    ])
-      .then(([spy, fusd]) => {
+    async function refresh() {
+      try {
+        const [spy, fusd] = await Promise.all([
+          robinhoodPublicClient.readContract({
+            address: CONTRACTS.spyToken,
+            abi: erc20Abi,
+            functionName: 'balanceOf',
+            args: [address],
+          }),
+          robinhoodPublicClient.readContract({
+            address: CONTRACTS.boldToken,
+            abi: erc20Abi,
+            functionName: 'balanceOf',
+            args: [address],
+          }),
+        ]);
         if (cancelled) return;
         setBalances({
           spy: Number(formatUnits(spy, 18)),
@@ -54,13 +55,16 @@ export function useWalletBalances(owner: string | null): WalletBalances {
           loading: false,
           error: false,
         });
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setBalances({ ...EMPTY_BALANCES, error: true });
-      });
+      }
+    }
 
+    void refresh();
+    const interval = window.setInterval(refresh, 15_000);
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
     };
   }, [owner]);
 

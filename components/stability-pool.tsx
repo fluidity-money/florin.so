@@ -4,21 +4,23 @@ import { useState } from 'react';
 import { Button } from './ui';
 import { RisksDialog } from './risks-dialog';
 import { Token, TokenIcon } from './token-icon';
-import type { EarnRewards } from '../lib/florin-markets';
-import { parseDisplayPercent } from '../lib/florin-markets';
+import { parseDisplayPercent, spyMarket, type FlorinMarkets } from '../lib/florin-markets';
 import { money, xnum } from '../lib/format';
 import { MIN_COLLATERAL_RATIO } from '../lib/protocol-constants';
 import { useWalletBalances } from '../lib/use-wallet-balances';
 import { useWallet } from './wallet/wallet';
+import { useFlorinMarkets } from '../lib/use-florin-markets';
 
-export function StabilityPool({ rewards }: { rewards: EarnRewards | null }) {
+export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarkets }) {
   const w = useWallet();
+  const markets = useFlorinMarkets(initialMarkets);
+  const { earn: rewards } = spyMarket(markets);
   const balances = useWalletBalances(w.address);
   const [depStr, setDepStr] = useState('');
 
   const amt = Math.max(0, xnum(depStr));
   const maxDeposit = balances.fusd;
-  const overWallet = amt > maxDeposit + 0.005;
+  const overWallet = !balances.loading && !balances.error && amt > maxDeposit + 0.005;
   const coverage = parseDisplayPercent(rewards?.coverage);
   const coverageRisk = coverage === null
     ? 'high'
@@ -100,7 +102,7 @@ export function StabilityPool({ rewards }: { rewards: EarnRewards | null }) {
       )}
       <div className="swap__meta">
         <span>
-          You hold <b>{balances.loading ? 'loading…' : `$${money(balances.fusd, 2)}`}</b> FUSD
+          You hold <b>{balances.loading ? 'loading…' : balances.error ? '—' : `$${money(balances.fusd, 2)}`}</b> FUSD
         </span>
         {balances.error && <span>Balance unavailable</span>}
       </div>

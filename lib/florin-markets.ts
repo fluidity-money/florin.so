@@ -62,6 +62,16 @@ export function hasMarketData(markets: FlorinMarkets): boolean {
   return markets.borrowDetails.length > 0 || markets.earnRewards.length > 0;
 }
 
+export function spyMarket(markets: FlorinMarkets): {
+  borrow: BorrowDetails | null;
+  earn: EarnRewards | null;
+} {
+  return {
+    borrow: markets.borrowDetails.find(({ collateral }) => collateral.name === 'SPY') ?? null,
+    earn: markets.earnRewards.find(({ collateral }) => collateral.name === 'SPY') ?? null,
+  };
+}
+
 export function parseDisplayPercent(value: string | undefined): number | null {
   if (!value) return null;
   const parsed = Number.parseFloat(value.replace('%', ''));

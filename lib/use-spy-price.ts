@@ -32,7 +32,7 @@ export function useSpyPrice(): SpyPrice {
           setState({ price: Number(formatUnits(value, 18)), live: true, change24h: null });
         }
       } catch {
-        if (!cancelled) setState({ price: 0, live: false, change24h: null });
+        if (!cancelled) setState((current) => ({ ...current, live: false }));
       }
     }
 

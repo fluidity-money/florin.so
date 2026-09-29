@@ -33,22 +33,26 @@ test('server-rendered market data uses the Next data cache', () => {
 test('browser refreshes directly from Florin GraphQL and persists the latest data', () => {
   const query = read('lib/florin-market-query.ts');
   const client = read('components/markets-client.tsx');
+  const hook = read('lib/use-florin-markets.ts');
 
   assert.match(client, /^'use client';/);
-  assert.match(client, /fetch\(FLORIN_GRAPH_URL/);
-  assert.match(client, /method:\s*'POST'/);
-  assert.match(client, /body:\s*JSON\.stringify\(\{\s*query:\s*MARKET_QUERY\s*\}\)/);
-  assert.match(client, /cache:\s*'no-store'/);
+  assert.match(client, /useFlorinMarkets\(initialData\)/);
+  assert.match(hook, /fetch\(FLORIN_GRAPH_URL/);
+  assert.match(hook, /method:\s*'POST'/);
+  assert.match(hook, /body:\s*JSON\.stringify\(\{\s*query:\s*MARKET_QUERY\s*\}\)/);
+  assert.match(hook, /cache:\s*'no-store'/);
   assert.match(query, /https:\/\/graph\.florin\.so/);
-  assert.doesNotMatch(client, /\/api\/florin-markets/);
+  assert.doesNotMatch(hook, /\/api\/florin-markets/);
   assert.equal(
     existsSync(new URL('../app/api/florin-markets/route.ts', import.meta.url)),
     false,
     'the Next.js market API route should not exist',
   );
-  assert.match(client, /localStorage\.getItem/);
-  assert.match(client, /localStorage\.setItem/);
-  assert.match(client, /useState\(initialData\)/);
+  assert.match(hook, /localStorage\.getItem/);
+  assert.match(hook, /localStorage\.setItem/);
+  assert.match(hook, /queryKey:\s*QUERY_KEY/);
+  assert.match(hook, /initialData/);
+  assert.match(hook, /refetchInterval:\s*60_000/);
 });
 
 test('market rendering no longer imports hardcoded protocol statistics', () => {
