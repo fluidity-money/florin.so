@@ -23,6 +23,7 @@ import { robinhoodPublicClient } from '../lib/robinhood-client';
 import {
   CONTRACTS,
   erc20Abi,
+  MIN_FUSD_IN_STABILITY_POOL,
   ROBINHOOD_TESTNET_CHAIN_ID,
   stabilityPoolAbi,
   validateStabilityPoolAmount,
@@ -34,7 +35,7 @@ type TxStage = 'idle' | 'switching' | 'approving' | 'submitting' | 'confirming';
 function parseToken(value: string): bigint {
   if (!value.trim()) return 0n;
   try {
-    return parseUnits(value.replaceAll(',', ''), 18);
+    return parseUnits(value, 18);
   } catch {
     return 0n;
   }
@@ -106,7 +107,7 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
     enabled: Boolean(account),
     refetchInterval: 15_000,
     queryFn: async () => {
-      const [walletBalance, allowance, deposit, collGain, yieldGain, stashedColl] = await Promise.all([
+      const [walletBalance, deposit, totalDeposits, collGain, yieldGain, stashedColl] = await Promise.all([
         robinhoodPublicClient.readContract({
           address: CONTRACTS.boldToken,
           abi: erc20Abi,
@@ -114,16 +115,15 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
           args: [account!],
         }),
         robinhoodPublicClient.readContract({
-          address: CONTRACTS.boldToken,
-          abi: erc20Abi,
-          functionName: 'allowance',
-          args: [account!, CONTRACTS.stabilityPool],
-        }),
-        robinhoodPublicClient.readContract({
           address: CONTRACTS.stabilityPool,
           abi: stabilityPoolAbi,
           functionName: 'getCompoundedBoldDeposit',
           args: [account!],
+        }),
+        robinhoodPublicClient.readContract({
+          address: CONTRACTS.stabilityPool,
+          abi: stabilityPoolAbi,
+          functionName: 'getTotalBoldDeposits',
         }),
         robinhoodPublicClient.readContract({
           address: CONTRACTS.stabilityPool,
@@ -144,7 +144,7 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
           args: [account!],
         }),
       ]);
-      return { walletBalance, allowance, deposit, collGain, yieldGain, stashedColl };
+      return { walletBalance, deposit, totalDeposits, collGain, yieldGain, stashedColl };
     },
   });
 
@@ -152,7 +152,14 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
   const available = mode === 'deposit'
     ? position.data?.walletBalance ?? 0n
     : position.data?.deposit ?? 0n;
-  const validationError = validateStabilityPoolAmount(mode, amount, available);
+  const totalDeposits = position.data?.totalDeposits ?? 0n;
+  const withdrawableFromPool = totalDeposits > MIN_FUSD_IN_STABILITY_POOL
+    ? totalDeposits - MIN_FUSD_IN_STABILITY_POOL
+    : 0n;
+  const maxAmount = mode === 'deposit'
+    ? available
+    : available < withdrawableFromPool ? available : withdrawableFromPool;
+  const validationError = validateStabilityPoolAmount(mode, amount, available, totalDeposits);
   const pending = stage !== 'idle';
   const deposit = position.data?.deposit ?? 0n;
   const fusdReward = position.data?.yieldGain ?? 0n;
@@ -207,7 +214,7 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
       });
 
       if (action === 'deposit') {
-        const [walletBalance, allowance] = await Promise.all([
+        const [walletBalance, allowance, currentTotalDeposits] = await Promise.all([
           robinhoodPublicClient.readContract({
             address: CONTRACTS.boldToken,
             abi: erc20Abi,
@@ -220,8 +227,18 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
             functionName: 'allowance',
             args: [account, CONTRACTS.stabilityPool],
           }),
+          robinhoodPublicClient.readContract({
+            address: CONTRACTS.stabilityPool,
+            abi: stabilityPoolAbi,
+            functionName: 'getTotalBoldDeposits',
+          }),
         ]);
-        const invalid = validateStabilityPoolAmount('deposit', amount, walletBalance);
+        const invalid = validateStabilityPoolAmount(
+          'deposit',
+          amount,
+          walletBalance,
+          currentTotalDeposits,
+        );
         if (invalid) throw new Error(invalid);
 
         if (allowance < amount) {
@@ -236,6 +253,7 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
           await waitForReceipt(await walletClient.writeContract(approval.request));
         }
 
+        setTxHash(null);
         setStage('submitting');
         const simulation = await robinhoodPublicClient.simulateContract({
           account,
@@ -247,13 +265,25 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
         await waitForReceipt(await walletClient.writeContract(simulation.request));
         setSuccess(`${money(Number(formatUnits(amount, 18)), 2)} FUSD deposited.`);
       } else if (action === 'withdraw') {
-        const currentDeposit = await robinhoodPublicClient.readContract({
-          address: CONTRACTS.stabilityPool,
-          abi: stabilityPoolAbi,
-          functionName: 'getCompoundedBoldDeposit',
-          args: [account],
-        });
-        const invalid = validateStabilityPoolAmount('withdraw', amount, currentDeposit);
+        const [currentDeposit, currentTotalDeposits] = await Promise.all([
+          robinhoodPublicClient.readContract({
+            address: CONTRACTS.stabilityPool,
+            abi: stabilityPoolAbi,
+            functionName: 'getCompoundedBoldDeposit',
+            args: [account],
+          }),
+          robinhoodPublicClient.readContract({
+            address: CONTRACTS.stabilityPool,
+            abi: stabilityPoolAbi,
+            functionName: 'getTotalBoldDeposits',
+          }),
+        ]);
+        const invalid = validateStabilityPoolAmount(
+          'withdraw',
+          amount,
+          currentDeposit,
+          currentTotalDeposits,
+        );
         if (invalid) throw new Error(invalid);
 
         setStage('submitting');
@@ -267,14 +297,14 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
         await waitForReceipt(await walletClient.writeContract(simulation.request));
         setSuccess(`${money(Number(formatUnits(amount, 18)), 2)} FUSD withdrawn.`);
       } else {
-        const currentDeposit = await robinhoodPublicClient.readContract({
+        const initialDeposit = await robinhoodPublicClient.readContract({
           address: CONTRACTS.stabilityPool,
           abi: stabilityPoolAbi,
-          functionName: 'getCompoundedBoldDeposit',
+          functionName: 'deposits',
           args: [account],
         });
         setStage('submitting');
-        if (currentDeposit > 0n) {
+        if (initialDeposit > 0n) {
           const simulation = await robinhoodPublicClient.simulateContract({
             account,
             address: CONTRACTS.stabilityPool,
@@ -304,7 +334,7 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
     }
   }
 
-  const max = Number(formatUnits(available, 18));
+  const availableDisplay = Number(formatUnits(available, 18));
   const buttonLabel = !wallet.connected
     ? 'Connect wallet to continue'
     : stage === 'switching'
@@ -394,8 +424,8 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
           <button
             type="button"
             className="swap__max"
-            disabled={max <= 0}
-            onClick={() => setAmountStr(max > 0 ? max.toFixed(mode === 'deposit' ? 2 : 6) : '')}
+            disabled={maxAmount <= 0n}
+            onClick={() => setAmountStr(formatUnits(maxAmount, 18))}
           >
             Max
           </button>
@@ -404,13 +434,13 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
         <span className="swap__usd">
           {wallet.connected
             ? mode === 'deposit'
-              ? `${money(max, 2)} FUSD in wallet`
-              : `${money(max, 4)} FUSD deposited`
+              ? `${money(availableDisplay, 2)} FUSD in wallet`
+              : `${money(availableDisplay, 4)} FUSD deposited`
             : 'Connect a wallet to view your balance'}
         </span>
       </div>
 
-      {amount > 0n && validationError && <p className="swap__over">{validationError}</p>}
+      {amountStr.trim() && validationError && <p className="swap__over">{validationError}</p>}
       <details className="swap__note">
         <summary>What the pool actually does</summary>
         <p>

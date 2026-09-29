@@ -1,5 +1,15 @@
 'use client';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import {
+  createWalletClient,
+  custom,
+  formatUnits,
+  parseUnits,
+  zeroAddress,
+  type Address,
+  type Hash,
+} from 'viem';
+import { robinhoodTestnet } from '@reown/appkit/networks';
 import { Button, RatioBar } from './ui';
 import { RisksDialog } from './risks-dialog';
 import { Token, TokenIcon } from './token-icon';
@@ -13,9 +23,60 @@ import { MAX_RATE, MIN_COLLATERAL_RATIO, MIN_RATE } from '../lib/protocol-consta
 import { useWalletBalances } from '../lib/use-wallet-balances';
 import { parseDisplayPercent, spyMarket, type FlorinMarkets } from '../lib/florin-markets';
 import { useFlorinMarkets } from '../lib/use-florin-markets';
+import {
+  borrowerOperationsAbi,
+  CONTRACTS,
+  erc20Abi,
+  hintHelpersAbi,
+  hintTrials,
+  maxRepayableDebt,
+  maxUpfrontFee,
+  ROBINHOOD_TESTNET_CHAIN_ID,
+  sortedTrovesAbi,
+  validatePositionAmount,
+} from '../lib/borrow-contract';
+import { robinhoodPublicClient } from '../lib/robinhood-client';
+import {
+  describeTransactionError,
+  type TransactionErrorDescription,
+  type TransactionFailureStage,
+} from '../lib/transaction-error';
 
 type CollMode = 'deposit' | 'withdraw';
 type DebtMode = 'borrow' | 'repay';
+type TxAction = CollMode | DebtMode | 'rate' | 'close';
+type TxStage = 'idle' | 'switching' | 'approving' | 'submitting' | 'confirming';
+
+function parseToken(value: string): bigint {
+  if (!value.trim()) return 0n;
+  try {
+    return parseUnits(value, 18);
+  } catch {
+    return 0n;
+  }
+}
+
+async function ensureRobinhoodTestnet(provider: NonNullable<ReturnType<typeof useWallet>['provider']>) {
+  const current = await provider.request({ method: 'eth_chainId' });
+  if (Number(current) === ROBINHOOD_TESTNET_CHAIN_ID) return;
+
+  const chainId = `0x${ROBINHOOD_TESTNET_CHAIN_ID.toString(16)}`;
+  try {
+    await provider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId }] });
+  } catch (error) {
+    if ((error as { code?: number }).code !== 4902) throw error;
+    await provider.request({
+      method: 'wallet_addEthereumChain',
+      params: [{
+        chainId,
+        chainName: robinhoodTestnet.name,
+        nativeCurrency: robinhoodTestnet.nativeCurrency,
+        rpcUrls: [...robinhoodTestnet.rpcUrls.default.http],
+        blockExplorerUrls: [robinhoodTestnet.blockExplorers.default.url],
+      }],
+    });
+  }
+}
 
 function Seg<T extends string>({
   value,
@@ -109,6 +170,7 @@ export function ManagePosition({ initialMarkets }: { initialMarkets: FlorinMarke
       position={position}
       positions={positions}
       onSelect={setSelectedTroveId}
+      onChanged={refresh}
       marketAverageRate={marketAverageRate}
     />
   );
@@ -118,11 +180,13 @@ function PositionEditor({
   position,
   positions,
   onSelect,
+  onChanged,
   marketAverageRate,
 }: {
   position: FlorinPosition;
   positions: FlorinPosition[];
   onSelect: (troveId: string) => void;
+  onChanged: () => void;
   marketAverageRate: number | null;
 }) {
   const w = useWallet();
@@ -137,6 +201,22 @@ function PositionEditor({
   const [debtMode, setDebtMode] = useState<DebtMode>('repay');
   const [collStr, setCollStr] = useState('');
   const [debtStr, setDebtStr] = useState('');
+  const [stage, setStage] = useState<TxStage>('idle');
+  const [txAction, setTxAction] = useState<TxAction | null>(null);
+  const [txHash, setTxHash] = useState<Hash | null>(null);
+  const [txComplete, setTxComplete] = useState(false);
+  const [txError, setTxError] = useState<TransactionErrorDescription | null>(null);
+
+  const collateralWei = useMemo(() => parseToken(collStr), [collStr]);
+  const debtWei = useMemo(() => parseToken(debtStr), [debtStr]);
+  const currentCollateralWei = BigInt(position.collateral);
+  const currentDebtWei = BigInt(position.debt);
+  const rateWei = BigInt(Math.round(rate * 1e18));
+  const pendingTx = stage !== 'idle';
+  const batched = Boolean(
+    position.interestBatchManager
+      && position.interestBatchManager.toLowerCase() !== zeroAddress,
+  );
 
   const m = positionMetrics(collateral, debt, spyPrice);
   const cap = maxBorrowableFUSD(collateral, spyPrice);
@@ -156,7 +236,10 @@ function PositionEditor({
   const pending = collAmt > 0 || debtAmt > 0;
 
   const collMax = collMode === 'deposit' ? balances.spy : collateral;
-  const debtMax = debtMode === 'borrow' ? (priceReady ? freeUsd : 0) : Math.min(debt, balances.fusd);
+  const partialRepayMax = Number(formatUnits(maxRepayableDebt(currentDebtWei), 18));
+  const debtMax = debtMode === 'borrow'
+    ? (priceReady ? freeUsd : 0)
+    : Math.min(partialRepayMax, balances.fusd);
   const collOver = (collMode !== 'deposit' || (!balances.loading && !balances.error))
     && collAmt > collMax + 1e-6;
   const debtOver = (debtMode === 'borrow' ? priceReady : !balances.loading && !balances.error)
@@ -165,6 +248,213 @@ function PositionEditor({
   // Withdrawing or borrowing must not push the position under the floor.
   const wouldBreach =
     priceReady && pending && nextDebt > 0 && preview.collateralRatio < MIN_COLLATERAL_RATIO;
+  const collateralWouldBreach = collMode === 'withdraw'
+    && priceReady
+    && debt > 0
+    && positionMetrics(Math.max(0, collateral - collAmt), debt, spyPrice).collateralRatio < MIN_COLLATERAL_RATIO;
+  const debtWouldBreach = debtMode === 'borrow'
+    && priceReady
+    && positionMetrics(collateral, debt + debtAmt, spyPrice).collateralRatio < MIN_COLLATERAL_RATIO;
+
+  async function runTransaction(action: TxAction) {
+    const account = w.address as Address | null;
+    if (!account || !w.provider || pendingTx) return;
+
+    setTxAction(action);
+    setTxError(null);
+    setTxHash(null);
+    setTxComplete(false);
+    let failureStage: TransactionFailureStage = 'switching';
+
+    try {
+      setStage('switching');
+      await ensureRobinhoodTestnet(w.provider);
+      const walletClient = createWalletClient({
+        account,
+        chain: robinhoodTestnet,
+        transport: custom(w.provider),
+      });
+      const troveId = BigInt(position.troveId);
+
+      async function writeAndConfirm(
+        request: Parameters<typeof walletClient.writeContract>[0],
+        revertedMessage: string,
+      ) {
+        failureStage = 'opening';
+        setStage('submitting');
+        let hash = await walletClient.writeContract(request);
+        setTxHash(hash);
+        failureStage = 'confirming';
+        setStage('confirming');
+        const receipt = await robinhoodPublicClient.waitForTransactionReceipt({
+          hash,
+          onReplaced: (replacement) => {
+            hash = replacement.transaction.hash;
+            setTxHash(hash);
+          },
+        });
+        if (receipt.status !== 'success') throw new Error(revertedMessage);
+      }
+
+      failureStage = 'preparing';
+      if (action === 'deposit') {
+        const [balance, allowance] = await Promise.all([
+          robinhoodPublicClient.readContract({
+            address: CONTRACTS.spyToken,
+            abi: erc20Abi,
+            functionName: 'balanceOf',
+            args: [account],
+          }),
+          robinhoodPublicClient.readContract({
+            address: CONTRACTS.spyToken,
+            abi: erc20Abi,
+            functionName: 'allowance',
+            args: [account, CONTRACTS.borrowerOperations],
+          }),
+        ]);
+        const validation = validatePositionAmount('deposit', collateralWei, balance);
+        if (validation) throw new Error(validation);
+
+        if (allowance < collateralWei) {
+          failureStage = 'approving';
+          setStage('approving');
+          const approval = await robinhoodPublicClient.simulateContract({
+            account,
+            address: CONTRACTS.spyToken,
+            abi: erc20Abi,
+            functionName: 'approve',
+            args: [CONTRACTS.borrowerOperations, collateralWei],
+          });
+          await writeAndConfirm(approval.request, 'The SPY approval transaction reverted.');
+        }
+
+        const adjustment = await robinhoodPublicClient.simulateContract({
+          account,
+          address: CONTRACTS.borrowerOperations,
+          abi: borrowerOperationsAbi,
+          functionName: 'addColl',
+          args: [troveId, collateralWei],
+        });
+        await writeAndConfirm(adjustment.request, 'The collateral deposit reverted.');
+        setCollStr('');
+      } else if (action === 'withdraw') {
+        const validation = validatePositionAmount('withdraw', collateralWei, currentCollateralWei);
+        if (validation) throw new Error(validation);
+        if (!priceReady || collateralWouldBreach) {
+          throw new Error('This withdrawal would make the position unsafe, or the SPY oracle is unavailable.');
+        }
+        const adjustment = await robinhoodPublicClient.simulateContract({
+          account,
+          address: CONTRACTS.borrowerOperations,
+          abi: borrowerOperationsAbi,
+          functionName: 'withdrawColl',
+          args: [troveId, collateralWei],
+        });
+        await writeAndConfirm(adjustment.request, 'The collateral withdrawal reverted.');
+        setCollStr('');
+      } else if (action === 'borrow') {
+        const validation = validatePositionAmount('borrow', debtWei, 0n);
+        if (validation) throw new Error(validation);
+        if (!priceReady || debtWouldBreach) {
+          throw new Error('This borrowing would make the position unsafe, or the SPY oracle is unavailable.');
+        }
+        const predictedFee = await robinhoodPublicClient.readContract({
+          address: CONTRACTS.hintHelpers,
+          abi: hintHelpersAbi,
+          functionName: 'predictAdjustTroveUpfrontFee',
+          args: [0n, troveId, debtWei],
+        });
+        const adjustment = await robinhoodPublicClient.simulateContract({
+          account,
+          address: CONTRACTS.borrowerOperations,
+          abi: borrowerOperationsAbi,
+          functionName: 'withdrawBold',
+          args: [troveId, debtWei, maxUpfrontFee(predictedFee)],
+        });
+        await writeAndConfirm(adjustment.request, 'The FUSD borrowing transaction reverted.');
+        setDebtStr('');
+      } else if (action === 'repay') {
+        const fusdBalance = await robinhoodPublicClient.readContract({
+          address: CONTRACTS.boldToken,
+          abi: erc20Abi,
+          functionName: 'balanceOf',
+          args: [account],
+        });
+        const available = fusdBalance < maxRepayableDebt(currentDebtWei)
+          ? fusdBalance
+          : maxRepayableDebt(currentDebtWei);
+        const validation = validatePositionAmount('repay', debtWei, available);
+        if (validation) throw new Error(validation);
+        const adjustment = await robinhoodPublicClient.simulateContract({
+          account,
+          address: CONTRACTS.borrowerOperations,
+          abi: borrowerOperationsAbi,
+          functionName: 'repayBold',
+          args: [troveId, debtWei],
+        });
+        await writeAndConfirm(adjustment.request, 'The FUSD repayment reverted.');
+        setDebtStr('');
+      } else if (action === 'rate') {
+        if (batched) throw new Error('This position is managed by an interest-rate batch.');
+        if (rateWei === BigInt(position.annualInterestRate)) {
+          throw new Error('Choose a different interest rate.');
+        }
+        const [predictedFee, troveCount] = await Promise.all([
+          robinhoodPublicClient.readContract({
+            address: CONTRACTS.hintHelpers,
+            abi: hintHelpersAbi,
+            functionName: 'predictAdjustInterestRateUpfrontFee',
+            args: [0n, troveId, rateWei],
+          }),
+          robinhoodPublicClient.readContract({
+            address: CONTRACTS.sortedTroves,
+            abi: sortedTrovesAbi,
+            functionName: 'size',
+          }),
+        ]);
+        let upperHint = 0n;
+        let lowerHint = 0n;
+        if (troveCount > 1n) {
+          const [approxHint] = await robinhoodPublicClient.readContract({
+            address: CONTRACTS.hintHelpers,
+            abi: hintHelpersAbi,
+            functionName: 'getApproxHint',
+            args: [0n, rateWei, hintTrials(troveCount), BigInt(Date.now())],
+          });
+          [upperHint, lowerHint] = await robinhoodPublicClient.readContract({
+            address: CONTRACTS.sortedTroves,
+            abi: sortedTrovesAbi,
+            functionName: 'findInsertPosition',
+            args: [rateWei, approxHint, approxHint],
+          });
+        }
+        const adjustment = await robinhoodPublicClient.simulateContract({
+          account,
+          address: CONTRACTS.borrowerOperations,
+          abi: borrowerOperationsAbi,
+          functionName: 'adjustTroveInterestRate',
+          args: [troveId, rateWei, upperHint, lowerHint, maxUpfrontFee(predictedFee)],
+        });
+        await writeAndConfirm(adjustment.request, 'The interest-rate transaction reverted.');
+      } else {
+        const adjustment = await robinhoodPublicClient.simulateContract({
+          account,
+          address: CONTRACTS.borrowerOperations,
+          abi: borrowerOperationsAbi,
+          functionName: 'closeTrove',
+          args: [troveId],
+        });
+        await writeAndConfirm(adjustment.request, 'The position-close transaction reverted.');
+      }
+
+      setTxComplete(true);
+      window.setTimeout(onChanged, 2_000);
+    } catch (cause) {
+      setTxError(describeTransactionError(cause, failureStage));
+    } finally {
+      setStage('idle');
+    }
+  }
 
 
   return (
@@ -307,9 +597,18 @@ function PositionEditor({
       )}
       <Button
         variant={collMode === 'deposit' ? 'primary' : 'ghost'}
-        disabled
+        disabled={
+          pendingTx
+          || collateralWei <= 0n
+          || collOver
+          || (collMode === 'deposit' && (balances.loading || balances.error))
+          || (collMode === 'withdraw' && (!priceReady || collateralWouldBreach))
+        }
+        onClick={() => void runTransaction(collMode)}
       >
-        Position transactions coming soon
+        {pendingTx && txAction === collMode
+          ? stage === 'approving' ? 'Approving SPY…' : 'Confirming…'
+          : collMode === 'deposit' ? 'Deposit SPY' : 'Withdraw SPY'}
       </Button>
 
       {/* Debt */}
@@ -366,9 +665,18 @@ function PositionEditor({
       )}
       <Button
         variant={debtMode === 'repay' ? 'primary' : 'ghost'}
-        disabled
+        disabled={
+          pendingTx
+          || debtWei <= 0n
+          || debtOver
+          || (debtMode === 'borrow' && (!priceReady || debtWouldBreach))
+          || (debtMode === 'repay' && (balances.loading || balances.error))
+        }
+        onClick={() => void runTransaction(debtMode)}
       >
-        Position transactions coming soon
+        {pendingTx && txAction === debtMode
+          ? 'Confirming…'
+          : debtMode === 'borrow' ? 'Borrow FUSD' : 'Repay FUSD'}
       </Button>
 
       {/* What the pending change does, before it is applied */}
@@ -407,6 +715,7 @@ function PositionEditor({
             max={MAX_RATE}
             step={0.0025}
             value={rate}
+            disabled={batched || pendingTx}
             onChange={(e) => setRate(parseFloat(e.target.value))}
             aria-label="Interest rate"
           />
@@ -415,6 +724,16 @@ function PositionEditor({
           ${money(debt * rate)} FUSD / year on the <b>${money(debt)}</b> you owe
         </span>
       </div>
+      {batched && (
+        <p className="swap__over">This position’s rate is managed by an interest-rate batch.</p>
+      )}
+      <Button
+        variant="ghost"
+        disabled={pendingTx || batched || rateWei === BigInt(position.annualInterestRate)}
+        onClick={() => void runTransaction('rate')}
+      >
+        {pendingTx && txAction === 'rate' ? 'Confirming…' : 'Update interest rate'}
+      </Button>
 
       <details className="swap__note">
         <summary>Interest rate and redemption order</summary>
@@ -425,8 +744,39 @@ function PositionEditor({
         </p>
       </details>
 
-      <Button variant="danger" disabled>
-        Position transactions coming soon
+      {txError && (
+        <div className="swap__error" role="alert">
+          <p className="warn">{txError.title}</p>
+          <p className="swap__error-explanation">{txError.explanation}</p>
+          <details className="swap__error-details">
+            <summary>Technical details</summary>
+            <code>{txError.technicalDetails}</code>
+          </details>
+        </div>
+      )}
+      {txComplete && <p className="swap__usd">Transaction confirmed. Position data is refreshing…</p>}
+      {txHash && (
+        <p className="swap__usd">
+          <a
+            href={`${robinhoodTestnet.blockExplorers.default.url}/tx/${txHash}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            {pendingTx ? 'View pending transaction ↗' : 'View transaction details ↗'}
+          </a>
+        </p>
+      )}
+
+      <Button
+        variant="danger"
+        disabled={pendingTx}
+        onClick={() => {
+          if (window.confirm(`Close this position? Your wallet must repay the full ${money(debt)} FUSD debt.`)) {
+            void runTransaction('close');
+          }
+        }}
+      >
+        {pendingTx && txAction === 'close' ? 'Closing position…' : 'Close position'}
       </Button>
 
       <RisksDialog label="What can take this position" />

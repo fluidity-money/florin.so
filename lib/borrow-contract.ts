@@ -42,6 +42,7 @@ export const stabilityPoolAbi = parseAbi([
   'function getDepositorCollGain(address depositor) view returns (uint256)',
   'function getDepositorYieldGainWithPending(address depositor) view returns (uint256)',
   'function stashedColl(address depositor) view returns (uint256)',
+  'function deposits(address depositor) view returns (uint256 initialValue)',
   'function provideToSP(uint256 topUp, bool doClaim)',
   'function withdrawFromSP(uint256 amount, bool doClaim)',
   'function claimAllCollGains()',
@@ -68,6 +69,12 @@ export const sortedTrovesAbi = parseAbi([
 
 export const borrowerOperationsAbi = parseAbi([
   'function openTrove(address owner, uint256 ownerIndex, uint256 collAmount, uint256 boldAmount, uint256 upperHint, uint256 lowerHint, uint256 annualInterestRate, uint256 maxUpfrontFee, address addManager, address removeManager, address receiver) returns (uint256 troveId)',
+  'function addColl(uint256 troveId, uint256 collAmount)',
+  'function withdrawColl(uint256 troveId, uint256 collAmount)',
+  'function withdrawBold(uint256 troveId, uint256 boldAmount, uint256 maxUpfrontFee)',
+  'function repayBold(uint256 troveId, uint256 boldAmount)',
+  'function adjustTroveInterestRate(uint256 troveId, uint256 newAnnualInterestRate, uint256 upperHint, uint256 lowerHint, uint256 maxUpfrontFee)',
+  'function closeTrove(uint256 troveId)',
   'error TroveExists()',
   'error ICRBelowMCRPlusBCR()',
   'error DebtBelowMin()',
@@ -78,6 +85,11 @@ export const borrowerOperationsAbi = parseAbi([
   'error InterestRateTooHigh()',
   'error NewOracleFailureDetected()',
   'error IsShutDown()',
+  'error ZeroAdjustment()',
+  'error CollWithdrawalTooHigh()',
+  'error NotEnoughBoldBalance()',
+  'error TroveInBatch()',
+  'error InterestRateNotNew()',
 ]);
 
 export const priceFeedAbi = parseAbi([
@@ -99,16 +111,47 @@ export function requiredWethWrap(wethBalance: bigint): bigint {
     : 0n;
 }
 
+export type PositionAmountMode = 'deposit' | 'withdraw' | 'borrow' | 'repay';
+
+export function validatePositionAmount(
+  mode: PositionAmountMode,
+  amount: bigint,
+  available: bigint,
+): string | null {
+  if (amount <= 0n) return `Enter an amount to ${mode}.`;
+  if (mode === 'borrow' || amount <= available) return null;
+  if (mode === 'deposit') return 'You do not have enough SPY.';
+  if (mode === 'withdraw') return 'The position does not have that much SPY.';
+  return 'You do not have enough FUSD.';
+}
+
+export function maxRepayableDebt(debt: bigint): bigint {
+  return debt > MIN_DEBT ? debt - MIN_DEBT : 0n;
+}
+
 export function validateStabilityPoolAmount(
   mode: 'deposit' | 'withdraw',
   amount: bigint,
   available: bigint,
+  totalDeposits?: bigint,
 ): string | null {
   if (amount <= 0n) return `Enter an amount to ${mode}.`;
   if (amount > available) {
     return mode === 'deposit'
       ? 'You do not have enough FUSD.'
       : 'You do not have that much FUSD deposited.';
+  }
+  if (totalDeposits !== undefined) {
+    if (
+      mode === 'deposit'
+      && totalDeposits < MIN_FUSD_IN_STABILITY_POOL
+      && totalDeposits + amount < MIN_FUSD_IN_STABILITY_POOL
+    ) {
+      return 'Deposit enough FUSD to bring the Stability Pool total to at least 1 FUSD.';
+    }
+    if (mode === 'withdraw' && totalDeposits - amount < MIN_FUSD_IN_STABILITY_POOL) {
+      return 'This withdrawal must leave at least 1 FUSD in the Stability Pool.';
+    }
   }
   return null;
 }
