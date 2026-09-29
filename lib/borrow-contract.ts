@@ -2,8 +2,7 @@ import { parseAbi, type Address } from 'viem';
 
 export const ROBINHOOD_TESTNET_CHAIN_ID = 46_630;
 export const TOKEN_DECIMALS = 18;
-export const WAD = 10n ** 18n;
-export const MIN_DEBT = 2_000n * WAD;
+export const MIN_DEBT = 10n * 10n ** 18n;
 export const MIN_ANNUAL_INTEREST_RATE = 5n * 10n ** 15n;
 export const MAX_ANNUAL_INTEREST_RATE = 25n * 10n ** 17n;
 export const GAS_COMPENSATION = 37_500_000_000_000_000n;
@@ -68,7 +67,7 @@ export function validateOpenTrove(
   annualInterestRate: bigint,
 ): string | null {
   if (collateral <= 0n) return 'Enter SPY collateral.';
-  if (borrowed < MIN_DEBT) return 'Borrow at least 2,000 BOLD.';
+  if (borrowed < MIN_DEBT) return 'Borrow at least 10 FUSD.';
   if (annualInterestRate < MIN_ANNUAL_INTEREST_RATE) {
     return 'Choose an interest rate of at least 0.5%.';
   }

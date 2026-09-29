@@ -5,11 +5,11 @@
 // rendering of it. It ships from /public instead of hotlinking, which keeps
 // the icon alive if CoinGecko reorganises its asset paths.
 //
-// FUSD/BOLD use the Florin mark, black on white, matching the header logo. It reuses
+// FUSD uses the Florin mark, black on white, matching the header logo. It reuses
 // the existing SVG as a CSS mask rather than being a second copy of the logo
 // baked to a fixed hue.
 
-export type TokenSymbol = 'SPY' | 'FUSD' | 'BOLD';
+export type TokenSymbol = 'SPY' | 'FUSD';
 
 export function TokenIcon({
   symbol,

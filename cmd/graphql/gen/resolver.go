@@ -1,5 +1,5 @@
 package gen
 
-type Resolver struct{
+type Resolver struct {
 	FeatureFakeData bool
 }

@@ -24,12 +24,12 @@ import (
 const HttpUnixSocket = "/run/florin.so/http.sock"
 
 const (
-// EnvTimescaleUri to use as the database for private key loading
-// and authentication key loading.
-EnvTimescaleUri = "SPN_TIMESCALE"
+	// EnvTimescaleUri to use as the database for private key loading
+	// and authentication key loading.
+	EnvTimescaleUri = "SPN_TIMESCALE"
 
-// EnvFeatureFakeData if set to anything other than "", renders fake data.
-EnvFeatureFakeData = "SPN_FEATURE_FAKE_DATA"
+	// EnvFeatureFakeData if set to anything other than "", renders fake data.
+	EnvFeatureFakeData = "SPN_FEATURE_FAKE_DATA"
 )
 
 type middleware struct {

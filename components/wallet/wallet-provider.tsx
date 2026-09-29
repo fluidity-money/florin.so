@@ -113,7 +113,7 @@ function RealWalletProvider({ children }: { children: ReactNode }) {
       themeMode="light"
       metadata={{
         name: 'Florin',
-        description: 'Mint BOLD by borrowing against SPY',
+        description: 'Mint FUSD by borrowing against SPY',
         url: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
         icons: [],
       }}

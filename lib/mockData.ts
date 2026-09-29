@@ -19,7 +19,6 @@ export const SPY_PRICE_USD = 760.74;
 export const MIN_COLLATERAL_RATIO = 1.5; // liquidation below this
 export const LIQUIDATION_BUFFER = 0.05; // CR cushion before we warn
 export const ORIGINATION_FEE = 0.005; // one-time, added to debt at mint
-export const MIN_DEBT_FUSD = 200; // dust floor on an open position
 
 // Borrowers choose their own rate. It is both what they pay and their place in
 // the redemption queue: cheaper means redeemed against sooner.

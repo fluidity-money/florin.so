@@ -18,8 +18,8 @@ func (r *queryResolver) BorrowDetails(ctx context.Context) ([]*model.BorrowDetai
 			Collateral: &model.Collateral{
 				Name: "SPY",
 			},
-			AvgRatePa: "5.79%",
-			Deposited: "4.2M",
+			AvgRatePa:  "5.79%",
+			Deposited:  "4.2M",
 			DebtIssued: "2.34M",
 		}}, nil
 	}
@@ -33,7 +33,7 @@ func (r *queryResolver) EarnRewards(ctx context.Context) ([]*model.EarnRewards, 
 			Collateral: &model.Collateral{
 				Name: "SPY",
 			},
-			Apr: "11.2.9%",
+			Apr:      "11.2.9%",
 			PoolSize: "900K",
 			Coverage: "38%",
 		}}, nil

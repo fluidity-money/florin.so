@@ -2,11 +2,11 @@
   "name": "florin",
   "version": "0.1.0",
   "private": true,
-  "description": "Liquity Bold-compatible borrowing protocol for SPY on Robinhood Chain.",
+  "description": "FUSD borrowing protocol for SPY on Robinhood Chain.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "test": "node --test lib/borrow-contract.test.cjs",
+    "test": "node --test lib/borrow-contract.test.cjs tests/mint-page.test.mjs",
     "start": "next start",
     "lint": "next lint"
   },

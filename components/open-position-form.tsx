@@ -16,7 +16,8 @@ import { robinhoodTestnet } from '@reown/appkit/networks';
 import { Button } from './ui';
 import { RisksDialog } from './risks-dialog';
 import { Token, TokenIcon } from './token-icon';
-import { money, pct, xnum } from '../lib/format';
+import { compact, money, pct, xnum } from '../lib/format';
+import { AVG_RATE, queueAhead, RATE_BOOK_TOTAL } from '../lib/mockData';
 import { useWallet } from './wallet/wallet';
 import {
   borrowerOperationsAbi,
@@ -149,7 +150,10 @@ export function OpenPositionForm() {
   const collateralRatio = totalDebt > 0 ? collateralUsd / totalDebt : 0;
   const ltv = collateralUsd > 0 ? totalDebt / collateralUsd : 0;
   const maxBorrow = collateralUsd / MCR;
+  const liquidationPrice = spy > 0 && totalDebt > 0 ? MCR * totalDebt / spy : 0;
   const annualInterest = totalDebt * rate;
+  const ahead = queueAhead(rate) * RATE_BOOK_TOTAL;
+  const redemptionRisk = rate >= AVG_RATE ? 'low' : rate >= AVG_RATE * 0.6 ? 'medium' : 'high';
   const pending = stage !== 'idle';
   const walletBalance = chainState.data ? Number(formatUnits(chainState.data.balance, 18)) : 0;
   const protocolError = validateOpenTrove(collateralWei, borrowedWei, rateWei);
@@ -293,8 +297,8 @@ export function OpenPositionForm() {
       <div className="swap">
         <div className="swap__done">
           <span className="swap__done-mark" aria-hidden="true">✓</span>
-          <h2>BOLD minted</h2>
-          <p>{money(borrow, 2)} BOLD was minted against {money(spy, 4)} SPY.</p>
+          <h2>FUSD minted</h2>
+          <p>{money(borrow, 2)} FUSD was minted against {money(spy, 4)} SPY.</p>
           <a
             className="btn btn--primary"
             href={`${robinhoodTestnet.blockExplorers.default.url}/tx/${txHash}`}
@@ -318,13 +322,13 @@ export function OpenPositionForm() {
           ? 'Confirm position in wallet…'
           : stage === 'confirming'
             ? 'Waiting for confirmation…'
-            : 'Mint BOLD →';
+            : 'Mint FUSD →';
 
   return (
     <div className="swap">
       <h1 className="swap__title">
         <span>Borrow</span>
-        <span className="swap__pair"><TokenIcon symbol="BOLD" size={30} /><span className="swap__tok">BOLD</span></span>
+        <span className="swap__pair"><TokenIcon symbol="FUSD" size={30} /><span className="swap__tok">FUSD</span></span>
         <span>with</span>
         <span className="swap__pair"><TokenIcon symbol="SPY" size={30} /><span className="swap__tok">SPY</span></span>
       </h1>
@@ -351,9 +355,17 @@ export function OpenPositionForm() {
       <div className="swap__field">
         <span className="swap__label">Loan</span>
         <div className="swap__row">
-          <input className="swap__amount" inputMode="decimal" placeholder="2,000.00" value={debtStr}
-            onChange={(event) => setDebtStr(event.target.value.replaceAll(',', ''))} aria-label="BOLD to borrow" />
-          <span className="swap__pill"><Token symbol="FUSD" size={18} /> BOLD</span>
+          <input className="swap__amount" inputMode="decimal" placeholder="10.00" value={debtStr}
+            onChange={(event) => setDebtStr(event.target.value.replaceAll(',', ''))} aria-label="FUSD to borrow" />
+          <button
+            type="button"
+            className="swap__max"
+            disabled={maxBorrow <= 0}
+            onClick={() => setDebtStr(maxBorrow > 0 ? maxBorrow.toFixed(2) : '')}
+          >
+            Max
+          </button>
+          <span className="swap__pill"><Token symbol="FUSD" size={18} /></span>
         </div>
         <span className="swap__usd">
           ${money(borrow)} received{fee > 0 ? ` · ${money(totalDebt)} debt including ${money(fee)} upfront interest` : ''}
@@ -362,6 +374,9 @@ export function OpenPositionForm() {
       <div className="swap__meta">
         <span><i className={`swap__dot swap__dot--${unsafe ? 'liquidation' : collateralRatio < 1.3 && active ? 'warning' : 'healthy'}`} /> Liquidation risk</span>
         <span>Approx. max borrow <b>{spy > 0 ? `$${money(maxBorrow, 2)}` : '−'}</b></span>
+      </div>
+      <div className="swap__meta swap__meta--right">
+        <span>Liquidation price <b>{active ? `$${money(liquidationPrice)}` : '−'}</b></span>
       </div>
       <div className="swap__meta swap__meta--right">
         <span>LTV <b>{active ? pct(ltv * 100, 1) : '−'}</b>{active && <em> ({pct(collateralRatio * 100, 0)} CR)</em>}</span>
@@ -374,12 +389,16 @@ export function OpenPositionForm() {
           <input className="slider swap__slider" type="range" min={MIN_RATE} max={MAX_RATE} step={0.0025}
             value={rate} onChange={(event) => setRate(parseFloat(event.target.value))} aria-label="Interest rate" />
         </div>
-        <span className="swap__usd">${money(annualInterest)} BOLD / year</span>
+        <span className="swap__usd">${money(annualInterest)} FUSD / year</span>
+      </div>
+      <div className="swap__meta">
+        <span><i className={`swap__dot swap__dot--${redemptionRisk}`} /> {redemptionRisk} redemption risk</span>
+        <span>Redeemable before you <b>{compact(ahead)}</b></span>
       </div>
 
       <details className="swap__note">
         <summary>What happens when you open a position?</summary>
-        <p>Your wallet first approves exactly the SPY needed for this position plus the protocol&apos;s 0.0375 SPY gas-compensation deposit. A second transaction deposits SPY and mints BOLD.</p>
+        <p>Your wallet first approves exactly the SPY needed for this position plus the protocol&apos;s 0.0375 SPY gas-compensation deposit. A second transaction deposits SPY and mints FUSD.</p>
         <p>Your interest rate also determines your place in the redemption queue: lower-rate positions are redeemed first.</p>
       </details>
 
