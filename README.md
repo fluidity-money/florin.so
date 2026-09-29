@@ -12,6 +12,14 @@ An injected browser wallet works without configuration. Set
 The connected wallet needs testnet ETH and testnet SPY. Opening a trove also
 requires the protocol's separate `0.0375 SPY` gas-compensation deposit.
 
+## Analytics
+
+Set `NEXT_PUBLIC_POSTHOG_KEY` to enable PostHog analytics in the web app.
+`NEXT_PUBLIC_POSTHOG_HOST` defaults to `https://us.i.posthog.com`; set it to
+`https://eu.i.posthog.com` for PostHog EU Cloud or to your self-hosted endpoint.
+Page views (including client-side route changes), page leaves, and PostHog's
+automatic interaction events are captured once configured.
+
 ## Beta gate
 
 The whole site sits behind a password while it is in beta. `middleware.ts`
