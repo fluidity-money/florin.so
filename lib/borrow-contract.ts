@@ -5,33 +5,41 @@ export const TOKEN_DECIMALS = 18;
 export const MIN_DEBT = 10n * 10n ** 18n;
 export const MIN_ANNUAL_INTEREST_RATE = 5n * 10n ** 15n;
 export const MAX_ANNUAL_INTEREST_RATE = 25n * 10n ** 17n;
-export const LIQUIDATOR_COMPENSATION_ETH = 37_500_000_000_000_000n;
+export const LIQUIDATOR_COMPENSATION_WETH = 1_000_000_000_000_000n;
 
 export const CONTRACTS = {
-  spyToken: '0x568dABdd832B43A5a457aeC2db8D15c7C0C792C0',
-  spyChainlinkAggregator: '0x01923e86C24c09f75E2aed0a6c9491cf0830966d',
-  metadataNft: '0x03C8fF583660b689b80DcF6331902AB518b21EAB',
-  base: '0x93863e629f79ee44fdaa7f297b60d5eb3049b83e',
-  boldToken: '0x4eb936ba9b0be99bc26b5d1aaca39ce7620ef1be',
-  collateralRegistry: '0xe603b097bdb3ac3d81b1360b224cf6af69535d96',
-  hintHelpers: '0x21d9f8f59f35281caa9f8fbe168dbe1c12280cd6',
-  multiTroveGetter: '0xb5b3132cbc630872a65b3fa7561605619865dc00',
-  activePool: '0x5667d89070754baa873e67138517a217e242d7ff',
-  borrowerOperations: '0x22402645151e526040b84fa156a11f44974eb246',
-  collSurplusPool: '0x99183d5ca52a56783e2e0c732e92c5c81de76f88',
-  defaultPool: '0xc37d9e918690b6ae9c6d36d5565c5e57ab2c9ba4',
-  gasPool: '0xb9e4e845b2d50f0ddacb317499247b80520ed1ba',
-  sortedTroves: '0x7f076b371448b2805c070f77b57477b67017017f',
-  stabilityPool: '0x607810eaa0dfff2e67abc3cba8919d03cf4916d0',
-  troveManager: '0xd0199b724aff6e73ba3891bf15d6be0787b145db',
-  troveNft: '0xac9716503258f3146c957c47489428831247cd1d',
-  spyPriceFeed: '0xcdd362415fca36f14073d2bf17fe3ae112c6fbc4',
+  spyToken: '0x2541F59c5e47cC36eE1368d0F8B96360791D708f',
+  spyChainlinkAggregator: '0xEBb9A0c911100157D72267caADBA6bf29dA0eD92',
+  metadataNft: '0x32b565eF0e3B00dff3c18E23E36f903bb54FEa61',
+  base: '0x0814e4d204c9c61c265da5113779bf77d8038d0d',
+  boldToken: '0xedf9b41837e4483271511ab709161b9db8c17bb1',
+  collateralRegistry: '0x021444ce9725d4d8e3ad50fb3647cce75a625f90',
+  hintHelpers: '0x6bd9c9c05dcf21c17d45a33baf6f840a57aacd30',
+  multiTroveGetter: '0x819f60704798fc31ad8dacb52fb8f2fd96678b94',
+  activePool: '0x3a896658cc2f148c398cf420b8f6fdcffd194eda',
+  borrowerOperations: '0x20a52933ffa5e2a0f11a4cf9b6ee54d738a09dd2',
+  collSurplusPool: '0x50f9a6220a3acae6c03949c79d27a2f3304a9775',
+  defaultPool: '0x4c0e523df5ec6f258bfa8f452bc70de138ad7a6b',
+  gasPool: '0xd586422af4ad16cbc868a075e578303c881e2a63',
+  sortedTroves: '0x50bb405e5d09869346cdbeed0f0b3c4e0934ccdb',
+  stabilityPool: '0xf272712ee53a49106a5d81d11cefc0cf408f1f7d',
+  troveManager: '0xf7683ecd9342662d3c780291f32dec4a34ccbf02',
+  troveNft: '0xb96cfd362e0d41a9c5c189b0c1ff12e2f4074af9',
+  spyPriceFeed: '0x49b4d2a6a92f34653f81e5252146657e4abc72ee',
+  weth: '0x7943e237c7F95DA44E0301572D358911207852Fa',
 } as const satisfies Record<string, Address>;
 
 export const erc20Abi = parseAbi([
   'function balanceOf(address account) view returns (uint256)',
   'function allowance(address owner, address spender) view returns (uint256)',
   'function approve(address spender, uint256 amount) returns (bool)',
+]);
+
+export const wethAbi = parseAbi([
+  'function balanceOf(address account) view returns (uint256)',
+  'function allowance(address owner, address spender) view returns (uint256)',
+  'function approve(address spender, uint256 amount) returns (bool)',
+  'function deposit() payable',
 ]);
 
 export const hintHelpersAbi = parseAbi([
@@ -45,7 +53,7 @@ export const sortedTrovesAbi = parseAbi([
 ]);
 
 export const borrowerOperationsAbi = parseAbi([
-  'function openTrove(address owner, uint256 ownerIndex, uint256 collAmount, uint256 boldAmount, uint256 upperHint, uint256 lowerHint, uint256 annualInterestRate, uint256 maxUpfrontFee, address addManager, address removeManager, address receiver) payable returns (uint256 troveId)',
+  'function openTrove(address owner, uint256 ownerIndex, uint256 collAmount, uint256 boldAmount, uint256 upperHint, uint256 lowerHint, uint256 annualInterestRate, uint256 maxUpfrontFee, address addManager, address removeManager, address receiver) returns (uint256 troveId)',
   'error TroveExists()',
   'error ICRBelowMCRPlusBCR()',
   'error DebtBelowMin()',
@@ -69,6 +77,12 @@ export function maxUpfrontFee(predictedFee: bigint): bigint {
 
 export function requiredSpyApproval(collateral: bigint): bigint {
   return collateral;
+}
+
+export function requiredWethWrap(wethBalance: bigint): bigint {
+  return wethBalance < LIQUIDATOR_COMPENSATION_WETH
+    ? LIQUIDATOR_COMPENSATION_WETH - wethBalance
+    : 0n;
 }
 
 export function validateOpenTrove(

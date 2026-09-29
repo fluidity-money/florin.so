@@ -6,17 +6,18 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/fluidity-money/florin.so/lib/setup"
+
+	ethCommon "github.com/ethereum/go-ethereum/common"
 )
 
-const DefaultChainId = 55244
+const DefaultChainId = 46630
 
 type C struct {
 	GethUrls        []string
 	TimescaleUrls   []string
 	ChainId         int
-	LiquityEmitters []common.Address
+	LiquityEmitters []ethCommon.Address
 }
 
 func Get() C {
@@ -51,17 +52,17 @@ func (c C) PickTimescaleUrl() string {
 	return c.TimescaleUrls[rand.Intn(len(c.TimescaleUrls))]
 }
 
-func parseAddresses(value string) ([]common.Address, error) {
-	var addresses []common.Address
+func parseAddresses(value string) ([]ethCommon.Address, error) {
+	var addresses []ethCommon.Address
 	for _, raw := range strings.Split(value, ",") {
 		raw = strings.TrimSpace(raw)
 		if raw == "" {
 			continue
 		}
-		if !common.IsHexAddress(raw) {
+		if !ethCommon.IsHexAddress(raw) {
 			return nil, fmt.Errorf("invalid address %q", raw)
 		}
-		addresses = append(addresses, common.HexToAddress(raw))
+		addresses = append(addresses, ethCommon.HexToAddress(raw))
 	}
 	return addresses, nil
 }

@@ -7,6 +7,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestDefaultChainIDIsRobinhoodTestnet(t *testing.T) {
+	require.Equal(t, 46630, DefaultChainId)
+}
+
 func TestParseAddresses(t *testing.T) {
 	addresses, err := parseAddresses(" 0x1111111111111111111111111111111111111111,0x2222222222222222222222222222222222222222 ")
 	require.NoError(t, err)

@@ -31,15 +31,17 @@ import {
   erc20Abi,
   hintHelpersAbi,
   hintTrials,
-  LIQUIDATOR_COMPENSATION_ETH,
+  LIQUIDATOR_COMPENSATION_WETH,
   maxUpfrontFee,
   MIN_DEBT,
   priceFeedAbi,
   randomOwnerIndex,
   requiredSpyApproval,
+  requiredWethWrap,
   ROBINHOOD_TESTNET_CHAIN_ID,
   sortedTrovesAbi,
   validateOpenTrove,
+  wethAbi,
 } from '../lib/borrow-contract';
 
 const publicClient = createPublicClient({ chain: robinhoodTestnet, transport: http() });
@@ -49,7 +51,7 @@ const DEFAULT_RATE = 0.06;
 const MCR = 1.1;
 const MAX_LTV = 1 / MCR;
 
-type TxStage = 'idle' | 'switching' | 'approving' | 'opening' | 'confirming';
+type TxStage = 'idle' | 'switching' | 'wrapping' | 'approving-weth' | 'approving' | 'opening' | 'confirming';
 
 function parseToken(value: string): bigint {
   if (!value.trim()) return 0n;
@@ -206,7 +208,7 @@ export function OpenPositionForm() {
 
       failureStage = 'preparing';
       const requiredApproval = requiredSpyApproval(collateralWei);
-      const [balance, allowance, predictedFee, troveCount] = await Promise.all([
+      const [balance, allowance, wethBalance, wethAllowance, nativeBalance, predictedFee, troveCount] = await Promise.all([
         publicClient.readContract({
           address: CONTRACTS.spyToken,
           abi: erc20Abi,
@@ -219,6 +221,19 @@ export function OpenPositionForm() {
           functionName: 'allowance',
           args: [account, CONTRACTS.borrowerOperations],
         }),
+        publicClient.readContract({
+          address: CONTRACTS.weth,
+          abi: wethAbi,
+          functionName: 'balanceOf',
+          args: [account],
+        }),
+        publicClient.readContract({
+          address: CONTRACTS.weth,
+          abi: wethAbi,
+          functionName: 'allowance',
+          args: [account, CONTRACTS.borrowerOperations],
+        }),
+        publicClient.getBalance({ address: account }),
         publicClient.readContract({
           address: CONTRACTS.hintHelpers,
           abi: hintHelpersAbi,
@@ -234,6 +249,60 @@ export function OpenPositionForm() {
 
       if (balance < requiredApproval) {
         throw new Error(`You need ${formatUnits(requiredApproval, 18)} SPY for this position.`);
+      }
+
+      const wethToWrap = requiredWethWrap(wethBalance);
+      if (wethToWrap > 0n) {
+        if (nativeBalance < wethToWrap) {
+          throw new Error(`Not enough funds. You need ${formatUnits(wethToWrap, 18)} ETH plus network fees to fund the liquidator compensation.`);
+        }
+        failureStage = 'wrapping';
+        setStage('wrapping');
+        const wrap = await publicClient.simulateContract({
+          account,
+          address: CONTRACTS.weth,
+          abi: wethAbi,
+          functionName: 'deposit',
+          value: wethToWrap,
+        });
+        const wrapHash = await walletClient.writeContract(wrap.request);
+        transactionHash = wrapHash;
+        setTxHash(wrapHash);
+        setStage('confirming');
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: wrapHash,
+          onReplaced: (replacement) => {
+            transactionHash = replacement.transaction.hash;
+            setTxHash(transactionHash);
+          },
+        });
+        if (receipt.status !== 'success') throw new Error('The ETH wrapping transaction reverted.');
+        transactionHash = null;
+      }
+
+      if (wethAllowance < LIQUIDATOR_COMPENSATION_WETH) {
+        failureStage = 'approving-weth';
+        setStage('approving-weth');
+        const approval = await publicClient.simulateContract({
+          account,
+          address: CONTRACTS.weth,
+          abi: wethAbi,
+          functionName: 'approve',
+          args: [CONTRACTS.borrowerOperations, LIQUIDATOR_COMPENSATION_WETH],
+        });
+        const approvalHash = await walletClient.writeContract(approval.request);
+        transactionHash = approvalHash;
+        setTxHash(approvalHash);
+        setStage('confirming');
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash: approvalHash,
+          onReplaced: (replacement) => {
+            transactionHash = replacement.transaction.hash;
+            setTxHash(transactionHash);
+          },
+        });
+        if (receipt.status !== 'success') throw new Error('The WETH approval transaction reverted.');
+        transactionHash = null;
       }
 
       let upperHint = 0n;
@@ -286,7 +355,6 @@ export function OpenPositionForm() {
         address: CONTRACTS.borrowerOperations,
         abi: borrowerOperationsAbi,
         functionName: 'openTrove',
-        value: LIQUIDATOR_COMPENSATION_ETH,
         args: [
           account,
           ownerIndex,
@@ -348,13 +416,17 @@ export function OpenPositionForm() {
     ? 'Connect wallet to continue'
     : stage === 'switching'
       ? 'Switching network…'
-      : stage === 'approving'
-        ? 'Approve SPY in wallet…'
-        : stage === 'opening'
-          ? 'Confirm position in wallet…'
-          : stage === 'confirming'
-            ? 'Waiting for confirmation…'
-            : 'Mint FUSD →';
+      : stage === 'wrapping'
+        ? 'Wrap ETH in wallet…'
+        : stage === 'approving-weth'
+          ? 'Approve WETH in wallet…'
+          : stage === 'approving'
+            ? 'Approve SPY in wallet…'
+            : stage === 'opening'
+              ? 'Confirm position in wallet…'
+              : stage === 'confirming'
+                ? 'Waiting for confirmation…'
+                : 'Mint FUSD →';
 
   return (
     <div className="swap">
@@ -430,7 +502,7 @@ export function OpenPositionForm() {
 
       <details className="swap__note">
         <summary>What happens when you open a position?</summary>
-        <p>Your wallet first approves exactly the SPY needed for this position. A second transaction deposits the SPY, sends a 0.0375 ETH liquidator-compensation deposit, and mints FUSD.</p>
+        <p>Your wallet wraps up to 0.001 ETH into WETH and approves it for liquidator compensation. It separately approves the exact SPY collateral, then opens the position and mints FUSD.</p>
         <p>Your interest rate also determines your place in the redemption queue: lower-rate positions are redeemed first.</p>
       </details>
 

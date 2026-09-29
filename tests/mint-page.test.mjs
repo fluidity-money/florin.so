@@ -36,12 +36,15 @@ test('mint page shows redemption risk and debt ahead in the queue', () => {
   assert.match(open, /Redeemable before you/);
 });
 
-test('mint transaction pays liquidator compensation in ETH', () => {
+test('mint flow wraps ETH and approves WETH for liquidator compensation', () => {
   const open = read('components/open-position-form.tsx');
 
-  assert.match(open, /value: LIQUIDATOR_COMPENSATION_ETH/);
-  assert.match(open, /0\.0375 ETH liquidator-compensation deposit/);
-  assert.doesNotMatch(open, /0\.0375 SPY gas-compensation deposit/);
+  assert.match(open, /functionName: 'deposit'/);
+  assert.match(open, /LIQUIDATOR_COMPENSATION_WETH/);
+  assert.match(open, /CONTRACTS\.weth/);
+  assert.doesNotMatch(open, /value: LIQUIDATOR_COMPENSATION_ETH/);
+  assert.match(open, /wraps up to 0\.001 ETH into WETH/);
+  assert.doesNotMatch(open, /0\.001 SPY gas-compensation deposit/);
 });
 
 test('mint failures show an explanation and report the error to PostHog', () => {

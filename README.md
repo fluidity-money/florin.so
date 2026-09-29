@@ -10,7 +10,7 @@ exact SPY requirement, then calls `BorrowerOperations.openTrove`.
 An injected browser wallet works without configuration. Set
 `NEXT_PUBLIC_REOWN_PROJECT_ID` to enable the Reown/WalletConnect modal as well.
 The connected wallet needs testnet ETH and testnet SPY. Opening a trove also
-requires the protocol's separate `0.0375 SPY` gas-compensation deposit.
+requires the protocol's separate `0.001 ETH` liquidator-compensation deposit.
 
 ## Analytics
 

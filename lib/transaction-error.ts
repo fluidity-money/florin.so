@@ -2,6 +2,8 @@ export type TransactionFailureStage =
   | 'connecting'
   | 'switching'
   | 'preparing'
+  | 'wrapping'
+  | 'approving-weth'
   | 'approving'
   | 'opening'
   | 'confirming';
@@ -96,7 +98,7 @@ export function describeTransactionError(
   if (/insufficient funds|exceeds balance|not enough funds/.test(searchable)) {
     return {
       title: 'Not enough ETH.',
-      explanation: 'Your wallet needs enough ETH for the 0.0375 ETH liquidator-compensation deposit and the network fee.',
+      explanation: 'Your wallet needs up to 0.001 ETH to wrap into WETH for liquidator compensation, plus ETH for network fees.',
       technicalDetails,
       code: details.code,
       stage,
@@ -105,12 +107,21 @@ export function describeTransactionError(
 
   if (/revert|reverted/.test(searchable)) {
     const approval = stage === 'approving';
+    const wethApproval = stage === 'approving-weth';
+    const wrapping = stage === 'wrapping';
+    const action = wrapping ? 'wrap ETH into WETH' : wethApproval ? 'WETH approval' : approval ? 'SPY approval' : 'position';
     const reasonExplanation = reason ? CONTRACT_REASON_EXPLANATIONS[reason] : undefined;
     return {
-      title: approval ? 'SPY approval reverted.' : 'Open position reverted.',
+      title: wrapping
+        ? 'ETH wrapping reverted.'
+        : wethApproval
+          ? 'WETH approval reverted.'
+          : approval
+            ? 'SPY approval reverted.'
+            : 'Open position reverted.',
       explanation: reason
-        ? `${reasonExplanation ?? `The contract rejected the ${approval ? 'SPY approval' : 'position'}.`} Contract reason: ${reason}. No position was opened.`
-        : `The contract rejected the ${approval ? 'SPY approval' : 'position'}. No position was opened. Check the technical details below and try again.`,
+        ? `${reasonExplanation ?? `The contract rejected the ${action}.`} Contract reason: ${reason}. No position was opened.`
+        : `The contract rejected the ${action}. No position was opened. Check the technical details below and try again.`,
       technicalDetails,
       code: details.code,
       stage,
