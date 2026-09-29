@@ -35,6 +35,17 @@ export const erc20Abi = parseAbi([
   'function approve(address spender, uint256 amount) returns (bool)',
 ]);
 
+export const stabilityPoolAbi = parseAbi([
+  'function getTotalBoldDeposits() view returns (uint256)',
+  'function getCompoundedBoldDeposit(address depositor) view returns (uint256)',
+  'function getDepositorCollGain(address depositor) view returns (uint256)',
+  'function getDepositorYieldGainWithPending(address depositor) view returns (uint256)',
+  'function stashedColl(address depositor) view returns (uint256)',
+  'function provideToSP(uint256 topUp, bool doClaim)',
+  'function withdrawFromSP(uint256 amount, bool doClaim)',
+  'function claimAllCollGains()',
+]);
+
 export const wethAbi = parseAbi([
   'function balanceOf(address account) view returns (uint256)',
   'function allowance(address owner, address spender) view returns (uint256)',
@@ -83,6 +94,20 @@ export function requiredWethWrap(wethBalance: bigint): bigint {
   return wethBalance < LIQUIDATOR_COMPENSATION_WETH
     ? LIQUIDATOR_COMPENSATION_WETH - wethBalance
     : 0n;
+}
+
+export function validateStabilityPoolAmount(
+  mode: 'deposit' | 'withdraw',
+  amount: bigint,
+  available: bigint,
+): string | null {
+  if (amount <= 0n) return `Enter an amount to ${mode}.`;
+  if (amount > available) {
+    return mode === 'deposit'
+      ? 'You do not have enough FUSD.'
+      : 'You do not have that much FUSD deposited.';
+  }
+  return null;
 }
 
 export function validateOpenTrove(

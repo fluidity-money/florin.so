@@ -55,9 +55,10 @@ test('position screens do not present local state changes as transactions', () =
   assert.match(manage, /priceReady/);
   assert.match(manage, /oracle unavailable/);
 
-  assert.match(stability, /useWalletBalances\(w\.address\)/);
+  assert.match(stability, /const wallet = useWallet\(\)/);
   assert.doesNotMatch(stability, /setDeposited/);
-  assert.match(stability, /Stability Pool transactions coming soon/);
+  assert.match(stability, /provideToSP/);
+  assert.match(stability, /withdrawFromSP/);
 });
 
 test('all borrower screens use one 110 percent collateral ratio', () => {
