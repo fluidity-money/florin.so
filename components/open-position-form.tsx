@@ -156,16 +156,17 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
     }),
   });
 
-  // Max used to target exactly the 110% minimum, which is the liquidation
-  // threshold itself: the resulting position was rejected or immediately at
-  // risk, and any tick down in the price finished it. Aim at 115.5% instead
-  // (the minimum plus the 5% cushion the rest of the UI already uses), so the
-  // number the button fills in is one that actually opens.
+  // Target the 110% minimum exactly. BorrowerOperations reverts only when the
+  // ratio is strictly below MCR, so a position landing on it is accepted, and
+  // this is the figure the "Max LTV 90.9%" line above already promises.
   //
-  // Expressed in thousandths because this is bigint arithmetic: 1.1 * 1.05.
-  const MAX_BORROW_RATIO_MILLI = 1155n;
+  // Quote the fee at that ceiling, then subtract it from principal. The fee is
+  // linear in debt, so the resulting total lands a hair under the ceiling
+  // rather than over it: for a fee rate k, total debt is ceiling * (1 - k^2),
+  // which at current rates is about a millionth short. Conservative in the
+  // direction that matters, and not worth an extra round trip to recover.
   const maxTotalDebtWei = chainState.data
-    ? (collateralWei * chainState.data.price * 1000n) / (10n ** 18n * MAX_BORROW_RATIO_MILLI)
+    ? (collateralWei * chainState.data.price * 10n) / (10n ** 18n * 11n)
     : 0n;
   const maxBorrowFee = useQuery({
     queryKey: ['open-trove-max-fee', maxTotalDebtWei.toString(), rateWei.toString()],
