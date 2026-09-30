@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     description: 'Deposit SPY, mint FUSD, and borrow dollars without giving up your position.',
     images: [
       {
-        url: '/opengraph-image.png',
+        url: '/opengraph-image.jpg',
         width: 1200,
         height: 630,
         alt: 'Florin — Never sell a share.',
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     creator: '@florinprotocol',
     title: 'Florin — Never sell a share.',
     description: 'Deposit SPY, mint FUSD, and borrow dollars without giving up your position.',
-    images: ['/opengraph-image.png'],
+    images: ['/opengraph-image.jpg'],
   },
 };
 
