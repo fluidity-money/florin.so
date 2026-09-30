@@ -644,154 +644,170 @@ function PositionEditor({
         </span>
       </div>
 
-      {/* Collateral */}
-      <div className="swap__field">
-        <div className="swap__row">
-          <span className="swap__label">Collateral</span>
-          <Seg
-            value={collMode}
-            onChange={(v) => {
-              captureEvent('transaction_mode_changed', { context: 'manage_collateral', mode: v });
-              setCollMode(v);
-              setCollStr('');
-            }}
-            options={[
-              { id: 'deposit', label: 'Deposit' },
-              { id: 'withdraw', label: 'Withdraw' },
-            ]}
-          />
+      {/* Collateral. The heading carries the mode switch, so the card below is
+          only ever the amount being moved. */}
+      <section className="mgmt">
+        <div className="mgmt__head">
+          <div className="mgmt__headline">
+            <h2 className="mgmt__title">Collateral</h2>
+            <Seg
+              value={collMode}
+              onChange={(v) => {
+                captureEvent('transaction_mode_changed', { context: 'manage_collateral', mode: v });
+                setCollMode(v);
+                setCollStr('');
+              }}
+              options={[
+                { id: 'deposit', label: 'Deposit' },
+                { id: 'withdraw', label: 'Withdraw' },
+              ]}
+            />
+          </div>
+          <p className="mgmt__hint">
+            Depositing SPY lowers your LTV and your liquidation price. Withdrawing raises both.
+          </p>
         </div>
-        <div className="swap__row">
-          <input
-            className="swap__amount"
-            inputMode="decimal"
-            placeholder="0.00"
-            value={collStr}
-            onChange={(e) => setCollStr(e.target.value)}
-            aria-label={`${collMode} SPY`}
-          />
-          <button
-            type="button"
-            className="swap__max"
-            disabled={!chainState.data || collMaxWei <= 0n}
-            onClick={() => {
-              captureEvent('max_amount_selected', { context: 'manage_position', action: collMode, asset: 'SPY' });
-              setCollStr(collMaxWei > 0n ? formatUnits(collMaxWei, 18) : '');
-            }}
-          >
-            Max
-          </button>
-          <span className="swap__pill">
-            <Token symbol="SPY" size={18} />
+        <div className="swap__field">
+          <div className="swap__row">
+            <input
+              className="swap__amount"
+              inputMode="decimal"
+              placeholder="0.00"
+              value={collStr}
+              onChange={(e) => setCollStr(e.target.value)}
+              aria-label={`${collMode} SPY`}
+            />
+            <button
+              type="button"
+              className="swap__max"
+              disabled={!chainState.data || collMaxWei <= 0n}
+              onClick={() => {
+                captureEvent('max_amount_selected', { context: 'manage_position', action: collMode, asset: 'SPY' });
+                setCollStr(collMaxWei > 0n ? formatUnits(collMaxWei, 18) : '');
+              }}
+            >
+              Max
+            </button>
+            <span className="swap__pill">
+              <Token symbol="SPY" size={18} />
+            </span>
+          </div>
+          <span className="swap__usd">
+            {collMode === 'deposit'
+              ? chainState.isLoading || chainState.isError
+                ? 'Wallet balance unavailable'
+                : `you hold ${money(spyBalance, 2)} SPY`
+              : `${money(collateral, 2)} SPY in the position`}
           </span>
         </div>
-        <span className="swap__usd">
-          {collMode === 'deposit'
-            ? chainState.isLoading || chainState.isError
-              ? 'Wallet balance unavailable'
-              : `you hold ${money(spyBalance, 2)} SPY`
-            : `${money(collateral, 2)} SPY in the position`}
-        </span>
-      </div>
-      {collOver && (
-        <p className="swap__over">
-          {collMode === 'deposit'
-            ? `You hold ${money(spyBalance, 2)} SPY.`
-            : `Only ${money(collateral, 2)} SPY is in the position.`}
-        </p>
-      )}
-      <Button
-        variant={collMode === 'deposit' ? 'primary' : 'ghost'}
-        disabled={
-          pendingTx
-          || collateralWei <= 0n
-          || collOver
-          || (collMode === 'deposit' && (!chainState.data || chainState.isError))
-          || (collMode === 'withdraw' && (!priceReady || collateralWouldBreach))
-        }
-        onClick={() => void runTransaction(collMode)}
-      >
-        {pendingTx && txAction === collMode
-          ? stage === 'approving' ? 'Approving SPY…' : 'Confirming…'
-          : collMode === 'deposit' ? 'Deposit SPY' : 'Withdraw SPY'}
-      </Button>
+        {collOver && (
+          <p className="swap__over">
+            {collMode === 'deposit'
+              ? `You hold ${money(spyBalance, 2)} SPY.`
+              : `Only ${money(collateral, 2)} SPY is in the position.`}
+          </p>
+        )}
+        <Button
+          variant={collMode === 'deposit' ? 'primary' : 'ghost'}
+          disabled={
+            pendingTx
+            || collateralWei <= 0n
+            || collOver
+            || (collMode === 'deposit' && (!chainState.data || chainState.isError))
+            || (collMode === 'withdraw' && (!priceReady || collateralWouldBreach))
+          }
+          onClick={() => void runTransaction(collMode)}
+        >
+          {pendingTx && txAction === collMode
+            ? stage === 'approving' ? 'Approving SPY…' : 'Confirming…'
+            : collMode === 'deposit' ? 'Deposit SPY' : 'Withdraw SPY'}
+        </Button>
+      </section>
 
       {/* Debt */}
-      <div className="swap__field">
-        <div className="swap__row">
-          <span className="swap__label">Debt</span>
-          <Seg
-            value={debtMode}
-            onChange={(v) => {
-              captureEvent('transaction_mode_changed', { context: 'manage_debt', mode: v });
-              setDebtMode(v);
-              setDebtStr('');
-            }}
-            options={[
-              { id: 'borrow', label: 'Borrow' },
-              { id: 'repay', label: 'Repay' },
-            ]}
-          />
+      <section className="mgmt">
+        <div className="mgmt__head">
+          <div className="mgmt__headline">
+            <h2 className="mgmt__title">Debt</h2>
+            <Seg
+              value={debtMode}
+              onChange={(v) => {
+                captureEvent('transaction_mode_changed', { context: 'manage_debt', mode: v });
+                setDebtMode(v);
+                setDebtStr('');
+              }}
+              options={[
+                { id: 'borrow', label: 'Borrow' },
+                { id: 'repay', label: 'Repay' },
+              ]}
+            />
+          </div>
+          <p className="mgmt__hint">
+            Borrowing more FUSD raises your LTV. Repaying frees collateral to withdraw.
+          </p>
         </div>
-        <div className="swap__row">
-          <input
-            className="swap__amount"
-            inputMode="decimal"
-            placeholder="0.00"
-            value={debtStr}
-            onChange={(e) => setDebtStr(e.target.value)}
-            aria-label={`${debtMode} FUSD`}
-          />
-          <button
-            type="button"
-            className="swap__max"
-            disabled={!chainState.data || debtMaxWei <= 0n || (debtMode === 'borrow' && maxBorrowFee.data === undefined)}
-            onClick={() => {
-              captureEvent('max_amount_selected', { context: 'manage_position', action: debtMode, asset: 'FUSD' });
-              setDebtStr(debtMaxWei > 0n ? formatUnits(debtMaxWei, 18) : '');
-            }}
-          >
-            Max
-          </button>
-          <span className="swap__pill">
-            <Token symbol="FUSD" size={18} />
+        <div className="swap__field">
+          <div className="swap__row">
+            <input
+              className="swap__amount"
+              inputMode="decimal"
+              placeholder="0.00"
+              value={debtStr}
+              onChange={(e) => setDebtStr(e.target.value)}
+              aria-label={`${debtMode} FUSD`}
+            />
+            <button
+              type="button"
+              className="swap__max"
+              disabled={!chainState.data || debtMaxWei <= 0n || (debtMode === 'borrow' && maxBorrowFee.data === undefined)}
+              onClick={() => {
+                captureEvent('max_amount_selected', { context: 'manage_position', action: debtMode, asset: 'FUSD' });
+                setDebtStr(debtMaxWei > 0n ? formatUnits(debtMaxWei, 18) : '');
+              }}
+            >
+              Max
+            </button>
+            <span className="swap__pill">
+              <Token symbol="FUSD" size={18} />
+            </span>
+          </div>
+          <span className="swap__usd">
+            {debtMode === 'borrow'
+              ? priceReady ? `$${money(freeUsd)} free to borrow` : 'Oracle price unavailable'
+              : chainState.isLoading || chainState.isError
+                ? 'Wallet balance unavailable'
+                : `you hold $${money(fusdBalance)} FUSD · $${money(debt)} owed`}
           </span>
         </div>
-        <span className="swap__usd">
-          {debtMode === 'borrow'
-            ? priceReady ? `$${money(freeUsd)} free to borrow` : 'Oracle price unavailable'
-            : chainState.isLoading || chainState.isError
-              ? 'Wallet balance unavailable'
-              : `you hold $${money(fusdBalance)} FUSD · $${money(debt)} owed`}
-        </span>
-      </div>
-      {debtOver && (
-        <p className="swap__over">
-          {debtMode === 'borrow'
-            ? `$${money(freeUsd)} is the most you can draw against this collateral.`
-            : `You can repay at most $${money(debtMax)}.`}
-        </p>
-      )}
-      <Button
-        variant={debtMode === 'repay' ? 'primary' : 'ghost'}
-        disabled={
-          pendingTx
-          || debtWei <= 0n
-          || debtOver
-          || (debtMode === 'borrow' && (!priceReady || !borrowFeeReady || borrowFee.isError || debtWouldBreach))
-          || (debtMode === 'repay' && (!chainState.data || chainState.isError))
-        }
-        onClick={() => void runTransaction(debtMode)}
-      >
-        {pendingTx && txAction === debtMode
-          ? 'Confirming…'
-          : debtMode === 'borrow' ? 'Borrow FUSD' : 'Repay FUSD'}
-      </Button>
-      {debtMode === 'borrow' && borrowFee.isError && (
-        <p className="swap__over">Could not quote the onchain upfront fee. Try again before submitting.</p>
-      )}
+        {debtOver && (
+          <p className="swap__over">
+            {debtMode === 'borrow'
+              ? `$${money(freeUsd)} is the most you can draw against this collateral.`
+              : `You can repay at most $${money(debtMax)}.`}
+          </p>
+        )}
+        <Button
+          variant={debtMode === 'repay' ? 'primary' : 'ghost'}
+          disabled={
+            pendingTx
+            || debtWei <= 0n
+            || debtOver
+            || (debtMode === 'borrow' && (!priceReady || !borrowFeeReady || borrowFee.isError || debtWouldBreach))
+            || (debtMode === 'repay' && (!chainState.data || chainState.isError))
+          }
+          onClick={() => void runTransaction(debtMode)}
+        >
+          {pendingTx && txAction === debtMode
+            ? 'Confirming…'
+            : debtMode === 'borrow' ? 'Borrow FUSD' : 'Repay FUSD'}
+        </Button>
+        {debtMode === 'borrow' && borrowFee.isError && (
+          <p className="swap__over">Could not quote the onchain upfront fee. Try again before submitting.</p>
+        )}
+      </section>
 
-      {/* What the pending change does, before it is applied */}
+      {/* What the pending change does, before it is applied. Outside both
+          sections above, because either one can be what is pending. */}
       {pending && priceReady && (
         <div className={`swap__meta${wouldBreach ? ' swap__meta--bad' : ''}`}>
           <span>
@@ -812,49 +828,55 @@ function PositionEditor({
       )}
 
       {/* Rate */}
-      <div className="swap__field swap__field--rate">
-        <div className="swap__row">
-          <span className="swap__label">
-            Your interest rate <em>(avg. {marketAverageRate === null ? '—' : pct(marketAverageRate * 100, 2)})</em>
+      <section className="mgmt">
+        <div className="mgmt__head">
+          <div className="mgmt__headline">
+            <h2 className="mgmt__title">Interest rate</h2>
+          </div>
+          <p className="mgmt__hint">
+            Lower rates cost less to hold, but are redeemed first. The market average is{' '}
+            {marketAverageRate === null ? '—' : pct(marketAverageRate * 100, 2)}.
+          </p>
+        </div>
+        <div className="swap__field swap__field--rate">
+          <div className="swap__row">
+            <span className="swap__amount swap__amount--rate">{pct(rate * 100, 2)}</span>
+            <input
+              className="slider swap__slider"
+              type="range"
+              min={MIN_RATE}
+              max={MAX_RATE}
+              step={0.0025}
+              value={rate}
+              disabled={batched || pendingTx}
+              onChange={(e) => setRate(parseFloat(e.target.value))}
+              aria-label="Interest rate"
+            />
+          </div>
+          <span className="swap__usd">
+            ${money(debt * rate)} FUSD / year on the <b>${money(debt)}</b> you owe
           </span>
         </div>
-        <div className="swap__row">
-          <span className="swap__amount swap__amount--rate">{pct(rate * 100, 2)}</span>
-          <input
-            className="slider swap__slider"
-            type="range"
-            min={MIN_RATE}
-            max={MAX_RATE}
-            step={0.0025}
-            value={rate}
-            disabled={batched || pendingTx}
-            onChange={(e) => setRate(parseFloat(e.target.value))}
-            aria-label="Interest rate"
-          />
-        </div>
-        <span className="swap__usd">
-          ${money(debt * rate)} FUSD / year on the <b>${money(debt)}</b> you owe
-        </span>
-      </div>
-      {batched && (
-        <p className="swap__over">This position’s rate is managed by an interest-rate batch.</p>
-      )}
-      <Button
-        variant="ghost"
-        disabled={pendingTx || batched || currentRateWei === null || rateWei === currentRateWei}
-        onClick={() => void runTransaction('rate')}
-      >
-        {pendingTx && txAction === 'rate' ? 'Confirming…' : 'Update interest rate'}
-      </Button>
+        {batched && (
+          <p className="swap__over">This position’s rate is managed by an interest-rate batch.</p>
+        )}
+        <Button
+          variant="ghost"
+          disabled={pendingTx || batched || currentRateWei === null || rateWei === currentRateWei}
+          onClick={() => void runTransaction('rate')}
+        >
+          {pendingTx && txAction === 'rate' ? 'Confirming…' : 'Update interest rate'}
+        </Button>
 
-      <details className="swap__note">
-        <summary>Interest rate and redemption order</summary>
-        <p>
-          Redemptions are filled from the cheapest troves first. Raising your
-          rate costs more but moves troves cheaper than yours in front of you.
-          Exact queue depth is not available from the current market API.
-        </p>
-      </details>
+        <details className="swap__note">
+          <summary>Interest rate and redemption order</summary>
+          <p>
+            Redemptions are filled from the cheapest troves first. Raising your
+            rate costs more but moves troves cheaper than yours in front of you.
+            Exact queue depth is not available from the current market API.
+          </p>
+        </details>
+      </section>
 
       {txError && (
         <div className="swap__error" role="alert">

@@ -2170,6 +2170,51 @@ input:focus-visible {
   min-width: 0;
 }
 
+/* ---- manage: one section per job --------------------------------------------- */
+
+/* Manage does three unrelated things in one column: move collateral, move
+   debt, change the rate. Each one used to open straight into a control, so a
+   reader met a Deposit/Withdraw toggle before anything said what was being
+   deposited. The heading names the job and takes the mode switch with it,
+   which leaves the card below holding only the amount. */
+.mgmt {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.mgmt__head {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 0 4px;
+}
+
+.mgmt__headline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 26px;
+}
+
+.mgmt__title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.mgmt__hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--gray-3);
+}
+
 /* Derived figures: outside the card, tied to the field above. */
 .swap__meta {
   display: flex;
