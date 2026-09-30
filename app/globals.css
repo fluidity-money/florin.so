@@ -3113,3 +3113,61 @@ input:focus-visible {
     font-size: 20px;
   }
 }
+
+/* ---- header account control -------------------------------------------------- */
+/* Address and network in one pill. It replaces a separate address chip and a
+   full-width chain-name button, which together spent most of the header's
+   right side restating something that does not change between visits. */
+
+.account-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 44px;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  padding: 10px 18px;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.account-pill:hover {
+  background: var(--sp-hawkes);
+  border-color: var(--sp-biscay);
+  color: var(--sp-biscay);
+}
+
+.account-pill__dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--risk-ok);
+}
+
+/* The one state worth interrupting for: the address is useless information if
+   the chain underneath it is wrong, so the pill says that instead. */
+.account-pill--wrong {
+  border-color: var(--risk-bad);
+  color: var(--risk-bad);
+  font-family: var(--sans);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.account-pill--wrong:hover {
+  background: var(--risk-bad);
+  border-color: var(--risk-bad);
+  color: var(--paper);
+}
+
+.account-pill--wrong .account-pill__dot {
+  background: currentColor;
+}

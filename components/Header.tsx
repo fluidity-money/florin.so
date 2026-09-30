@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { useAppKit, useAppKitNetworkCore } from '@reown/appkit/react';
+import { robinhoodTestnet } from '@reown/appkit/networks';
 import { useWallet } from './wallet/wallet';
 import { Button } from './ui';
 import { captureEvent } from '../lib/analytics';
@@ -14,23 +15,40 @@ const NAV = [
   { href: '/position', label: 'Manage' },
 ];
 
-// Network selector. Only mounted when the real (Reown) provider is active, so
-// the AppKit hooks are safe to call. Opens the network-sheet; shows the active
-// chain name once one is set.
-function NetworkControl() {
+// Address and network in one control, because they answer the same question:
+// which account am I acting as, and on what. Three separate pills spent the
+// whole right-hand side of the header on a chain name that is the same on
+// every visit.
+//
+// Quiet when correct: a dot and the truncated address, with the full chain
+// name on hover. Loud when not: the pill turns red and says so, which is the
+// only moment the network is worth a reader's attention. Clicking opens the
+// network sheet either way.
+//
+// Only mounted when the real (Reown) provider is active, so the AppKit hooks
+// are safe to call.
+function ReownAccountControl({ short }: { short: string }) {
   const { open } = useAppKit();
   const { caipNetwork } = useAppKitNetworkCore();
-  const net = caipNetwork?.name ?? 'Connect network';
+
+  const net = caipNetwork?.name ?? null;
+  // No network yet reads as wrong rather than right: better to prompt than to
+  // imply a connection that is not there.
+  const onExpected = caipNetwork?.id === robinhoodTestnet.id;
+
   return (
-    <Button
-      variant="ghost"
+    <button
+      type="button"
+      className={onExpected ? 'account-pill' : 'account-pill account-pill--wrong'}
+      title={net ? `Connected to ${net}` : 'No network selected'}
       onClick={() => {
-        captureEvent('network_selector_opened', { current_chain: net });
+        captureEvent('network_selector_opened', { current_chain: net ?? 'none' });
         void open({ view: 'Networks' });
       }}
     >
-      {net}
-    </Button>
+      <span className="account-pill__dot" aria-hidden="true" />
+      <span className="account-pill__text">{onExpected ? short : 'Wrong network'}</span>
+    </button>
   );
 }
 
@@ -82,9 +100,13 @@ export function Header() {
         </nav>
 
         <div className="site-header__conn">
-          {w.connected && w.short && <span className="addr-chip">{w.short}</span>}
+          {w.connected && w.short &&
+            (w.kind === 'reown'
+              ? <ReownAccountControl short={w.short} />
+              : /* Injected wallets have no network sheet to open, so the
+                   address stays a plain chip rather than a dead button. */
+                <span className="addr-chip">{w.short}</span>)}
           {walletError && <span className="addr-chip">Wallet unavailable</span>}
-          {w.kind === 'reown' && <NetworkControl />}
           <Button
             variant={w.connected ? 'ghost' : 'primary'}
             onClick={() => void toggleWallet()}
