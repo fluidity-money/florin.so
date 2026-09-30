@@ -2,8 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { spyMarket, type FlorinMarkets } from '../lib/florin-markets';
+import { parseDisplayNumber, spyMarket, type FlorinMarkets } from '../lib/florin-markets';
 import { useFlorinMarkets } from '../lib/use-florin-markets';
+import { useSpyPrice } from '../lib/use-spy-price';
+import { compact } from '../lib/format';
 import { captureEvent } from '../lib/analytics';
 
 const FAUCET_INTRO_COOKIE = 'florin_faucet_intro_seen';
@@ -18,6 +20,7 @@ const FAUCET_INTRO_MAX_AGE = 60 * 60 * 24 * 365;
 export function Hero({ markets }: { markets: FlorinMarkets }) {
   const liveMarkets = useFlorinMarkets(markets);
   const { borrow, earn } = spyMarket(liveMarkets);
+  const { price: spyPrice, live: priceLive } = useSpyPrice();
   const [showFaucetIntro, setShowFaucetIntro] = useState(false);
 
   useEffect(() => {
@@ -32,10 +35,19 @@ export function Hero({ markets }: { markets: FlorinMarkets }) {
     document.cookie = `${FAUCET_INTRO_COOKIE}=1; Path=/; Max-Age=${FAUCET_INTRO_MAX_AGE}; SameSite=Lax${secure}`;
   }, []);
 
+  // All three read in dollars. FUSD is a dollar stablecoin so those two are a
+  // relabel, but collateral is held in SPY and has to be priced: it waits for
+  // the oracle rather than showing $0 while the feed is still loading.
+  const depositedSpy = parseDisplayNumber(borrow?.deposited);
+  const collateralUsd =
+    depositedSpy !== null && priceLive && spyPrice > 0 ? depositedSpy * spyPrice : null;
+  const debtUsd = parseDisplayNumber(borrow?.debtIssued);
+  const poolUsd = parseDisplayNumber(earn?.poolSize);
+
   const stats: [string, string][] = [
-    ['Collateral deposited', borrow ? `${borrow.deposited} SPY` : '—'],
-    ['FUSD in circulation', borrow ? `${borrow.debtIssued} FUSD` : '—'],
-    ['Stability Pool', earn ? `${earn.poolSize} FUSD` : '—'],
+    ['Collateral deposited', collateralUsd !== null ? compact(collateralUsd) : '—'],
+    ['FUSD in circulation', debtUsd !== null ? compact(debtUsd) : '—'],
+    ['Stability Pool', poolUsd !== null ? compact(poolUsd) : '—'],
   ];
 
   return (

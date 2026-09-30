@@ -14,6 +14,15 @@ function Collateral({ name }: { name: string }) {
   return <span className="market__asset">{name}</span>;
 }
 
+// The graph returns bare amounts, so the unit is added here. Collateral is
+// labelled with whatever that market's asset is rather than a hardcoded SPY,
+// so a second collateral needs no change. Guards against an empty or
+// non-numeric value so a dash never comes back as "— SPY".
+function withUnit(value: string | undefined, unit: string): string {
+  if (!value || !/\d/.test(value)) return '—';
+  return `${value} ${unit}`;
+}
+
 const unavailableRow = [
   <span className="mono" key="asset">—</span>,
   <span className="mono" key="rate">—</span>,
@@ -28,15 +37,15 @@ export function MarketsClient({ initialData }: { initialData: FlorinMarkets }) {
   const borrowRows = markets.borrowDetails.map((details) => [
     <Collateral name={details.collateral.name} key="asset" />,
     <span className="mono" key="rate">{details.avgRatePa}</span>,
-    <span className="mono" key="deposited">{details.deposited}</span>,
-    <span className="mono" key="debt">{details.debtIssued}</span>,
+    <span className="mono" key="deposited">{withUnit(details.deposited, details.collateral.name)}</span>,
+    <span className="mono" key="debt">{withUnit(details.debtIssued, 'FUSD')}</span>,
     <Link className="market__cta" href="/open" key="action">Borrow →</Link>,
   ]);
 
   const earnRows = markets.earnRewards.map((rewards) => [
     <Collateral name={rewards.collateral.name} key="asset" />,
     <span className="mono" key="apr">{rewards.apr}</span>,
-    <span className="mono" key="pool">{rewards.poolSize}</span>,
+    <span className="mono" key="pool">{withUnit(rewards.poolSize, 'FUSD')}</span>,
     <span className="mono" key="coverage">{rewards.coverage}</span>,
     <Link className="market__cta" href="/stability" key="action">Earn →</Link>,
   ]);

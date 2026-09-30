@@ -72,6 +72,22 @@ export function spyMarket(markets: FlorinMarkets): {
   };
 }
 
+// The graph hands back display strings rather than raw amounts ("15",
+// "2.01K", "1.5M"), so anything that needs arithmetic on them has to read the
+// suffix back off. Returns null rather than 0 on junk, so a caller can tell
+// "no data" from "genuinely zero".
+const MAGNITUDES: Record<string, number> = { K: 1e3, M: 1e6, B: 1e9, T: 1e12 };
+
+export function parseDisplayNumber(value: string | undefined): number | null {
+  if (!value) return null;
+  const match = value.trim().replace(/,/g, '').match(/^(-?\d*\.?\d+)\s*([KMBT])?$/i);
+  if (!match) return null;
+  const amount = Number.parseFloat(match[1]);
+  if (!Number.isFinite(amount)) return null;
+  const suffix = match[2]?.toUpperCase();
+  return suffix ? amount * MAGNITUDES[suffix] : amount;
+}
+
 export function parseDisplayPercent(value: string | undefined): number | null {
   if (!value) return null;
   const parsed = Number.parseFloat(value.replace('%', ''));
