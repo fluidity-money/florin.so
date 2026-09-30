@@ -20,6 +20,7 @@ import { MIN_COLLATERAL_RATIO } from '../lib/protocol-constants';
 import { useWallet } from './wallet/wallet';
 import { useFlorinMarkets } from '../lib/use-florin-markets';
 import { robinhoodPublicClient } from '../lib/robinhood-client';
+import { captureEvent } from '../lib/analytics';
 import {
   CONTRACTS,
   erc20Abi,
@@ -201,6 +202,12 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
     }
     if (pending) return;
 
+    captureEvent('stability_pool_action_requested', {
+      action,
+      chain_id: ROBINHOOD_TESTNET_CHAIN_ID,
+      wallet_kind: wallet.kind,
+      coverage_risk: coverageRisk,
+    });
     setError(null);
     setSuccess(null);
     setTxHash(null);
@@ -325,10 +332,22 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
         setSuccess('Stability Pool rewards claimed.');
       }
 
+      captureEvent('stability_pool_action_succeeded', {
+        action,
+        chain_id: ROBINHOOD_TESTNET_CHAIN_ID,
+        wallet_kind: wallet.kind,
+        coverage_risk: coverageRisk,
+      });
       setAmountStr('');
       await position.refetch();
     } catch (cause) {
       setError(errorMessage(cause));
+      captureEvent('stability_pool_action_failed', {
+        action,
+        chain_id: ROBINHOOD_TESTNET_CHAIN_ID,
+        wallet_kind: wallet.kind,
+        coverage_risk: coverageRisk,
+      });
     } finally {
       setStage('idle');
     }
@@ -410,7 +429,13 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
       <div className="swap__field">
         <div className="swap__row">
           <span className="swap__label">Amount</span>
-          <Seg mode={mode} onChange={(next) => { setMode(next); setAmountStr(''); setError(null); setSuccess(null); }} />
+          <Seg mode={mode} onChange={(next) => {
+            captureEvent('transaction_mode_changed', { context: 'stability_pool', mode: next });
+            setMode(next);
+            setAmountStr('');
+            setError(null);
+            setSuccess(null);
+          }} />
         </div>
         <div className="swap__row">
           <input
@@ -425,7 +450,10 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
             type="button"
             className="swap__max"
             disabled={maxAmount <= 0n}
-            onClick={() => setAmountStr(formatUnits(maxAmount, 18))}
+            onClick={() => {
+              captureEvent('max_amount_selected', { context: 'stability_pool', action: mode, asset: 'FUSD' });
+              setAmountStr(formatUnits(maxAmount, 18));
+            }}
           >
             Max
           </button>

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "test": "node --test lib/borrow-contract.test.cjs lib/stability-pool-contract.test.cjs lib/transaction-error.test.cjs tests/mint-page.test.mjs tests/markets-graphql.test.mjs tests/positions-graphql.test.mjs tests/stability-pool.test.mjs tests/live-frontend-data.test.mjs tests/hero-faucet.test.mjs tests/public-site.test.mjs",
+    "test": "node --test lib/borrow-contract.test.cjs lib/stability-pool-contract.test.cjs lib/transaction-error.test.cjs tests/mint-page.test.mjs tests/markets-graphql.test.mjs tests/positions-graphql.test.mjs tests/stability-pool.test.mjs tests/live-frontend-data.test.mjs tests/hero-faucet.test.mjs tests/public-site.test.mjs tests/ui-analytics.test.mjs",
     "start": "next start",
     "lint": "next lint"
   },

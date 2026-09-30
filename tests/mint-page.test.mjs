@@ -51,10 +51,10 @@ test('mint flow wraps ETH and approves WETH for liquidator compensation', () => 
 test('mint failures show an explanation and report the error to PostHog', () => {
   const open = read('components/open-position-form.tsx');
 
-  assert.match(open, /posthog\.capture\('open_trove_failed'/);
+  assert.match(open, /captureEvent\('position_open_failed'/);
   assert.match(open, /error\.explanation/);
   assert.match(open, /Technical details/);
   assert.match(open, /<code>\{error\.technicalDetails\}<\/code>/);
   assert.match(open, /txHash && \(pending \|\| error\)/);
-  assert.match(open, /stage: description\.stage/);
+  assert.match(open, /failure_stage: description\.stage/);
 });

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useAppKit, useAppKitNetworkCore } from '@reown/appkit/react';
 import { useWallet } from './wallet/wallet';
 import { Button } from './ui';
+import { captureEvent } from '../lib/analytics';
 
 const NAV = [
   { href: '/', label: 'Home' },
@@ -21,7 +22,13 @@ function NetworkControl() {
   const { caipNetwork } = useAppKitNetworkCore();
   const net = caipNetwork?.name ?? 'Connect network';
   return (
-    <Button variant="ghost" onClick={() => void open({ view: 'Networks' })}>
+    <Button
+      variant="ghost"
+      onClick={() => {
+        captureEvent('network_selector_opened', { current_chain: net });
+        void open({ view: 'Networks' });
+      }}
+    >
       {net}
     </Button>
   );
@@ -34,10 +41,23 @@ export function Header() {
 
   async function toggleWallet() {
     setWalletError(false);
+    if (w.connected) {
+      try {
+        await w.disconnect();
+        captureEvent('wallet_disconnected', { source: 'header', route: path, wallet_kind: w.kind });
+      } catch {
+        setWalletError(true);
+      }
+      return;
+    }
+
+    captureEvent('wallet_connection_requested', { source: 'header', route: path, wallet_kind: w.kind });
     try {
-      await (w.connected ? w.disconnect() : w.connect());
+      await w.connect();
+      captureEvent('wallet_connection_succeeded', { source: 'header', route: path, wallet_kind: w.kind });
     } catch {
       setWalletError(true);
+      captureEvent('wallet_connection_failed', { source: 'header', route: path, wallet_kind: w.kind });
     }
   }
 

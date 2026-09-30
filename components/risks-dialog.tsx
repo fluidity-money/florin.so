@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { RiskList } from './risk-list';
+import { captureEvent } from '../lib/analytics';
 
 // The risks live in a dialog opened from the foot of the page rather than in
 // the top bar. They are something you read once before depositing, not a
@@ -27,7 +28,14 @@ export function RisksDialog({ label = 'What can go wrong' }: { label?: string })
 
   return (
     <>
-      <button type="button" className="risks-trigger" onClick={() => ref.current?.showModal()}>
+      <button
+        type="button"
+        className="risks-trigger"
+        onClick={() => {
+          captureEvent('risk_dialog_opened');
+          ref.current?.showModal();
+        }}
+      >
         <span className="risks-trigger__mark" aria-hidden="true">
           !
         </span>
@@ -42,7 +50,12 @@ export function RisksDialog({ label = 'What can go wrong' }: { label?: string })
         </span>
       </button>
 
-      <dialog ref={ref} className="risks-dialog" aria-labelledby="risks-dialog-title">
+      <dialog
+        ref={ref}
+        className="risks-dialog"
+        aria-labelledby="risks-dialog-title"
+        onClose={() => captureEvent('risk_dialog_closed')}
+      >
         <div className="risks-dialog__head">
           <h2 id="risks-dialog-title">What can go wrong</h2>
           <button

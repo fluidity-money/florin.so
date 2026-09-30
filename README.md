@@ -20,4 +20,9 @@ Set `NEXT_PUBLIC_POSTHOG_KEY` to enable PostHog analytics in the web app.
 Visitors are shown a cookie consent banner. PostHog is not initialized and no
 analytics data is sent until they allow analytics. Once allowed, page views
 (including client-side route changes), page leaves, exceptions, and PostHog's
-automatic interaction events are captured.
+automatic interaction events are captured. Explicit product events cover wallet
+connection, CTA and faucet use, risk-dialog engagement, form starts and Max
+selection, mode changes, and the requested/succeeded/failed lifecycle for open,
+manage-position, and Stability Pool transactions. Transaction events deliberately
+exclude wallet addresses, transaction hashes, contract addresses, exact amounts,
+and raw error details.

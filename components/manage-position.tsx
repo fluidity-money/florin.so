@@ -38,6 +38,7 @@ import {
   validatePositionAmount,
 } from '../lib/borrow-contract';
 import { robinhoodPublicClient } from '../lib/robinhood-client';
+import { captureEvent } from '../lib/analytics';
 import {
   describeTransactionError,
   type TransactionErrorDescription,
@@ -326,6 +327,11 @@ function PositionEditor({
     const account = w.address as Address | null;
     if (!account || !w.provider || pendingTx) return;
 
+    captureEvent('position_action_requested', {
+      action,
+      chain_id: ROBINHOOD_TESTNET_CHAIN_ID,
+      wallet_kind: w.kind,
+    });
     setTxAction(action);
     setTxError(null);
     setTxHash(null);
@@ -528,10 +534,24 @@ function PositionEditor({
         await writeAndConfirm(adjustment.request, 'The position-close transaction reverted.');
       }
 
+      captureEvent('position_action_succeeded', {
+        action,
+        chain_id: ROBINHOOD_TESTNET_CHAIN_ID,
+        wallet_kind: w.kind,
+      });
       setTxComplete(true);
       window.setTimeout(onChanged, 2_000);
     } catch (cause) {
-      setTxError(describeTransactionError(cause, failureStage));
+      const description = describeTransactionError(cause, failureStage);
+      setTxError(description);
+      captureEvent('position_action_failed', {
+        action,
+        failure_stage: description.stage,
+        error_title: description.title,
+        error_code: description.code,
+        chain_id: ROBINHOOD_TESTNET_CHAIN_ID,
+        wallet_kind: w.kind,
+      });
     } finally {
       setStage('idle');
     }
@@ -631,6 +651,7 @@ function PositionEditor({
           <Seg
             value={collMode}
             onChange={(v) => {
+              captureEvent('transaction_mode_changed', { context: 'manage_collateral', mode: v });
               setCollMode(v);
               setCollStr('');
             }}
@@ -653,7 +674,10 @@ function PositionEditor({
             type="button"
             className="swap__max"
             disabled={!chainState.data || collMaxWei <= 0n}
-            onClick={() => setCollStr(collMaxWei > 0n ? formatUnits(collMaxWei, 18) : '')}
+            onClick={() => {
+              captureEvent('max_amount_selected', { context: 'manage_position', action: collMode, asset: 'SPY' });
+              setCollStr(collMaxWei > 0n ? formatUnits(collMaxWei, 18) : '');
+            }}
           >
             Max
           </button>
@@ -699,6 +723,7 @@ function PositionEditor({
           <Seg
             value={debtMode}
             onChange={(v) => {
+              captureEvent('transaction_mode_changed', { context: 'manage_debt', mode: v });
               setDebtMode(v);
               setDebtStr('');
             }}
@@ -721,7 +746,10 @@ function PositionEditor({
             type="button"
             className="swap__max"
             disabled={!chainState.data || debtMaxWei <= 0n || (debtMode === 'borrow' && maxBorrowFee.data === undefined)}
-            onClick={() => setDebtStr(debtMaxWei > 0n ? formatUnits(debtMaxWei, 18) : '')}
+            onClick={() => {
+              captureEvent('max_amount_selected', { context: 'manage_position', action: debtMode, asset: 'FUSD' });
+              setDebtStr(debtMaxWei > 0n ? formatUnits(debtMaxWei, 18) : '');
+            }}
           >
             Max
           </button>

@@ -1,7 +1,6 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import posthog from 'posthog-js';
 import {
   createPublicClient,
   createWalletClient,
@@ -32,6 +31,7 @@ import {
   type TransactionFailureStage,
 } from '../lib/transaction-error';
 import { useWallet } from './wallet/wallet';
+import { captureEvent } from '../lib/analytics';
 import {
   borrowerOperationsAbi,
   CONTRACTS,
@@ -101,6 +101,17 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   const [error, setError] = useState<TransactionErrorDescription | null>(null);
   const [txHash, setTxHash] = useState<Hash | null>(null);
   const [minted, setMinted] = useState(false);
+  const formStarted = useRef(false);
+
+  function markFormStarted(firstField: 'collateral' | 'borrow_amount' | 'interest_rate') {
+    if (formStarted.current) return;
+    formStarted.current = true;
+    captureEvent('position_open_form_started', {
+      first_field: firstField,
+      wallet_connected: wallet.connected,
+      market_data_available: Boolean(spyMarketDetails),
+    });
+  }
 
   const collateralWei = useMemo(() => parseToken(spyStr), [spyStr]);
   const borrowedWei = useMemo(() => parseToken(debtStr), [debtStr]);
@@ -198,18 +209,14 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
     const description = describeTransactionError(cause, failureStage);
     setError(description);
 
-    if (posthog.__loaded) {
-      posthog.capture('open_trove_failed', {
-        stage: description.stage,
-        error_title: description.title,
-        error_explanation: description.explanation,
-        error_details: description.technicalDetails,
-        error_code: description.code,
-        chain_id: ROBINHOOD_TESTNET_CHAIN_ID,
-        contract: CONTRACTS.borrowerOperations,
-        transaction_hash: transactionHash,
-      });
-    }
+    captureEvent('position_open_failed', {
+      failure_stage: description.stage,
+      error_title: description.title,
+      error_code: description.code,
+      chain_id: ROBINHOOD_TESTNET_CHAIN_ID,
+      wallet_kind: wallet.kind,
+      had_transaction: transactionHash !== null,
+    });
   }
 
   async function openTrove() {
@@ -224,6 +231,11 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
     }
     if (pending || protocolError || unsafe || insufficientSpy) return;
 
+    captureEvent('position_open_requested', {
+      chain_id: ROBINHOOD_TESTNET_CHAIN_ID,
+      wallet_kind: wallet.kind,
+      redemption_risk: redemptionRisk,
+    });
     setError(null);
     setTxHash(null);
     let failureStage: TransactionFailureStage = 'switching';
@@ -415,6 +427,11 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       if (receipt.status !== 'success') throw new Error('The open-trove transaction reverted.');
 
       await chainState.refetch();
+      captureEvent('position_open_succeeded', {
+        chain_id: ROBINHOOD_TESTNET_CHAIN_ID,
+        wallet_kind: wallet.kind,
+        redemption_risk: redemptionRisk,
+      });
       setMinted(true);
     } catch (cause) {
       reportError(cause, failureStage, transactionHash);
@@ -472,7 +489,10 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         <span className="swap__label">Collateral</span>
         <div className="swap__row">
           <input className="swap__amount" inputMode="decimal" placeholder="0.00" value={spyStr}
-            onChange={(event) => setSpyStr(event.target.value)} aria-label="SPY collateral" />
+            onChange={(event) => {
+              markFormStarted('collateral');
+              setSpyStr(event.target.value);
+            }} aria-label="SPY collateral" />
           <span className="swap__pill"><Token symbol="SPY" size={18} /></span>
         </div>
         <span className="swap__usd">
@@ -491,12 +511,18 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         <span className="swap__label">Loan</span>
         <div className="swap__row">
           <input className="swap__amount" inputMode="decimal" placeholder="10.00" value={debtStr}
-            onChange={(event) => setDebtStr(event.target.value.replaceAll(',', ''))} aria-label="FUSD to borrow" />
+            onChange={(event) => {
+              markFormStarted('borrow_amount');
+              setDebtStr(event.target.value.replaceAll(',', ''));
+            }} aria-label="FUSD to borrow" />
           <button
             type="button"
             className="swap__max"
             disabled={maxBorrow <= 0}
-            onClick={() => setDebtStr(maxBorrow > 0 ? maxBorrow.toFixed(2) : '')}
+            onClick={() => {
+              captureEvent('max_amount_selected', { context: 'open_position', asset: 'FUSD' });
+              setDebtStr(maxBorrow > 0 ? maxBorrow.toFixed(2) : '');
+            }}
           >
             Max
           </button>
@@ -522,7 +548,10 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         <div className="swap__row">
           <span className="swap__amount swap__amount--rate">{pct(rate * 100, 2)}</span>
           <input className="slider swap__slider" type="range" min={MIN_RATE} max={MAX_RATE} step={0.0025}
-            value={rate} onChange={(event) => setRate(parseFloat(event.target.value))} aria-label="Interest rate" />
+            value={rate} onChange={(event) => {
+              markFormStarted('interest_rate');
+              setRate(parseFloat(event.target.value));
+            }} aria-label="Interest rate" />
         </div>
         <span className="swap__usd">${money(annualInterest)} FUSD / year</span>
       </div>

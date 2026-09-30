@@ -1,27 +1,10 @@
 'use client';
 
-import posthog from 'posthog-js';
 import { useEffect, useState } from 'react';
+import { startPostHog } from '../lib/analytics';
 
 const CONSENT_COOKIE = 'florin_analytics_consent';
 const CONSENT_MAX_AGE = 60 * 60 * 24 * 365;
-let posthogStarted = false;
-
-function startPostHog() {
-  const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-
-  if (!posthogKey || posthogStarted) return;
-
-  posthog.init(posthogKey, {
-    api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
-    autocapture: true,
-    capture_exceptions: true,
-    capture_pageview: 'history_change',
-    capture_pageleave: true,
-    person_profiles: 'identified_only',
-  });
-  posthogStarted = true;
-}
 
 function readConsent() {
   const prefix = `${CONSENT_COOKIE}=`;
