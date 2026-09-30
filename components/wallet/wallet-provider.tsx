@@ -109,7 +109,15 @@ function RealWalletProvider({ children }: { children: ReactNode }) {
       adapters={[adapter]}
       networks={[robinhoodTestnet]}
       defaultNetwork={robinhoodTestnet}
-      allowUnsupportedChain={false}
+      // Reown refuses to close its own "Switch Network" sheet: the close button
+      // on that view calls ModalController.shake() instead of closing. With
+      // this false, a wallet that silently reconnects on the wrong chain, or a
+      // network id restored from a previous session, traps a reader in that
+      // sheet before they have asked to connect anything. Allowing the
+      // unsupported chain keeps the site browsable; the header pill already
+      // turns red and opens the network sheet on click, which is the prompt a
+      // reader can actually dismiss.
+      allowUnsupportedChain
       themeMode="light"
       metadata={{
         name: 'Florin',
