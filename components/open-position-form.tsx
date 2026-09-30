@@ -117,12 +117,26 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   const borrowedWei = useMemo(() => parseToken(debtStr), [debtStr]);
   const rateWei = BigInt(Math.round(rate * 1e18));
 
+  // The oracle price is a public read, so it is kept out of the account-gated
+  // query below. Someone sizing up a position before they connect anything
+  // still gets a live price, a collateral value in dollars and a working Max.
+  const oraclePrice = useQuery({
+    queryKey: ['spy-oracle-price'],
+    refetchInterval: 15_000,
+    queryFn: () => publicClient.readContract({
+      address: CONTRACTS.spyPriceFeed,
+      abi: priceFeedAbi,
+      functionName: 'lastGoodPrice',
+    }),
+  });
+
+  // Balance and allowance are the parts that genuinely need an address.
   const chainState = useQuery({
     queryKey: ['open-trove-state', account],
     enabled: Boolean(account),
     refetchInterval: 15_000,
     queryFn: async () => {
-      const [balance, allowance, price] = await Promise.all([
+      const [balance, allowance] = await Promise.all([
         publicClient.readContract({
           address: CONTRACTS.spyToken,
           abi: erc20Abi,
@@ -135,13 +149,8 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
           functionName: 'allowance',
           args: [account!, CONTRACTS.borrowerOperations],
         }),
-        publicClient.readContract({
-          address: CONTRACTS.spyPriceFeed,
-          abi: priceFeedAbi,
-          functionName: 'lastGoodPrice',
-        }),
       ]);
-      return { balance, allowance, price };
+      return { balance, allowance };
     },
   });
 
@@ -165,8 +174,8 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   // rather than over it: for a fee rate k, total debt is ceiling * (1 - k^2),
   // which at current rates is about a millionth short. Conservative in the
   // direction that matters, and not worth an extra round trip to recover.
-  const maxTotalDebtWei = chainState.data
-    ? (collateralWei * chainState.data.price * 10n) / (10n ** 18n * 11n)
+  const maxTotalDebtWei = oraclePrice.data
+    ? (collateralWei * oraclePrice.data * 10n) / (10n ** 18n * 11n)
     : 0n;
   const maxBorrowFee = useQuery({
     queryKey: ['open-trove-max-fee', maxTotalDebtWei.toString(), rateWei.toString()],
@@ -179,9 +188,10 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
     }),
   });
 
-  const chainReady = Boolean(chainState.data);
+  const priceReady = oraclePrice.data !== undefined;
+  const chainReady = Boolean(chainState.data) && priceReady;
   const feeReady = borrowedWei < MIN_DEBT || upfrontFee.data !== undefined;
-  const spyPrice = chainState.data ? Number(formatUnits(chainState.data.price, 18)) : 0;
+  const spyPrice = oraclePrice.data ? Number(formatUnits(oraclePrice.data, 18)) : 0;
   const spy = Math.max(0, xnum(spyStr));
   const borrow = Math.max(0, xnum(debtStr));
   const fee = Number(formatUnits(upfrontFee.data ?? 0n, 18));
@@ -507,8 +517,8 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       </div>
       <div className="swap__meta">
         <span>
-          Oracle price <b>{chainReady ? `$${money(spyPrice)}` : 'loading…'}</b>{' '}
-          {chainReady && <><i className="swap__dot swap__dot--ok" /> onchain</>}
+          Oracle price <b>{priceReady ? `$${money(spyPrice)}` : 'loading…'}</b>{' '}
+          {priceReady && <><i className="swap__dot swap__dot--ok" /> onchain</>}
         </span>
         <span>Max LTV <b>{pct(MAX_LTV * 100, 1)}</b></span>
       </div>
@@ -593,7 +603,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       {protocolError && active && <p className="warn">{protocolError}</p>}
       {unsafe && <p className="warn">This position is below the protocol&apos;s 110% minimum collateral ratio.</p>}
       {insufficientSpy && <p className="warn">Your wallet does not have enough testnet SPY for the collateral.</p>}
-      {chainState.isError && <p className="warn">Could not read the Robinhood testnet contracts. Try again before submitting.</p>}
+      {(chainState.isError || oraclePrice.isError) && <p className="warn">Could not read the Robinhood testnet contracts. Try again before submitting.</p>}
       {upfrontFee.isError && <p className="warn">Could not quote the onchain upfront fee. Try again before submitting.</p>}
       {error && (
         <div className="swap__error" role="alert">
@@ -615,7 +625,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 
       <Button
         variant="primary"
-        disabled={wallet.connected && (!active || Boolean(protocolError) || unsafe || insufficientSpy || pending || !chainReady || !feeReady || chainState.isError || upfrontFee.isError)}
+        disabled={wallet.connected && (!active || Boolean(protocolError) || unsafe || insufficientSpy || pending || !chainReady || !feeReady || chainState.isError || oraclePrice.isError || upfrontFee.isError)}
         onClick={() => void openTrove()}
       >
         {buttonLabel}
