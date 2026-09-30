@@ -156,11 +156,16 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
     }),
   });
 
-  // Quote a fee at the total debt ceiling, then subtract it from principal.
-  // This is conservative because the resulting principal is lower than the
-  // amount used for the fee quote.
+  // Max used to target exactly the 110% minimum, which is the liquidation
+  // threshold itself: the resulting position was rejected or immediately at
+  // risk, and any tick down in the price finished it. Aim at 115.5% instead
+  // (the minimum plus the 5% cushion the rest of the UI already uses), so the
+  // number the button fills in is one that actually opens.
+  //
+  // Expressed in thousandths because this is bigint arithmetic: 1.1 * 1.05.
+  const MAX_BORROW_RATIO_MILLI = 1155n;
   const maxTotalDebtWei = chainState.data
-    ? (collateralWei * chainState.data.price * 10n) / (10n ** 18n * 11n)
+    ? (collateralWei * chainState.data.price * 1000n) / (10n ** 18n * MAX_BORROW_RATIO_MILLI)
     : 0n;
   const maxBorrowFee = useQuery({
     queryKey: ['open-trove-max-fee', maxTotalDebtWei.toString(), rateWei.toString()],
@@ -521,7 +526,10 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
             disabled={maxBorrow <= 0}
             onClick={() => {
               captureEvent('max_amount_selected', { context: 'open_position', asset: 'FUSD' });
-              setDebtStr(maxBorrow > 0 ? maxBorrow.toFixed(2) : '');
+              // Floor, never round: toFixed rounds half up, so the field
+              // could be filled with up to half a cent more than the ceiling
+              // the number was derived from.
+              setDebtStr(maxBorrow > 0 ? (Math.floor(maxBorrow * 100) / 100).toFixed(2) : '');
             }}
           >
             Max
@@ -544,7 +552,12 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       </div>
 
       <div className="swap__field swap__field--rate">
-        <div className="swap__row"><span className="swap__label">Set annual interest rate</span></div>
+        <div className="swap__row">
+          <span className="swap__label">
+            Set interest rate
+            {marketAverageRate !== null && <em> (avg. {pct(marketAverageRate * 100, 2)})</em>}
+          </span>
+        </div>
         <div className="swap__row">
           <span className="swap__amount swap__amount--rate">{pct(rate * 100, 2)}</span>
           <input className="slider swap__slider" type="range" min={MIN_RATE} max={MAX_RATE} step={0.0025}
@@ -555,13 +568,19 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         </div>
         <span className="swap__usd">${money(annualInterest)} FUSD / year</span>
       </div>
+      {/* The right-hand slot used to read "Redeemable before you <amount>":
+          the debt sitting on cheaper rates, and so ahead of this position in
+          the redemption queue. That needs a rate distribution, and the graph
+          exposes only an aggregate average plus openPositions(owner), which
+          cannot enumerate other people's positions. Left out rather than
+          approximated, and the average now lives in the field's own label so
+          it is not repeated here. */}
       <div className="swap__meta">
         {redemptionRisk ? (
           <span><i className={`swap__dot swap__dot--${redemptionRisk}`} /> {redemptionRisk} redemption risk</span>
         ) : (
           <span>Market average rate unavailable</span>
         )}
-        <span>Market average <b>{marketAverageRate === null ? '—' : pct(marketAverageRate * 100, 2)}</b></span>
       </div>
 
       <details className="swap__note">
