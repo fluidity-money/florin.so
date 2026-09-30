@@ -65,7 +65,17 @@ class Trove:
 @dataclass(frozen=True)
 class MarketParams:
     mcr: D = D("1.40")  # minimum collateral ratio
-    origination_fee: D = D("0.005")  # one-time, charged at mint
+    # Liquity v2 charges no origination fee. It charges interest in advance:
+    # seven days of it, at open and on any debt increase. This model carried a
+    # flat 0.5% fee for some time, which was Liquity *v1*'s BORROWING_FEE_FLOOR
+    # imported by mistake; v2 dropped it when borrowers gained a say over their
+    # own rate.
+    #
+    # The point is not revenue. A borrower's rate is also their place in the
+    # redemption queue, so without a cost to changing it they would sit cheap
+    # and spike the rate the moment a redemption wave appeared. Charging a week
+    # in advance prices that option.
+    upfront_interest_period: D = D(7) / D(365)  # a week, in years
     min_debt: D = D("200")  # dust floor, as in Liquity
     min_rate: D = D("0.005")
     max_rate: D = D("0.25")
@@ -142,6 +152,24 @@ class Market:
             return D("Infinity")
         return self.debt_at(trove, now) / value
 
+    def upfront_interest(self, borrow: D, rate: D) -> D:
+        """Interest charged in advance on `borrow`, added to the debt at once.
+
+        The deployed contract prices this off the system average rate *after*
+        the change, not the borrower's own, so opening at the floor and
+        repricing upward immediately cannot dodge it. The borrower's rate
+        still moves the result, but only in proportion to their share of total
+        debt.
+
+        This model has no aggregate rate to hand and uses the borrower's rate
+        alone, which is the same shape but over-weights it. Checked against the
+        deployed contract on a 545.45 debt: the two agree within a cent at 6%,
+        where the borrower's rate sits near the market average, and diverge as
+        it moves away. A system relying on the anti-gaming property would have
+        to carry the real average.
+        """
+        return borrow * rate * self.params.upfront_interest_period
+
     def is_healthy(self, trove: Trove, price: D, now: int) -> bool:
         return self.collateral_ratio(trove, price, now) >= self.params.mcr
 
@@ -156,14 +184,16 @@ class Market:
     def max_borrow(self, trove: Trove, price: D, now: int, target_cr: D | None = None) -> D:
         """Additional FUSD mintable while staying at or above `target_cr`.
 
-        Solves `value / (debt + drawn + fee) = target_cr` for `drawn`, where
-        the fee is charged on the amount drawn and added to the debt.
+        Solves `value / (debt + drawn + upfront) = target_cr` for `drawn`,
+        where the upfront interest is charged on the amount drawn and added to
+        the debt. It scales with the trove's rate, so a dearer position can
+        draw slightly less against the same collateral.
         """
         target = target_cr if target_cr is not None else self.params.mcr
         headroom = self.collateral_value(trove, price) / target - self.debt_at(trove, now)
         if headroom <= 0:
             return D(0)
-        return headroom / (D(1) + self.params.origination_fee)
+        return headroom / (D(1) + trove.rate * self.params.upfront_interest_period)
 
     # -- operations --------------------------------------------------------
 
@@ -172,8 +202,9 @@ class Market:
     ) -> Trove:
         """Deposit collateral and mint `borrow` FUSD against it.
 
-        The borrower receives exactly `borrow`. The origination fee is added
-        to the debt on top, so they owe slightly more than they received.
+        The borrower receives exactly `borrow`. A week of interest is added to
+        the debt on top, so they owe slightly more than they received from the
+        first block.
         """
         p = self.params
         positive(collateral, "collateral")
@@ -184,7 +215,7 @@ class Market:
         if not (p.min_rate <= rate <= p.max_rate):
             raise TroveError(f"rate {rate:.2%} outside [{p.min_rate:.2%}, {p.max_rate:.2%}]")
 
-        debt = borrow * (D(1) + p.origination_fee)
+        debt = borrow + self.upfront_interest(borrow, rate)
         if debt < p.min_debt:
             raise TroveError(f"debt {debt:.2f} below minimum {p.min_debt}")
 
@@ -226,7 +257,10 @@ class Market:
         if new_collateral < 0:
             raise TroveError("cannot withdraw more collateral than deposited")
 
-        fee = debt_delta * p.origination_fee if debt_delta > 0 else D(0)
+        # Drawing more debt is charged its own week of interest in advance, at
+        # the rate the trove will carry afterwards.
+        pending_rate = new_rate if new_rate is not None else t.rate
+        fee = self.upfront_interest(debt_delta, pending_rate) if debt_delta > 0 else D(0)
         new_debt = t.debt + debt_delta + fee
         if new_debt < 0:
             raise TroveError("cannot repay more than owed; use close_trove")
@@ -263,8 +297,8 @@ class Market:
         """Repay everything and withdraw the collateral.
 
         Returns `(repayment_owed, collateral_released)`. The repayment exceeds
-        what was originally borrowed by the accrued interest plus the
-        origination fee, so the borrower must source the difference.
+        what was originally borrowed by the accrued interest plus the week
+        charged in advance at open, so the borrower must source the difference.
         """
         return self.debt_at(trove, now), trove.collateral
 

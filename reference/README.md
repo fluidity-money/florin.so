@@ -54,7 +54,7 @@ collateral balance, ever.
 
 **FUSD supply always equals total debt**, where total debt is live trove
 debt *plus* `bad_debt`. Every mint has a matching debt increase, including
-the origination fee and accrued interest, and a defaulted position keeps its
+the upfront and accrued interest, and a defaulted position keeps its
 debt on the books because the FUSD it created still exists. That is the first
 assertion in `Florin.check_invariants`, and it is what catches accounting
 mistakes. Note it is necessary but not sufficient: a negative balance

@@ -281,12 +281,12 @@ class Florin:
             self.token.transfer(owner, PROTOCOL, collateral)
             self.troves[owner] = trove
 
-            # The borrower receives `borrow`; the origination fee is minted to
-            # the treasury so FUSD supply still equals total trove debt.
+            # The borrower receives `borrow`; the upfront interest is minted
+            # so FUSD supply still equals total trove debt. It is interest, not
+            # a fee, so it is split the same way accrued interest is rather
+            # than going wholly to the treasury.
             self._credit(owner, borrow)
-            fee = trove.debt - borrow
-            self._credit(TREASURY, fee)
-            self.treasury += fee
+            self._settle_interest(trove.debt - borrow)
             return trove
 
     def adjust_trove(self, owner: str, *, wall: int, **kwargs) -> Trove:
@@ -354,6 +354,25 @@ class Florin:
 
     # -- interest ----------------------------------------------------------
 
+    def _settle_interest(self, amount: D) -> None:
+        """Route interest to the pool and the treasury.
+
+        Shared by accrual and by the interest charged in advance at open: the
+        deployed contract folds the upfront amount into the same mint and
+        split, so both arrive the same way here. With an empty pool the whole
+        amount falls through to the treasury, since there is nobody to pay.
+        """
+        if amount <= 0:
+            return
+        to_pool = amount * self.sp_interest_share
+        to_treasury = amount - to_pool
+        if self.pool.total > 0:
+            self.pool.distribute_interest(to_pool)
+        else:
+            to_treasury += to_pool
+        self._credit(TREASURY, to_treasury)
+        self.treasury += to_treasury
+
     def accrue_all(self, wall: int) -> D:
         """Fold interest into every trove and mint the matching FUSD.
 
@@ -385,14 +404,7 @@ class Florin:
                     self.troves[owner] = replace(t, last_update=now)
 
             if total > 0:
-                to_pool = total * self.sp_interest_share
-                to_treasury = total - to_pool
-                if self.pool.total > 0:
-                    self.pool.distribute_interest(to_pool)
-                else:
-                    to_treasury += to_pool
-                self._credit(TREASURY, to_treasury)
-                self.treasury += to_treasury
+                self._settle_interest(total)
             return total
 
     # -- Stability Pool ----------------------------------------------------
