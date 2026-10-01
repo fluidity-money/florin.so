@@ -59,6 +59,16 @@ test('custom analytics use the shared consent-aware capture helper', () => {
   }
 });
 
+test('useFeature exposes consent-aware PostHog boolean flags with a safe default', () => {
+  const providers = read('components/Providers.tsx');
+  const hook = read('hooks/useFeature.ts');
+
+  assert.match(providers, /PostHogProvider/);
+  assert.match(providers, /client=\{posthog\}/);
+  assert.match(hook, /useFeatureFlagEnabled/);
+  assert.match(hook, /defaultValue = false/);
+});
+
 test('transaction events do not send wallet addresses, hashes, contracts, or raw errors', () => {
   for (const path of [
     'components/open-position-form.tsx',
