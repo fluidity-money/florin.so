@@ -2815,8 +2815,15 @@ input:focus-visible {
   mask: url('/florin.svg') center / contain no-repeat;
 }
 
-/* Inside a pill the mark sits tight against the symbol. */
+/* Inside a pill the mark sits tight against the symbol.
+
+   Block-level flex, not the inline-flex `.tok` carries elsewhere. Inline, the
+   pill held a line box with descender room under the mark, and because the SPY
+   mark is an <img> its baseline is its bottom edge: that pill came out 3.5px
+   taller than FUSD's, with its contents sitting high. Out of the line box, both
+   pills are the same height and both marks sit on their centre. */
 .swap__pill .tok {
+  display: flex;
   gap: 7px;
 }
 
