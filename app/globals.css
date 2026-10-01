@@ -1631,6 +1631,16 @@ input:focus-visible {
   font-weight: 600;
 }
 
+/* Block-level flex in the table cell, not inline-flex. Inline, the box sat on
+   the cell's text baseline, and because its first item is an image its baseline
+   is the image's bottom edge: the line box kept descender room underneath, and
+   centring that taller line in the cell lifted "SPY" 2.75px above the figures
+   beside it. Scoped to the cell so it outranks `.tok`, which carries the same
+   class weight and is declared later. Only `display` changes. */
+.market td .market__asset {
+  display: flex;
+}
+
 .market__mark {
   width: 18px;
   height: 18px;
