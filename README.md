@@ -7,10 +7,16 @@ Robinhood Chain Testnet (chain ID `46630`). It reads the SPY balance, allowance,
 oracle price and predicted upfront fee, obtains sorted-trove hints, approves the
 exact SPY requirement, then calls `BorrowerOperations.openTrove`.
 
-An injected browser wallet works without configuration. Set
-`NEXT_PUBLIC_REOWN_PROJECT_ID` to enable the Reown/WalletConnect modal as well.
-The connected wallet needs testnet ETH and testnet SPY. Opening a trove also
-requires the protocol's separate `0.001 ETH` liquidator-compensation deposit.
+Wallets are provided by ZeroDev in EIP-7702 mode. Create a ZeroDev project,
+enable Robinhood Chain Testnet (`46630`), configure the authentication methods
+you want to offer, and allowlist the app origin. Then set
+`NEXT_PUBLIC_ZERODEV_PROJECT_ID`. The ZeroDev dashboard also needs a gas policy
+for sponsored transactions. `NEXT_PUBLIC_ZERODEV_AA_HOST` and
+`NEXT_PUBLIC_ROBINHOOD_TESTNET_RPC_URL` can override their production defaults.
+
+The wallet needs testnet SPY. Opening a trove also requires the protocol's
+separate `0.001 ETH` liquidator-compensation deposit, even when transaction gas
+is sponsored.
 
 ## Analytics
 

@@ -11,7 +11,6 @@ const requiredEvents = {
     'wallet_connection_succeeded',
     'wallet_connection_failed',
     'wallet_disconnected',
-    'network_selector_opened',
   ],
   'components/hero.tsx': [
     'product_cta_clicked',

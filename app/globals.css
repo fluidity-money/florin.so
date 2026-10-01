@@ -247,11 +247,30 @@ a {
   padding: 1px 5px;
 }
 
-/* appkit real-wallet button uses a 90px-wide empty placeholder here */
-.appkit-slot {
-  min-width: 96px;
-  min-height: 34px;
-  border: 1px dashed var(--gray-4);
+/* ---- ZeroDev wallet login --------------------------------------------------- */
+.wallet-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.wallet-modal--open {
+  display: flex;
+}
+.wallet-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(30, 30, 30, 0.56);
+  cursor: default;
+}
+.wallet-modal__content {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 440px);
 }
 
 /* ---- buttons ---------------------------------------------------------------- */

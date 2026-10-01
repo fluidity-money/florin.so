@@ -1,129 +1,201 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import {
-  AppKitProvider,
-  useAppKitAccount,
-  useAppKit,
-  useAppKitProvider,
-  useDisconnect,
-} from '@reown/appkit/react';
-import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
-import { robinhoodTestnet } from '@reown/appkit/networks';
+import { ConnectWallet, useAuth } from '@zerodev/wallet-react-ui';
+import { useMutationState } from '@tanstack/react-query';
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import type { EIP1193Provider } from 'viem';
+import { captureEvent } from '../../lib/analytics';
+import { hasZeroDev } from '../../lib/wagmi';
 import { Wallet, WalletContext } from './wallet';
-
-const PROJECT_ID = (process.env.NEXT_PUBLIC_REOWN_PROJECT_ID ?? '').trim();
-const HAS_REOWN =
-  PROJECT_ID.length > 0 &&
-  PROJECT_ID !== 'YOUR_REOWN_PROJECT_ID' &&
-  PROJECT_ID !== 'REPLACE_ME' &&
-  PROJECT_ID !== 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx';
 
 function shortAddr(address: string): string {
   return address.length > 12 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address;
 }
 
-type InjectedWindow = Window & { ethereum?: EIP1193Provider };
-
-// A real injected-wallet fallback keeps local builds functional without a
-// WalletConnect project id. It deliberately never invents a connected account.
-function InjectedWalletProvider({ children }: { children: ReactNode }) {
-  const [address, setAddress] = useState<string | null>(null);
-  const [provider, setProvider] = useState<EIP1193Provider | null>(null);
-
-  useEffect(() => {
-    const injected = (window as InjectedWindow).ethereum ?? null;
-    setProvider(injected);
-    if (!injected) return;
-
-    const setFirstAccount = (accounts: unknown) => {
-      const first = Array.isArray(accounts) && typeof accounts[0] === 'string' ? accounts[0] : null;
-      setAddress(first);
-    };
-
-    void injected.request({ method: 'eth_accounts' }).then(setFirstAccount).catch(() => setAddress(null));
-    injected.on?.('accountsChanged', setFirstAccount);
-    return () => injected.removeListener?.('accountsChanged', setFirstAccount);
-  }, []);
-
-  const wallet: Wallet = {
-    connected: address !== null,
-    address,
-    short: address ? shortAddr(address) : null,
-    kind: provider ? 'injected' : 'none',
-    mock: false,
-    provider,
-    async connect() {
-      if (!provider) {
-        throw new Error('No browser wallet found. Install an injected wallet or configure Reown.');
-      }
-      const accounts = await provider.request({ method: 'eth_requestAccounts' });
-      const first = Array.isArray(accounts) && typeof accounts[0] === 'string' ? accounts[0] : null;
-      setAddress(first);
-    },
-    async disconnect() {
-      try {
-        await provider?.request({
-          method: 'wallet_revokePermissions',
-          params: [{ eth_accounts: {} }],
-        });
-      } catch {
-        // Not every injected provider implements EIP-2255. Local state still
-        // disconnects this session, while supported wallets revoke permission.
-      }
-      setAddress(null);
-    },
-  };
-
-  return <WalletContext.Provider value={wallet}>{children}</WalletContext.Provider>;
+function stripMagicLinkCode() {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('code');
+  window.history.replaceState(null, '', url.toString());
 }
 
-function RealWalletBridge({ children }: { children: ReactNode }) {
-  const account = useAppKitAccount();
-  const { open } = useAppKit();
-  const { disconnect } = useDisconnect();
-  const { walletProvider } = useAppKitProvider<EIP1193Provider>('eip155');
+export function WalletProvider({ children }: { children: ReactNode }) {
+  const account = useAccount();
+  const { connectors, connectAsync } = useConnect();
+  const { disconnectAsync } = useDisconnect();
+  const { step: authStep, otpId, reset: resetAuth } = useAuth();
+  const magicLinkMutationStatuses = useMutationState({
+    filters: { mutationKey: ['verifyMagicLink'] },
+    select: (mutation) => mutation.state.status,
+  });
+  const magicLinkMutationStatus = magicLinkMutationStatuses[magicLinkMutationStatuses.length - 1];
+  const [provider, setProvider] = useState<EIP1193Provider | null>(null);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const recoveringMagicLink = useRef(
+    typeof window !== 'undefined'
+      && new URLSearchParams(window.location.search).has('code'),
+  );
+  const recoveryStarted = useRef(false);
+  const recoveryFailureCaptured = useRef(false);
+
+  const captureRecoveryResult = useCallback((
+    event: 'wallet_connection_succeeded' | 'wallet_connection_failed',
+  ) => {
+    captureEvent(event, {
+      source: 'header',
+      route: window.location.pathname,
+      wallet_kind: 'zerodev',
+    });
+  }, []);
+
+  const captureRecoveryFailure = useCallback(() => {
+    if (recoveryFailureCaptured.current) return;
+    recoveryFailureCaptured.current = true;
+    captureRecoveryResult('wallet_connection_failed');
+  }, [captureRecoveryResult]);
+
+  const closeRecovery = useCallback(() => {
+    stripMagicLinkCode();
+    recoveringMagicLink.current = false;
+    setLoginOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (recoveringMagicLink.current) setLoginOpen(true);
+  }, []);
+
+  useEffect(() => {
+    if (
+      !recoveringMagicLink.current
+      || recoveryFailureCaptured.current
+      || authStep !== 'verifying-otp'
+      || (otpId && magicLinkMutationStatus !== 'error')
+    ) return;
+
+    captureRecoveryFailure();
+    stripMagicLinkCode();
+  }, [authStep, captureRecoveryFailure, magicLinkMutationStatus, otpId]);
+
+  useEffect(() => {
+    if (
+      !recoveringMagicLink.current
+      || recoveryStarted.current
+      || authStep !== 'authenticated'
+    ) return;
+
+    recoveryStarted.current = true;
+    if (account.isConnected) {
+      captureRecoveryResult('wallet_connection_succeeded');
+      closeRecovery();
+      return;
+    }
+
+    const connector = connectors.find((candidate) => candidate.id === 'zerodev-wallet');
+    if (!connector) {
+      captureRecoveryFailure();
+      resetAuth();
+      closeRecovery();
+      return;
+    }
+
+    void connectAsync({ connector, chainId: 46630 })
+      .then(() => {
+        captureRecoveryResult('wallet_connection_succeeded');
+        closeRecovery();
+      })
+      .catch(() => {
+        captureRecoveryFailure();
+        resetAuth();
+        closeRecovery();
+      });
+  }, [
+    account.isConnected,
+    authStep,
+    captureRecoveryFailure,
+    captureRecoveryResult,
+    closeRecovery,
+    connectAsync,
+    connectors,
+    resetAuth,
+  ]);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!account.isConnected || !account.connector) {
+      setProvider(null);
+      return () => { active = false; };
+    }
+
+    void account.connector.getProvider()
+      .then((nextProvider) => {
+        if (active) setProvider(nextProvider as EIP1193Provider);
+      })
+      .catch(() => {
+        if (active) setProvider(null);
+      });
+
+    return () => { active = false; };
+  }, [account.connector, account.isConnected]);
+
+  useEffect(() => {
+    if (account.isConnected) setLoginOpen(false);
+  }, [account.isConnected]);
+
+  useEffect(() => {
+    if (authStep === 'authenticated') setLoginOpen(false);
+  }, [authStep]);
+
   const wallet: Wallet = {
     connected: account.isConnected,
     address: account.address ?? null,
     short: account.address ? shortAddr(account.address) : null,
-    kind: 'reown',
+    kind: account.isConnected || hasZeroDev ? 'zerodev' : 'none',
     mock: false,
-    provider: walletProvider ?? null,
-    connect: () => void open({ view: 'Connect' }),
-    disconnect: () => void disconnect(),
-  };
-  return <WalletContext.Provider value={wallet}>{children}</WalletContext.Provider>;
-}
+    provider,
+    async connect() {
+      if (!hasZeroDev) {
+        throw new Error('ZeroDev is not configured. Set NEXT_PUBLIC_ZERODEV_PROJECT_ID.');
+      }
 
-function RealWalletProvider({ children }: { children: ReactNode }) {
-  const adapter = useMemo(
-    () => new WagmiAdapter({ projectId: PROJECT_ID, networks: [robinhoodTestnet] }),
-    [],
-  );
+      const connector = connectors.find((candidate) => candidate.id === 'zerodev-wallet');
+      if (!connector) throw new Error('The ZeroDev wallet connector is unavailable.');
+
+      setLoginOpen(true);
+      try {
+        await connectAsync({ connector, chainId: 46630 });
+      } finally {
+        setLoginOpen(false);
+      }
+    },
+    async disconnect() {
+      await disconnectAsync();
+      setProvider(null);
+    },
+  };
 
   return (
-    <AppKitProvider
-      projectId={PROJECT_ID}
-      adapters={[adapter]}
-      networks={[robinhoodTestnet]}
-      defaultNetwork={robinhoodTestnet}
-      allowUnsupportedChain={false}
-      themeMode="light"
-      metadata={{
-        name: 'Florin',
-        description: 'Mint FUSD by borrowing against SPY',
-        url: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
-        icons: [],
-      }}
-    >
-      <RealWalletBridge>{children}</RealWalletBridge>
-    </AppKitProvider>
+    <WalletContext.Provider value={wallet}>
+      {children}
+      <div
+        className={loginOpen ? 'wallet-modal wallet-modal--open' : 'wallet-modal'}
+        aria-hidden={!loginOpen}
+      >
+        <div className="wallet-modal__backdrop" aria-hidden="true" />
+        <div className="wallet-modal__content" role="dialog" aria-modal="true" aria-label="Connect wallet">
+          <ConnectWallet
+            size="md"
+            onClose={() => {
+              if (recoveringMagicLink.current) {
+                if (!account.isConnected) captureRecoveryFailure();
+                closeRecovery();
+              } else {
+                setLoginOpen(false);
+              }
+            }}
+          />
+        </div>
+      </div>
+    </WalletContext.Provider>
   );
-}
-
-export function WalletProvider({ children }: { children: ReactNode }) {
-  if (HAS_REOWN) return <RealWalletProvider>{children}</RealWalletProvider>;
-  return <InjectedWalletProvider>{children}</InjectedWalletProvider>;
 }

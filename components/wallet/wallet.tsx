@@ -2,7 +2,7 @@
 import { createContext, useContext } from 'react';
 import type { EIP1193Provider } from 'viem';
 
-export type WalletKind = 'reown' | 'injected' | 'none';
+export type WalletKind = 'zerodev' | 'none';
 
 export interface Wallet {
   connected: boolean;

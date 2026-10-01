@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { robinhoodTestnet } from '@reown/appkit/networks';
+import { robinhoodTestnet } from 'viem/chains';
 import {
   createWalletClient,
   custom,

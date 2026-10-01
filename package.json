@@ -6,25 +6,30 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "test": "node --test lib/borrow-contract.test.cjs lib/stability-pool-contract.test.cjs lib/transaction-error.test.cjs tests/mint-page.test.mjs tests/markets-graphql.test.mjs tests/positions-graphql.test.mjs tests/stability-pool.test.mjs tests/live-frontend-data.test.mjs tests/hero-faucet.test.mjs tests/public-site.test.mjs tests/ui-analytics.test.mjs",
+    "test": "node --test lib/borrow-contract.test.cjs lib/stability-pool-contract.test.cjs lib/transaction-error.test.cjs tests/mint-page.test.mjs tests/markets-graphql.test.mjs tests/positions-graphql.test.mjs tests/stability-pool.test.mjs tests/live-frontend-data.test.mjs tests/hero-faucet.test.mjs tests/public-site.test.mjs tests/ui-analytics.test.mjs tests/zerodev-wallet.test.mjs",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
-    "@metamask/connect-evm": "^2.1.1",
-    "@reown/appkit": "1.8.23",
-    "@reown/appkit-adapter-wagmi": "1.8.23",
     "@tanstack/react-query": "^5.62.0",
-    "@wagmi/connectors": "^6.2.0",
     "@wagmi/core": "^2.22.1",
     "@x402/evm": "^2.25.0",
     "@x402/svm": "^2.25.0",
+    "@zerodev/ecdsa-validator": "^5.4.9",
+    "@zerodev/react-ui": "^0.0.9",
+    "@zerodev/sdk": "^5.5.4",
+    "@zerodev/wallet-core": "^0.0.5",
+    "@zerodev/wallet-react": "^0.0.8",
+    "@zerodev/wallet-react-ui": "^0.0.13",
+    "json-canonicalize": "2.0.0",
     "next": "^15.5.25",
     "posthog-js": "^1.434.18",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "uuid": "^11.1.1",
     "viem": "^2.56.3",
-    "wagmi": "^2.19.5"
+    "wagmi": "^2.19.5",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

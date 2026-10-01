@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import '@zerodev/wallet-react-ui/styles.css';
 import './globals.css';
 import { Providers } from '../components/Providers';
 import { Header } from '../components/Header';

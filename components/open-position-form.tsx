@@ -12,7 +12,7 @@ import {
   type Address,
   type Hash,
 } from 'viem';
-import { robinhoodTestnet } from '@reown/appkit/networks';
+import { robinhoodTestnet } from 'viem/chains';
 import { Button } from './ui';
 import { RisksDialog } from './risks-dialog';
 import { Token, TokenIcon } from './token-icon';
