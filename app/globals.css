@@ -2170,6 +2170,167 @@ input:focus-visible {
   min-width: 0;
 }
 
+/* ---- manage: position picker -------------------------------------------------- */
+
+/* Shown only when a wallet holds more than one position. A native <select> can
+   render one line of text per option, which forced the 77-digit trove id to
+   the front and made two positions look like one number twice. */
+.picker__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.picker__field .swap__label {
+  padding: 0 4px;
+}
+
+.picker {
+  position: relative;
+}
+
+.picker__trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border: 1px solid var(--line-soft, rgba(30, 30, 30, 0.16));
+  border-radius: 14px;
+  padding: 12px 16px;
+  background: var(--paper);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.picker__trigger:hover,
+.picker__trigger[aria-expanded='true'] {
+  border-color: var(--sp-biscay);
+}
+
+/* Drawn rather than an icon file, so it inherits the text colour. */
+.picker__chev {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  margin-right: 2px;
+  border-right: 1.5px solid var(--gray-2);
+  border-bottom: 1.5px solid var(--gray-2);
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+.picker__trigger[aria-expanded='true'] .picker__chev {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+.picker__menu {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 320px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border: 1px solid var(--line-soft, rgba(30, 30, 30, 0.16));
+  border-radius: 14px;
+  background: var(--paper);
+  box-shadow: 0 18px 44px rgba(15, 61, 46, 0.18);
+}
+
+.picker__opt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.picker__opt:hover {
+  background: color-mix(in srgb, var(--sp-hawkes) 60%, transparent);
+}
+
+.picker__opt--on {
+  background: var(--sp-hawkes);
+}
+
+/* Drawn check, same reasoning as the chevron. */
+.picker__tick {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 11px;
+  margin-right: 4px;
+  border-right: 2px solid var(--sp-biscay);
+  border-bottom: 2px solid var(--sp-biscay);
+  transform: translateY(-2px) rotate(45deg);
+}
+
+.picker__line {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.picker__facts {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.picker__main {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.picker__main em {
+  font-style: normal;
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--gray-2);
+}
+
+.picker__sub {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--gray-3);
+}
+
+.picker__health {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.picker__sub em {
+  font-style: normal;
+}
+
 /* ---- manage: one section per job --------------------------------------------- */
 
 /* Manage does three unrelated things in one column: move collateral, move

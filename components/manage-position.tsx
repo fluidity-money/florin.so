@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   createWalletClient,
@@ -176,6 +176,152 @@ export function ManagePosition({ initialMarkets }: { initialMarkets: FlorinMarke
       onChanged={refresh}
       marketAverageRate={marketAverageRate}
     />
+  );
+}
+
+// A trove id is a uint256, which the graph hands over as 77 decimal digits.
+// Printed in full, two of them read as the same number with a different tail.
+// Hex is both shorter and the form the explorer uses, so a holder can still
+// match what they see here against the chain.
+function shortTroveId(troveId: string): string {
+  try {
+    const hex = BigInt(troveId).toString(16).padStart(64, '0');
+    return `0x${hex.slice(0, 4)}…${hex.slice(-4)}`;
+  } catch {
+    return `#${troveId.slice(0, 6)}…`;
+  }
+}
+
+// One position, as a line: what is in it, what it owes, how close it is to the
+// floor. The id comes last because it is the thing a holder needs least often,
+// and size and health are what actually tell two positions apart.
+function PositionLine({
+  position,
+  spyPrice,
+  priceReady,
+}: {
+  position: FlorinPosition;
+  spyPrice: number;
+  priceReady: boolean;
+}) {
+  const metrics = positionMetrics(position.collateralSPY, position.debtFUSD, spyPrice);
+  const ltv = metrics.collateralUsd > 0 ? position.debtFUSD / metrics.collateralUsd : 0;
+
+  return (
+    <span className="picker__line">
+      <TokenIcon symbol="SPY" size={24} />
+      <span className="picker__facts">
+        <span className="picker__main">
+          {money(position.collateralSPY, 2)} SPY
+          <em>${money(position.debtFUSD)} debt</em>
+        </span>
+        <span className="picker__sub">
+          {priceReady ? (
+            <span className="picker__health">
+              <i className={`swap__dot swap__dot--${metrics.health}`} />
+              LTV {pct(ltv * 100, 1)}
+            </span>
+          ) : (
+            <span className="picker__health">oracle unavailable</span>
+          )}
+          <em>{shortTroveId(position.troveId)}</em>
+        </span>
+      </span>
+    </span>
+  );
+}
+
+// Replaces a native <select>, which could only ever render one line of text per
+// position and so had to lead with the id.
+function PositionPicker({
+  positions,
+  selected,
+  spyPrice,
+  priceReady,
+  onSelect,
+}: {
+  positions: FlorinPosition[];
+  selected: FlorinPosition;
+  spyPrice: number;
+  priceReady: boolean;
+  onSelect: (troveId: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const root = useRef<HTMLDivElement>(null);
+
+  // A pointer outside the picker, or Escape, closes it. Both listeners only
+  // exist while it is open.
+  useEffect(() => {
+    if (!open) return;
+
+    function onPointerDown(event: PointerEvent) {
+      if (root.current && !root.current.contains(event.target as Node)) setOpen(false);
+    }
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setOpen(false);
+    }
+
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  function step(delta: number) {
+    const at = positions.findIndex(({ troveId }) => troveId === selected.troveId);
+    const next = positions[(at + delta + positions.length) % positions.length];
+    if (next) onSelect(next.troveId);
+  }
+
+  return (
+    <div className="picker" ref={root}>
+      <button
+        type="button"
+        className="picker__trigger"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((wasOpen) => !wasOpen)}
+        onKeyDown={(event) => {
+          if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+          event.preventDefault();
+          if (!open) {
+            setOpen(true);
+            return;
+          }
+          step(event.key === 'ArrowDown' ? 1 : -1);
+        }}
+      >
+        <PositionLine position={selected} spyPrice={spyPrice} priceReady={priceReady} />
+        <span className="picker__chev" aria-hidden="true" />
+      </button>
+
+      {open && (
+        <ul className="picker__menu" role="listbox" aria-label="Your open positions">
+          {positions.map((candidate) => {
+            const current = candidate.troveId === selected.troveId;
+            return (
+              <li key={candidate.troveId}>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={current}
+                  className={current ? 'picker__opt picker__opt--on' : 'picker__opt'}
+                  onClick={() => {
+                    onSelect(candidate.troveId);
+                    setOpen(false);
+                  }}
+                >
+                  <PositionLine position={candidate} spyPrice={spyPrice} priceReady={priceReady} />
+                  {current && <span className="picker__tick" aria-hidden="true" />}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -570,21 +716,18 @@ function PositionEditor({
       </h1>
 
       {positions.length > 1 && (
-        <label className="swap__field">
-          <span className="swap__label">Position</span>
-          <select
-            className="swap__amount"
-            value={position.troveId}
-            onChange={(event) => onSelect(event.target.value)}
-            aria-label="Open position"
-          >
-            {positions.map((candidate) => (
-              <option key={candidate.troveId} value={candidate.troveId}>
-                Trove #{candidate.troveId} · {money(candidate.collateralSPY, 2)} SPY · ${money(candidate.debtFUSD)} debt
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="picker__field">
+          <span className="swap__label">
+            Position <em>({positions.length} open)</em>
+          </span>
+          <PositionPicker
+            positions={positions}
+            selected={position}
+            spyPrice={spyPrice}
+            priceReady={priceReady}
+            onSelect={onSelect}
+          />
+        </div>
       )}
 
       {/* Summary, in the same card as the pool on Earn */}
