@@ -2,7 +2,8 @@
 .env*.local
 .env.local
 .gopath/
-/cmd/ingestor.ethereum/ingestor.ethereum
+ingestor
+graph
 .next
 next-env.d.ts
 node_modules

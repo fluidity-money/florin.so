@@ -1,8 +1,8 @@
 package config
 
 import (
-	"log"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"strings"

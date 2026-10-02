@@ -1,9 +1,9 @@
 package main
 
 import (
-	"log"
 	"context"
 	"fmt"
+	"log"
 	"log/slog"
 	"math/big"
 	"strings"

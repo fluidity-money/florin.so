@@ -1,8 +1,11 @@
 package main
 
 import (
-	"log/slog"
 	"log"
+	"log/slog"
+	"os"
+	"runtime/debug"
+	"strings"
 	"math/rand"
 
 	"github.com/fluidity-money/florin.so/lib/config"
@@ -28,6 +31,9 @@ const (
 	// DefaultPaginationPollWait to wait between polls.
 	DefaultPaginationPollWait = 5 // Seconds
 )
+
+// EnvDebug to print logs.
+const EnvDebug = "SPN_DEBUG"
 
 func main() {
 	cfg := config.Get()
@@ -56,4 +62,29 @@ func main() {
 		db,
 		IngestorArgs{LiquityEmitters: cfg.LiquityEmitters},
 	)
+}
+
+func init() {
+	logLevel := slog.LevelInfo
+	if os.Getenv(EnvDebug) != "" {
+		logLevel = slog.LevelDebug
+	}
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
+	var revision string
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				revision = setting.Value
+				break
+			}
+		}
+	}
+	logger.
+		With("revision", revision).
+		With("environment", "backend").
+		With("command line", strings.Join(os.Args, ",")).
+		With("is debug", logLevel == slog.LevelDebug)
+	slog.SetDefault(logger)
 }

@@ -1,19 +1,17 @@
-BIN := cmd/ingestor.ethereum/ingestor.ethereum
-CMDLET := ingestor.ethereum
 
 .PHONY: build test run clean
 
-build:
-	CGO_ENABLED=0 go build -o $(BIN) ./cmd/ingestor.ethereum
+.DELETE_ON_ERROR:
 
-test:
-	go test ./...
+FILES_GO := $(shell find cmd lib go.mod go.sum -type f)
 
-vet:
-	go vet ./...
+build: ingestor graphql
 
-run: build
-	./$(BIN)
+ingestor: ${FILES_GO} $(shell find cmd/ingestor -type f)
+	@CGO_ENABLED=0 go build -o ingestor ./cmd/ingestor
+
+graphql: ${FILES_GO} $(shell find cmd/graphql -type f)
+	@CGO_ENABLED=0 go build -o graphql ./cmd/graphql
 
 clean:
-	rm -f $(BIN)
+	@rm -f graphql ingestor
