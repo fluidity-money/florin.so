@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"context"
 	"fmt"
 	"log/slog"
@@ -10,7 +11,6 @@ import (
 
 	"github.com/fluidity-money/florin.so/lib/events/liquity"
 	"github.com/fluidity-money/florin.so/lib/heartbeat"
-	"github.com/fluidity-money/florin.so/lib/setup"
 	"github.com/fluidity-money/florin.so/lib/types"
 
 	"github.com/ethereum/go-ethereum"
@@ -106,7 +106,7 @@ func IngestPolling(c *ethclient.Client, db *gorm.DB, ingestorPagination, pollWai
 	for {
 		from, err := getLastBlockCheckpointed(db)
 		if err != nil {
-			setup.Exitf("failed to get the last block checkpoint: %v", err)
+			log.Fatalf("failed to get the last block checkpoint: %v", err)
 		}
 		to := from + uint64(ingestorPagination)
 		slog.Info("latest block checkpoint",
@@ -133,7 +133,7 @@ func boundedBlockRange(from, requestedTo, latest uint64) (to, checkpoint uint64,
 func IngestBlockRange(c *ethclient.Client, db *gorm.DB, from, requestedTo uint64, args IngestorArgs) {
 	latestBlockNo, err := c.BlockNumber(context.Background())
 	if err != nil {
-		setup.Exitf("failed to get latest block number: %v", err)
+		log.Fatalf("failed to get latest block number: %v", err)
 	}
 	to, checkpoint, ok := boundedBlockRange(from, requestedTo, latestBlockNo)
 	if !ok {
@@ -150,7 +150,7 @@ func IngestBlockRange(c *ethclient.Client, db *gorm.DB, from, requestedTo uint64
 		Topics:    [][]ethCommon.Hash{FilterTopics()},
 	})
 	if err != nil {
-		setup.Exitf("failed to filter Liquity logs: %v", err)
+		log.Fatalf("failed to filter Liquity logs: %v", err)
 	}
 	err = db.Transaction(func(db *gorm.DB) error {
 		for _, log := range logs {
@@ -164,7 +164,7 @@ func IngestBlockRange(c *ethclient.Client, db *gorm.DB, from, requestedTo uint64
 		return nil
 	})
 	if err != nil {
-		setup.Exitf("failed to ingest logs into db: %v", err)
+		log.Fatalf("failed to ingest logs into db: %v", err)
 	}
 	slog.Info("ingested block range", "from", from, "to", to)
 }

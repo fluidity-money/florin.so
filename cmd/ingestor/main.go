@@ -2,10 +2,10 @@ package main
 
 import (
 	"log/slog"
+	"log"
 	"math/rand"
 
 	"github.com/fluidity-money/florin.so/lib/config"
-	"github.com/fluidity-money/florin.so/lib/setup"
 
 	_ "github.com/lib/pq"
 
@@ -35,11 +35,11 @@ func main() {
 		Logger: gormSlog.New(),
 	})
 	if err != nil {
-		setup.Exitf("opening postgres: %v", err)
+		log.Fatalf("opening postgres: %v", err)
 	}
 	c, err := ethclient.Dial(cfg.PickGethUrl())
 	if err != nil {
-		setup.Exitf("rpc dial: %v", err)
+		log.Fatalf("rpc dial: %v", err)
 	}
 	defer c.Close()
 	ingestorPagination := rand.Intn(DefaultPaginationBlockCountMax-DefaultPaginationBlockCountMin) + DefaultPaginationBlockCountMin

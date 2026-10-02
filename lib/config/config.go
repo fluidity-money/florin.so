@@ -1,12 +1,11 @@
 package config
 
 import (
+	"log"
 	"fmt"
 	"math/rand"
 	"os"
 	"strings"
-
-	"github.com/fluidity-money/florin.so/lib/setup"
 
 	ethCommon "github.com/ethereum/go-ethereum/common"
 )
@@ -23,18 +22,18 @@ type C struct {
 func Get() C {
 	gethURL := os.Getenv("SPN_SUPERPOSITION_URL")
 	if gethURL == "" {
-		setup.Exitf("SPN_SUPERPOSITION_URL not set")
+		log.Fatalf("SPN_SUPERPOSITION_URL not set")
 	}
 	timescaleURL := os.Getenv("SPN_TIMESCALE")
 	if timescaleURL == "" {
-		setup.Exitf("SPN_TIMESCALE not set")
+		log.Fatalf("SPN_TIMESCALE not set")
 	}
 	liquityEmitters, err := parseAddresses(os.Getenv("SPN_LIQUITY_ADDRS"))
 	if err != nil {
-		setup.Exitf("SPN_LIQUITY_ADDRS: %v", err)
+		log.Fatalf("SPN_LIQUITY_ADDRS: %v", err)
 	}
 	if len(liquityEmitters) == 0 {
-		setup.Exitf("SPN_LIQUITY_ADDRS not set")
+		log.Fatalf("SPN_LIQUITY_ADDRS not set")
 	}
 	return C{
 		GethUrls:        strings.Split(gethURL, ","),
