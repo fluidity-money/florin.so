@@ -9,13 +9,141 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
 
 	"github.com/fluidity-money/florin.so/cmd/graphql/gen/model"
+	ethCommon "github.com/ethereum/go-ethereum/common"
+	acc_client "github.com/fluidity-money/accounts.superposition.so/lib/client"
+	acc_db "github.com/fluidity-money/accounts.superposition.so/lib/db"
+	acc_convertor "github.com/fluidity-money/accounts.superposition.so/lib/convertor"
+	"github.com/fluidity-money/superposition-assets"
 )
 
 // CreateAccountFlorinOpenPosition is the resolver for the createAccountFlorinOpenPosition field.
 func (r *mutationResolver) CreateAccountFlorinOpenPosition(ctx context.Context, createAccount model.CreateAccount, openPosition model.FlorinOpenPosition, gasToken model.Asset, gasTokenAmt string, dryrun *bool) (*model.CreateAccountExec, error) {
-	panic(fmt.Errorf("not implemented: CreateAccountFlorinOpenPosition - createAccountFlorinOpenPosition"))
+	snowflake, _ := ctx.Value("snowflake").(int)
+	f, err := acc_convertor.CreateAccountToFreshBackwards(r.AccPubKey, createAccount)
+	if err != nil {
+		slog.Error("create account",
+			"create account", createAccount,
+			"mint", mint,
+			"err", err,
+		)
+		return nil, fmt.Errorf("create account: %v", err)
+	}
+	if !ethCommon.IsHexAddress(createAccount.EoaAddr) {
+		return nil, fmt.Errorf("not eoa address")
+	}
+	eoa := ethCommon.HexToAddress(createAccount.EoaAddr)
+	slog.Debug("Creating a new account", "eoa", eoa, "snowflake", snowflake)
+	if mint != nil {
+		err = convertor.TagFreshBackwards(
+			ProgDalek,
+			f,
+			superposition_assets.AssetUsdc,
+			mint.Market,
+			mint.Outcome,
+			mint.Amount,
+			mint.Referrer,
+			eoa,
+			mint.Permit,
+			mint.MsTs,
+		)
+		slog.Error("Error creating the mint blob",
+			"err", err,
+			"snowflake", snowflake,
+			"eoa", eoa,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("mint tagging: %v", err)
+		}
+	}
+	privKey, sender, err := db.PickPrivateKey(ctx, r.Db)
+	if err != nil {
+		slog.Error("Error picking the private key",
+			"err", err,
+			"snowflake", snowflake,
+		)
+		log.Fatalf("error picking private key: %v", err)
+	}
+	args := types.Args{
+		Enum:           types.ArgsFreshBackwards,
+		FreshBackwards: *f,
+	}
+	slog.Debug("Sending arguments for new account creation",
+		"eoa", eoa,
+		"snowflake", snowflake,
+		"args", args,
+	)
+	h, gasLimit, err := client.SendArguments(
+		ctx,
+		r.Client,
+		r.SafetyRouterAddr,
+		// We disable the SafetyRouter here since the interaction is a factory:
+		false,
+		r.ChainId,
+		privKey,
+		*sender,
+		r.AccountsFactoryAddr,
+		args,
+		isDryrun(dryrun),
+	)
+	if err != nil {
+		slog.Error("error creating an account",
+			"sender", sender,
+			"fresh backwards", f,
+			"err", err,
+			"create v", createAccount.SigV,
+			"create r", createAccount.SigR,
+			"create s", createAccount.SigS,
+		)
+		// We ignore messages if someone is trying to buy at the end of a market:
+		if !isIgnorable(err) {
+			activateSoftAlarm(r.UrlAlarm, snowflake, fmt.Errorf(
+				"create account exec, user address: %v, sender: %v, contract: %v, err: %v",
+				eoa,
+				sender,
+				r.AccountsFactoryAddr,
+				err,
+			))
+		}
+		return nil, fmt.Errorf("send arguments: fresh backwards %+v: %v", f, err)
+	}
+	slog.Debug("Sent transaction on-chain for new account creation",
+		"h", h,
+		"eoa", eoa,
+		"snowflake", snowflake,
+	)
+	// We can tolerate a situation where the request drops off here due to a
+	// issue with the database, since the frontend willpresumably greedily
+	// reauthenticate when the user tries.
+	secret := makeSecret()
+	secretX := hex.EncodeToString(secret)
+	if !isDryrun(dryrun) {
+		slog.Debug("Inserting into database accounts secret",
+			"h", h,
+			"eoa", eoa,
+			"snowflake", snowflake,
+		)
+		eoaS := strings.ToLower(eoa.String())
+		if !isDryrun(dryrun) {
+			_, err = r.Db.Exec(`
+INSERT INTO accounts_secrets_2 (eoa_addr, secret)
+VALUES ($1, $2)`,
+				eoaS,
+				secretX,
+			)
+			if err != nil {
+				slog.Error("error inserting a secret", "err", err)
+				return nil, fmt.Errorf("error inserting secret")
+			}
+		}
+		trackTx(r.Db, eoaS, h.Hex(), gasLimit, "create account")
+	}
+	return &model.CreateAccountExec{
+		Hash:   h.Hex(),
+		Secret: secretX,
+	}, nil
 }
 
 // FlorinOpenPosition is the resolver for the florinOpenPosition field.

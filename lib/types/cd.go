@@ -1,13 +1,12 @@
 package types
 
 import (
-	_ "embed"
 	"bytes"
+	_ "embed"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/ethclient"
-	ethCommon "github.com/ethereum/go-ethereum/common"
 	ethAbi "github.com/ethereum/go-ethereum/accounts/abi"
+	ethCommon "github.com/ethereum/go-ethereum/common"
 )
 
 //go:embed abi.json
@@ -16,7 +15,6 @@ var abiB []byte
 var abi, _ = ethAbi.JSON(bytes.NewReader(abiB))
 
 func MakeOpenTroveCd(
-	c *ethclient.Client,
 	owner ethCommon.Address,
 	ownerIndex *big.Int,
 	collAmt, boldAmt *big.Int,
@@ -37,5 +35,15 @@ func MakeOpenTroveCd(
 		addManager,
 		removeManager,
 		receiver,
+	)
+}
+
+func MakeFindInsertPositionCd(
+	annualInterestRate *big.Int,
+	prevId, nextId *big.Int,
+) ([]byte, error) {
+	return abi.Pack("findInsertPosition",
+		annualInterestRate,
+		prevId, nextId,
 	)
 }

@@ -3,10 +3,10 @@ package main
 import (
 	"log"
 	"log/slog"
+	"math/rand"
 	"os"
 	"runtime/debug"
 	"strings"
-	"math/rand"
 
 	"github.com/fluidity-money/florin.so/lib/config"
 
