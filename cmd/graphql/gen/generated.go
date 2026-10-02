@@ -414,7 +414,7 @@ type Collateral {
 }
 
 """
-Borrow details in circulation. Based on the events Liquity emits.
+Borrow details in circulation.
 """
 type BorrowDetails {
   collateral: Collateral!,

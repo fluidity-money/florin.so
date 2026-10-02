@@ -11,12 +11,10 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/fluidity-money/florin.so/cmd/graphql/gen/model"
 	ethCommon "github.com/ethereum/go-ethereum/common"
-	acc_client "github.com/fluidity-money/accounts.superposition.so/lib/client"
-	acc_db "github.com/fluidity-money/accounts.superposition.so/lib/db"
 	acc_convertor "github.com/fluidity-money/accounts.superposition.so/lib/convertor"
-	"github.com/fluidity-money/superposition-assets"
+	"github.com/fluidity-money/florin.so/cmd/graphql/gen/model"
+	superposition_assets "github.com/fluidity-money/superposition-assets"
 )
 
 // CreateAccountFlorinOpenPosition is the resolver for the createAccountFlorinOpenPosition field.
