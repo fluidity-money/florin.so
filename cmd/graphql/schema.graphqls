@@ -1,4 +1,9 @@
 
+enum Asset {
+  USDG,
+  SPY,
+}
+
 """
 String that represents a string that contains a percentage amount that's safe to display
 in the UI.
@@ -6,19 +11,24 @@ in the UI.
 scalar Percent
 
 """
-An exact 18-decimal token amount, returned as an integer string in base units.
+Amount in circulation in the system, 18 decimals. Returned as a string.
 """
 scalar Amount
 
 """
-A compact, human-readable token amount for display (for example, 4.2M).
+Bytes32 that we use behind the scenes.
 """
-scalar DisplayAmount
+scalar Bytes32
 
 """
 Address on Robinhood Testnet.
 """
 scalar Address
+
+"""
+EVM hash that we return here.
+"""
+scalar Hash
 
 type Collateral {
   name: String!,
@@ -30,18 +40,8 @@ Borrow details in circulation. Based on the events Liquity emits.
 type BorrowDetails {
   collateral: Collateral!,
   avgRatePa: Percent!,
-  deposited: DisplayAmount!,
-  debtIssued: DisplayAmount!
-}
-
-"""
-Earn rewards that we display in the UI.
-"""
-type EarnRewards {
-  collateral: Collateral!,
-  apr: Percent!,
-  poolSize: DisplayAmount!,
-  coverage: Percent!
+  deposited: Amount!,
+  debtIssued: Amount!
 }
 
 """
@@ -56,6 +56,16 @@ type Position {
   stake: Amount!
   annualInterestRate: Percent!
   interestBatchManager: Address
+}
+
+"""
+Earn rewards that we display in the UI.
+"""
+type EarnRewards {
+  collateral: Collateral!,
+  apr: Percent!,
+  poolSize: Amount!,
+  coverage: Percent!
 }
 
 type Query {
@@ -73,4 +83,52 @@ type Query {
   Open positions for a specific address given.
   """
   openPositions(owner: Address!): [Position!]!
+}
+
+type CreateAccountExec {
+  hash: Hash!,
+  secret: String!
+}
+
+type FlorinOpenPositionResult {
+  hash: Hash!
+}
+
+"""
+Input to create an account, with an Authority set by the server.
+"""
+input CreateAccount {
+  eoa_addr: Address!,
+  sigV: Int!,
+  sigR: Bytes32!,
+  sigS: Bytes32!
+}
+
+input FlorinOpenPosition {
+  owner: Address!,
+  collateralAmt: Amount!,
+  boldAmt: Amount!,
+  annualInterestRate: Amount!,
+  maxUpfrontFee: Amount!,
+  addManager: Address,
+  removeManager: Address,
+  receiver: Address!
+}
+
+type Mutation {
+  """
+  Open a position using Florin, while creating an account.
+  """
+  createAccountFlorinOpenPosition(
+    createAccount: CreateAccount!,
+    openPosition: FlorinOpenPosition!,
+    gasToken: Asset!,
+    gasTokenAmt: String!,
+    dryrun: Boolean
+  ): CreateAccountExec
+
+  """
+  Open a position using Florin.
+  """
+  florinOpenPosition(openPosition: FlorinOpenPosition!): FlorinOpenPositionResult
 }

@@ -28,6 +28,7 @@ func NewExecutableSchema(cfg Config) graphql.ExecutableSchema {
 type Config = graphql.Config[ResolverRoot, DirectiveRoot, ComplexityRoot]
 
 type ResolverRoot interface {
+	Mutation() MutationResolver
 	Query() QueryResolver
 }
 
@@ -46,11 +47,25 @@ type ComplexityRoot struct {
 		Name func(childComplexity int) int
 	}
 
+	CreateAccountExec struct {
+		Hash   func(childComplexity int) int
+		Secret func(childComplexity int) int
+	}
+
 	EarnRewards struct {
 		Apr        func(childComplexity int) int
 		Collateral func(childComplexity int) int
 		Coverage   func(childComplexity int) int
 		PoolSize   func(childComplexity int) int
+	}
+
+	FlorinOpenPositionResult struct {
+		Hash func(childComplexity int) int
+	}
+
+	Mutation struct {
+		CreateAccountFlorinOpenPosition func(childComplexity int, createAccount model.CreateAccount, openPosition model.FlorinOpenPosition, gasToken model.Asset, gasTokenAmt string, dryrun *bool) int
+		FlorinOpenPosition              func(childComplexity int, openPosition model.FlorinOpenPosition) int
 	}
 
 	Position struct {
@@ -75,6 +90,10 @@ type ComplexityRoot struct {
 
 // region    ************************** generated!.gotpl **************************
 
+type MutationResolver interface {
+	CreateAccountFlorinOpenPosition(ctx context.Context, createAccount model.CreateAccount, openPosition model.FlorinOpenPosition, gasToken model.Asset, gasTokenAmt string, dryrun *bool) (*model.CreateAccountExec, error)
+	FlorinOpenPosition(ctx context.Context, openPosition model.FlorinOpenPosition) (*model.FlorinOpenPositionResult, error)
+}
 type QueryResolver interface {
 	BorrowDetails(ctx context.Context) ([]*model.BorrowDetails, error)
 	EarnRewards(ctx context.Context) ([]*model.EarnRewards, error)
@@ -131,6 +150,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Collateral.Name(childComplexity), true
 
+	case "CreateAccountExec.hash":
+		if e.ComplexityRoot.CreateAccountExec.Hash == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CreateAccountExec.Hash(childComplexity), true
+	case "CreateAccountExec.secret":
+		if e.ComplexityRoot.CreateAccountExec.Secret == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CreateAccountExec.Secret(childComplexity), true
+
 	case "EarnRewards.apr":
 		if e.ComplexityRoot.EarnRewards.Apr == nil {
 			break
@@ -155,6 +187,36 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.EarnRewards.PoolSize(childComplexity), true
+
+	case "FlorinOpenPositionResult.hash":
+		if e.ComplexityRoot.FlorinOpenPositionResult.Hash == nil {
+			break
+		}
+
+		return e.ComplexityRoot.FlorinOpenPositionResult.Hash(childComplexity), true
+
+	case "Mutation.createAccountFlorinOpenPosition":
+		if e.ComplexityRoot.Mutation.CreateAccountFlorinOpenPosition == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createAccountFlorinOpenPosition_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateAccountFlorinOpenPosition(childComplexity, args["createAccount"].(model.CreateAccount), args["openPosition"].(model.FlorinOpenPosition), args["gasToken"].(model.Asset), args["gasTokenAmt"].(string), args["dryrun"].(*bool)), true
+	case "Mutation.florinOpenPosition":
+		if e.ComplexityRoot.Mutation.FlorinOpenPosition == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_florinOpenPosition_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.FlorinOpenPosition(childComplexity, args["openPosition"].(model.FlorinOpenPosition)), true
 
 	case "Position.annualInterestRate":
 		if e.ComplexityRoot.Position.AnnualInterestRate == nil {
@@ -237,7 +299,10 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := newExecutionContext(opCtx, e, make(chan graphql.DeferredResult))
-	inputUnmarshalMap := graphql.BuildUnmarshalerMap()
+	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputCreateAccount,
+		ec.unmarshalInputFlorinOpenPosition,
+	)
 	first := true
 
 	switch opCtx.Operation.Operation {
@@ -271,6 +336,21 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 
 			return &response
 		}
+	case ast.Mutation:
+		return func(ctx context.Context) *graphql.Response {
+			if !first {
+				return nil
+			}
+			first = false
+			ctx = graphql.WithUnmarshalerMap(ctx, inputUnmarshalMap)
+			data := ec._Mutation(ctx, opCtx.Operation.SelectionSet)
+			var buf bytes.Buffer
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
+		}
 
 	default:
 		return graphql.OneShot(graphql.ErrorResponse(ctx, "unsupported GraphQL operation"))
@@ -298,6 +378,11 @@ func newExecutionContext(
 
 var sources = []*ast.Source{
 	{Name: "../schema.graphqls", Input: `
+enum Asset {
+  USDG,
+  SPY,
+}
+
 """
 String that represents a string that contains a percentage amount that's safe to display
 in the UI.
@@ -305,19 +390,24 @@ in the UI.
 scalar Percent
 
 """
-An exact 18-decimal token amount, returned as an integer string in base units.
+Amount in circulation in the system, 18 decimals. Returned as a string.
 """
 scalar Amount
 
 """
-A compact, human-readable token amount for display (for example, 4.2M).
+Bytes32 that we use behind the scenes.
 """
-scalar DisplayAmount
+scalar Bytes32
 
 """
 Address on Robinhood Testnet.
 """
 scalar Address
+
+"""
+EVM hash that we return here.
+"""
+scalar Hash
 
 type Collateral {
   name: String!,
@@ -329,18 +419,8 @@ Borrow details in circulation. Based on the events Liquity emits.
 type BorrowDetails {
   collateral: Collateral!,
   avgRatePa: Percent!,
-  deposited: DisplayAmount!,
-  debtIssued: DisplayAmount!
-}
-
-"""
-Earn rewards that we display in the UI.
-"""
-type EarnRewards {
-  collateral: Collateral!,
-  apr: Percent!,
-  poolSize: DisplayAmount!,
-  coverage: Percent!
+  deposited: Amount!,
+  debtIssued: Amount!
 }
 
 """
@@ -355,6 +435,16 @@ type Position {
   stake: Amount!
   annualInterestRate: Percent!
   interestBatchManager: Address
+}
+
+"""
+Earn rewards that we display in the UI.
+"""
+type EarnRewards {
+  collateral: Collateral!,
+  apr: Percent!,
+  poolSize: Amount!,
+  coverage: Percent!
 }
 
 type Query {
@@ -372,6 +462,54 @@ type Query {
   Open positions for a specific address given.
   """
   openPositions(owner: Address!): [Position!]!
+}
+
+type CreateAccountExec {
+  hash: Hash!,
+  secret: String!
+}
+
+type FlorinOpenPositionResult {
+  hash: Hash!
+}
+
+"""
+Input to create an account, with an Authority set by the server.
+"""
+input CreateAccount {
+  eoa_addr: Address!,
+  sigV: Int!,
+  sigR: Bytes32!,
+  sigS: Bytes32!
+}
+
+input FlorinOpenPosition {
+  owner: Address!,
+  collateralAmt: Amount!,
+  boldAmt: Amount!,
+  annualInterestRate: Amount!,
+  maxUpfrontFee: Amount!,
+  addManager: Address,
+  removeManager: Address,
+  receiver: Address!
+}
+
+type Mutation {
+  """
+  Open a position using Florin, while creating an account.
+  """
+  createAccountFlorinOpenPosition(
+    createAccount: CreateAccount!,
+    openPosition: FlorinOpenPosition!,
+    gasToken: Asset!,
+    gasTokenAmt: String!,
+    dryrun: Boolean
+  ): CreateAccountExec
+
+  """
+  Open a position using Florin.
+  """
+  florinOpenPosition(openPosition: FlorinOpenPosition!): FlorinOpenPositionResult
 }
 `, BuiltIn: false},
 }
@@ -403,6 +541,16 @@ func (ec *executionContext) childFields_Collateral(ctx context.Context, field gr
 	return nil, fmt.Errorf("no field named %q was found under type Collateral", field.Name)
 }
 
+func (ec *executionContext) childFields_CreateAccountExec(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "hash":
+		return ec.fieldContext_CreateAccountExec_hash(ctx, field)
+	case "secret":
+		return ec.fieldContext_CreateAccountExec_secret(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type CreateAccountExec", field.Name)
+}
+
 func (ec *executionContext) childFields_EarnRewards(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 	switch field.Name {
 	case "collateral":
@@ -415,6 +563,14 @@ func (ec *executionContext) childFields_EarnRewards(ctx context.Context, field g
 		return ec.fieldContext_EarnRewards_coverage(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type EarnRewards", field.Name)
+}
+
+func (ec *executionContext) childFields_FlorinOpenPositionResult(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "hash":
+		return ec.fieldContext_FlorinOpenPositionResult_hash(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type FlorinOpenPositionResult", field.Name)
 }
 
 func (ec *executionContext) childFields_Position(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -554,6 +710,66 @@ func (ec *executionContext) childFields___Type(ctx context.Context, field graphq
 // endregion ************************** internal!.gotpl ***************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Mutation_createAccountFlorinOpenPosition_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "createAccount",
+		func(ctx context.Context, v any) (model.CreateAccount, error) {
+			return ec.unmarshalNCreateAccount2githubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐCreateAccount(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["createAccount"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "openPosition",
+		func(ctx context.Context, v any) (model.FlorinOpenPosition, error) {
+			return ec.unmarshalNFlorinOpenPosition2githubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐFlorinOpenPosition(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["openPosition"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "gasToken",
+		func(ctx context.Context, v any) (model.Asset, error) {
+			return ec.unmarshalNAsset2githubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐAsset(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["gasToken"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "gasTokenAmt",
+		func(ctx context.Context, v any) (string, error) {
+			return ec.unmarshalNString2string(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["gasTokenAmt"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "dryrun",
+		func(ctx context.Context, v any) (*bool, error) {
+			return ec.unmarshalOBoolean2ᚖbool(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["dryrun"] = arg4
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_florinOpenPosition_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "openPosition",
+		func(ctx context.Context, v any) (model.FlorinOpenPosition, error) {
+			return ec.unmarshalNFlorinOpenPosition2githubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐFlorinOpenPosition(ctx, v)
+		})
+	if err != nil {
+		return nil, err
+	}
+	args["openPosition"] = arg0
+	return args, nil
+}
 
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
@@ -711,14 +927,14 @@ func (ec *executionContext) _BorrowDetails_deposited(ctx context.Context, field 
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNDisplayAmount2string(ctx, selections, v)
+			return ec.marshalNAmount2string(ctx, selections, v)
 		},
 		true,
 		true,
 	)
 }
 func (ec *executionContext) fieldContext_BorrowDetails_deposited(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("BorrowDetails", field, false, false, errors.New("field of type DisplayAmount does not have child fields"))
+	return graphql.NewScalarFieldContext("BorrowDetails", field, false, false, errors.New("field of type Amount does not have child fields"))
 }
 
 func (ec *executionContext) _BorrowDetails_debtIssued(ctx context.Context, field graphql.CollectedField, obj *model.BorrowDetails) (ret graphql.Marshaler) {
@@ -734,14 +950,14 @@ func (ec *executionContext) _BorrowDetails_debtIssued(ctx context.Context, field
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNDisplayAmount2string(ctx, selections, v)
+			return ec.marshalNAmount2string(ctx, selections, v)
 		},
 		true,
 		true,
 	)
 }
 func (ec *executionContext) fieldContext_BorrowDetails_debtIssued(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("BorrowDetails", field, false, false, errors.New("field of type DisplayAmount does not have child fields"))
+	return graphql.NewScalarFieldContext("BorrowDetails", field, false, false, errors.New("field of type Amount does not have child fields"))
 }
 
 func (ec *executionContext) _Collateral_name(ctx context.Context, field graphql.CollectedField, obj *model.Collateral) (ret graphql.Marshaler) {
@@ -765,6 +981,52 @@ func (ec *executionContext) _Collateral_name(ctx context.Context, field graphql.
 }
 func (ec *executionContext) fieldContext_Collateral_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("Collateral", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _CreateAccountExec_hash(ctx context.Context, field graphql.CollectedField, obj *model.CreateAccountExec) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CreateAccountExec_hash(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Hash, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNHash2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CreateAccountExec_hash(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CreateAccountExec", field, false, false, errors.New("field of type Hash does not have child fields"))
+}
+
+func (ec *executionContext) _CreateAccountExec_secret(ctx context.Context, field graphql.CollectedField, obj *model.CreateAccountExec) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_CreateAccountExec_secret(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Secret, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_CreateAccountExec_secret(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("CreateAccountExec", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) _EarnRewards_collateral(ctx context.Context, field graphql.CollectedField, obj *model.EarnRewards) (ret graphql.Marshaler) {
@@ -835,14 +1097,14 @@ func (ec *executionContext) _EarnRewards_poolSize(ctx context.Context, field gra
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
-			return ec.marshalNDisplayAmount2string(ctx, selections, v)
+			return ec.marshalNAmount2string(ctx, selections, v)
 		},
 		true,
 		true,
 	)
 }
 func (ec *executionContext) fieldContext_EarnRewards_poolSize(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("EarnRewards", field, false, false, errors.New("field of type DisplayAmount does not have child fields"))
+	return graphql.NewScalarFieldContext("EarnRewards", field, false, false, errors.New("field of type Amount does not have child fields"))
 }
 
 func (ec *executionContext) _EarnRewards_coverage(ctx context.Context, field graphql.CollectedField, obj *model.EarnRewards) (ret graphql.Marshaler) {
@@ -866,6 +1128,117 @@ func (ec *executionContext) _EarnRewards_coverage(ctx context.Context, field gra
 }
 func (ec *executionContext) fieldContext_EarnRewards_coverage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("EarnRewards", field, false, false, errors.New("field of type Percent does not have child fields"))
+}
+
+func (ec *executionContext) _FlorinOpenPositionResult_hash(ctx context.Context, field graphql.CollectedField, obj *model.FlorinOpenPositionResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_FlorinOpenPositionResult_hash(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Hash, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNHash2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_FlorinOpenPositionResult_hash(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("FlorinOpenPositionResult", field, false, false, errors.New("field of type Hash does not have child fields"))
+}
+
+func (ec *executionContext) _Mutation_createAccountFlorinOpenPosition(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_createAccountFlorinOpenPosition(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreateAccountFlorinOpenPosition(ctx, fc.Args["createAccount"].(model.CreateAccount), fc.Args["openPosition"].(model.FlorinOpenPosition), fc.Args["gasToken"].(model.Asset), fc.Args["gasTokenAmt"].(string), fc.Args["dryrun"].(*bool))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.CreateAccountExec) graphql.Marshaler {
+			return ec.marshalOCreateAccountExec2ᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐCreateAccountExec(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_createAccountFlorinOpenPosition(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_CreateAccountExec(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createAccountFlorinOpenPosition_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_florinOpenPosition(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Mutation_florinOpenPosition(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().FlorinOpenPosition(ctx, fc.Args["openPosition"].(model.FlorinOpenPosition))
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *model.FlorinOpenPositionResult) graphql.Marshaler {
+			return ec.marshalOFlorinOpenPositionResult2ᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐFlorinOpenPositionResult(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_Mutation_florinOpenPosition(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_FlorinOpenPositionResult(ctx, field)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_florinOpenPosition_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
 }
 
 func (ec *executionContext) _Position_troveId(ctx context.Context, field graphql.CollectedField, obj *model.Position) (ret graphql.Marshaler) {
@@ -2295,6 +2668,136 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputCreateAccount(ctx context.Context, obj any) (model.CreateAccount, error) {
+	var it model.CreateAccount
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"eoa_addr", "sigV", "sigR", "sigS"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "eoa_addr":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("eoa_addr"))
+			data, err := ec.unmarshalNAddress2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EoaAddr = data
+		case "sigV":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sigV"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SigV = data
+		case "sigR":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sigR"))
+			data, err := ec.unmarshalNBytes322string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SigR = data
+		case "sigS":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sigS"))
+			data, err := ec.unmarshalNBytes322string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SigS = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputFlorinOpenPosition(ctx context.Context, obj any) (model.FlorinOpenPosition, error) {
+	var it model.FlorinOpenPosition
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"owner", "collateralAmt", "boldAmt", "annualInterestRate", "maxUpfrontFee", "addManager", "removeManager", "receiver"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "owner":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("owner"))
+			data, err := ec.unmarshalNAddress2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Owner = data
+		case "collateralAmt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("collateralAmt"))
+			data, err := ec.unmarshalNAmount2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CollateralAmt = data
+		case "boldAmt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("boldAmt"))
+			data, err := ec.unmarshalNAmount2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BoldAmt = data
+		case "annualInterestRate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("annualInterestRate"))
+			data, err := ec.unmarshalNAmount2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AnnualInterestRate = data
+		case "maxUpfrontFee":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxUpfrontFee"))
+			data, err := ec.unmarshalNAmount2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MaxUpfrontFee = data
+		case "addManager":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("addManager"))
+			data, err := ec.unmarshalOAddress2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AddManager = data
+		case "removeManager":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("removeManager"))
+			data, err := ec.unmarshalOAddress2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RemoveManager = data
+		case "receiver":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("receiver"))
+			data, err := ec.unmarshalNAddress2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Receiver = data
+		}
+	}
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -2394,6 +2897,49 @@ func (ec *executionContext) _Collateral(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var createAccountExecImplementors = []string{"CreateAccountExec"}
+
+func (ec *executionContext) _CreateAccountExec(ctx context.Context, sel ast.SelectionSet, obj *model.CreateAccountExec) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, createAccountExecImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CreateAccountExec")
+		case "hash":
+			out.Values[i] = ec._CreateAccountExec_hash(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "secret":
+			out.Values[i] = ec._CreateAccountExec_secret(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
 var earnRewardsImplementors = []string{"EarnRewards"}
 
 func (ec *executionContext) _EarnRewards(ctx context.Context, sel ast.SelectionSet, obj *model.EarnRewards) graphql.Marshaler {
@@ -2424,6 +2970,99 @@ func (ec *executionContext) _EarnRewards(ctx context.Context, sel ast.SelectionS
 		case "coverage":
 			out.Values[i] = ec._EarnRewards_coverage(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var florinOpenPositionResultImplementors = []string{"FlorinOpenPositionResult"}
+
+func (ec *executionContext) _FlorinOpenPositionResult(ctx context.Context, sel ast.SelectionSet, obj *model.FlorinOpenPositionResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, florinOpenPositionResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("FlorinOpenPositionResult")
+		case "hash":
+			out.Values[i] = ec._FlorinOpenPositionResult_hash(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var mutationImplementors = []string{"Mutation"}
+
+func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, mutationImplementors)
+	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
+		Object: "Mutation",
+	})
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		innerCtx := graphql.WithRootFieldContext(ctx, &graphql.RootFieldContext{
+			Object: field.Name,
+			Field:  field,
+		})
+
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Mutation")
+		case "createAccountFlorinOpenPosition":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createAccountFlorinOpenPosition(ctx, field)
+			})
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "florinOpenPosition":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_florinOpenPosition(ctx, field)
+			})
+			if out.Values[i] == graphql.RequiredNull {
 				out.Invalids++
 			}
 		default:
@@ -3065,6 +3704,16 @@ func (ec *executionContext) marshalNAmount2string(ctx context.Context, sel ast.S
 	return res
 }
 
+func (ec *executionContext) unmarshalNAsset2githubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐAsset(ctx context.Context, v any) (model.Asset, error) {
+	var res model.Asset
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAsset2githubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐAsset(ctx context.Context, sel ast.SelectionSet, v model.Asset) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3091,6 +3740,22 @@ func (ec *executionContext) marshalNBorrowDetails2ᚖgithubᚗcomᚋfluidityᚑm
 	return ec._BorrowDetails(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNBytes322string(ctx context.Context, v any) (string, error) {
+	res, err := graphql.UnmarshalString(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBytes322string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalString(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) marshalNCollateral2ᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐCollateral(ctx context.Context, sel ast.SelectionSet, v *model.Collateral) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -3101,20 +3766,9 @@ func (ec *executionContext) marshalNCollateral2ᚖgithubᚗcomᚋfluidityᚑmone
 	return ec._Collateral(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNDisplayAmount2string(ctx context.Context, v any) (string, error) {
-	res, err := graphql.UnmarshalString(v)
+func (ec *executionContext) unmarshalNCreateAccount2githubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐCreateAccount(ctx context.Context, v any) (model.CreateAccount, error) {
+	res, err := ec.unmarshalInputCreateAccount(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNDisplayAmount2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
-	_ = sel
-	res := graphql.MarshalString(v)
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-	}
-	return res
 }
 
 func (ec *executionContext) marshalNEarnRewards2ᚕᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐEarnRewardsᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.EarnRewards) graphql.Marshaler {
@@ -3141,6 +3795,43 @@ func (ec *executionContext) marshalNEarnRewards2ᚖgithubᚗcomᚋfluidityᚑmon
 		return graphql.Null
 	}
 	return ec._EarnRewards(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNFlorinOpenPosition2githubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐFlorinOpenPosition(ctx context.Context, v any) (model.FlorinOpenPosition, error) {
+	res, err := ec.unmarshalInputFlorinOpenPosition(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNHash2string(ctx context.Context, v any) (string, error) {
+	res, err := graphql.UnmarshalString(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNHash2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalString(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, error) {
+	res, err := graphql.UnmarshalInt(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInt2int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalInt(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
 }
 
 func (ec *executionContext) unmarshalNPercent2string(ctx context.Context, v any) (string, error) {
@@ -3406,6 +4097,20 @@ func (ec *executionContext) marshalOBorrowDetails2ᚕᚖgithubᚗcomᚋfluidity�
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOCreateAccountExec2ᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐCreateAccountExec(ctx context.Context, sel ast.SelectionSet, v *model.CreateAccountExec) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._CreateAccountExec(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOFlorinOpenPositionResult2ᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐFlorinOpenPositionResult(ctx context.Context, sel ast.SelectionSet, v *model.FlorinOpenPositionResult) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._FlorinOpenPositionResult(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v any) (*string, error) {

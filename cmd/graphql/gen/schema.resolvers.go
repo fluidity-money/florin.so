@@ -13,6 +13,16 @@ import (
 	"github.com/fluidity-money/florin.so/cmd/graphql/gen/model"
 )
 
+// CreateAccountFlorinOpenPosition is the resolver for the createAccountFlorinOpenPosition field.
+func (r *mutationResolver) CreateAccountFlorinOpenPosition(ctx context.Context, createAccount model.CreateAccount, openPosition model.FlorinOpenPosition, gasToken model.Asset, gasTokenAmt string, dryrun *bool) (*model.CreateAccountExec, error) {
+	panic(fmt.Errorf("not implemented: CreateAccountFlorinOpenPosition - createAccountFlorinOpenPosition"))
+}
+
+// FlorinOpenPosition is the resolver for the florinOpenPosition field.
+func (r *mutationResolver) FlorinOpenPosition(ctx context.Context, openPosition model.FlorinOpenPosition) (*model.FlorinOpenPositionResult, error) {
+	panic(fmt.Errorf("not implemented: FlorinOpenPosition - florinOpenPosition"))
+}
+
 // BorrowDetails is the resolver for the borrowDetails field.
 func (r *queryResolver) BorrowDetails(ctx context.Context) ([]*model.BorrowDetails, error) {
 	if r.FeatureFakeData {
@@ -182,7 +192,13 @@ ORDER BY block_number DESC, trove_id`, normalizedOwner)
 	return positions, nil
 }
 
+// Mutation returns MutationResolver implementation.
+func (r *Resolver) Mutation() MutationResolver { return &mutationResolver{r} }
+
 // Query returns QueryResolver implementation.
 func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
-type queryResolver struct{ *Resolver }
+type (
+	mutationResolver struct{ *Resolver }
+	queryResolver    struct{ *Resolver }
+)

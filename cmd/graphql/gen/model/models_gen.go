@@ -2,6 +2,13 @@
 
 package model
 
+import (
+	"bytes"
+	"fmt"
+	"io"
+	"strconv"
+)
+
 // Borrow details in circulation. Based on the events Liquity emits.
 type BorrowDetails struct {
 	Collateral *Collateral `json:"collateral"`
@@ -14,12 +21,43 @@ type Collateral struct {
 	Name string `json:"name"`
 }
 
+// Input to create an account, with an Authority set by the server.
+type CreateAccount struct {
+	EoaAddr string `json:"eoa_addr"`
+	SigV    int    `json:"sigV"`
+	SigR    string `json:"sigR"`
+	SigS    string `json:"sigS"`
+}
+
+type CreateAccountExec struct {
+	Hash   string `json:"hash"`
+	Secret string `json:"secret"`
+}
+
 // Earn rewards that we display in the UI.
 type EarnRewards struct {
 	Collateral *Collateral `json:"collateral"`
 	Apr        string      `json:"apr"`
 	PoolSize   string      `json:"poolSize"`
 	Coverage   string      `json:"coverage"`
+}
+
+type FlorinOpenPosition struct {
+	Owner              string  `json:"owner"`
+	CollateralAmt      string  `json:"collateralAmt"`
+	BoldAmt            string  `json:"boldAmt"`
+	AnnualInterestRate string  `json:"annualInterestRate"`
+	MaxUpfrontFee      string  `json:"maxUpfrontFee"`
+	AddManager         *string `json:"addManager,omitempty"`
+	RemoveManager      *string `json:"removeManager,omitempty"`
+	Receiver           string  `json:"receiver"`
+}
+
+type FlorinOpenPositionResult struct {
+	Hash string `json:"hash"`
+}
+
+type Mutation struct {
 }
 
 // An open Florin borrowing position owned by an address.
@@ -35,4 +73,59 @@ type Position struct {
 }
 
 type Query struct {
+}
+
+type Asset string
+
+const (
+	AssetUsdg Asset = "USDG"
+	AssetSpy  Asset = "SPY"
+)
+
+var AllAsset = []Asset{
+	AssetUsdg,
+	AssetSpy,
+}
+
+func (e Asset) IsValid() bool {
+	switch e {
+	case AssetUsdg, AssetSpy:
+		return true
+	}
+	return false
+}
+
+func (e Asset) String() string {
+	return string(e)
+}
+
+func (e *Asset) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Asset(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Asset", str)
+	}
+	return nil
+}
+
+func (e Asset) MarshalGQL(w io.Writer) {
+	_, _ = fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *Asset) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e Asset) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
