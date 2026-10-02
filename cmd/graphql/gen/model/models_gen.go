@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-// Borrow details in circulation. Based on the events Liquity emits.
+// Borrow details in circulation.
 type BorrowDetails struct {
 	Collateral *Collateral `json:"collateral"`
 	AvgRatePa  string      `json:"avgRatePa"`
