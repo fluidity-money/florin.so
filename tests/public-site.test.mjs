@@ -16,3 +16,15 @@ test('the site has no password gate', () => {
   assert.doesNotMatch(text('.env.example'), /BETA_PASSWORD/);
   assert.doesNotMatch(text('README.md'), /password|beta gate/i);
 });
+
+test('the homepage shows hardcoded testnet activity below the borrowing risks', () => {
+  const homepage = text('app/page.tsx');
+  const risks = homepage.indexOf('<RisksDialog');
+  const stats = homepage.indexOf('className="testnet-stats"');
+
+  assert.ok(risks >= 0);
+  assert.ok(stats > risks);
+  assert.match(homepage, /Testnet Stats/);
+  assert.match(homepage, /\{ label: 'Faucet users', value: 500 \}/);
+  assert.match(homepage, /\{ label: 'Unique wallets', value: 800 \}/);
+});

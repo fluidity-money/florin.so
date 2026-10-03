@@ -4,6 +4,13 @@ import { Markets } from '../components/markets';
 import { RisksDialog } from '../components/risks-dialog';
 import { fetchFlorinMarkets } from '../lib/florin-graph';
 
+const testnetStats = [
+  { label: 'Faucet users', value: 500 },
+  { label: 'Unique wallets', value: 800 },
+];
+
+const largestTestnetStat = Math.max(...testnetStats.map(({ value }) => value));
+
 export default async function HomePage() {
   const markets = await fetchFlorinMarkets();
   return (
@@ -46,6 +53,36 @@ export default async function HomePage() {
       <Markets initialData={markets} />
 
       <RisksDialog label="Before you borrow, read what can go wrong" />
+
+      <section className="testnet-stats" aria-labelledby="testnet-stats-title">
+        <div className="testnet-stats__head">
+          <p className="overline">Network activity</p>
+          <h2 id="testnet-stats-title">Testnet Stats</h2>
+        </div>
+        <div className="testnet-stats__chart">
+          {testnetStats.map(({ label, value }) => (
+            <div className="testnet-stats__row" key={label}>
+              <div className="testnet-stats__label">
+                <span>{label}</span>
+                <strong>{value.toLocaleString('en-US')}</strong>
+              </div>
+              <div
+                className="testnet-stats__track"
+                role="meter"
+                aria-label={label}
+                aria-valuemin={0}
+                aria-valuemax={largestTestnetStat}
+                aria-valuenow={value}
+              >
+                <span
+                  className="testnet-stats__bar"
+                  style={{ width: `${(value / largestTestnetStat) * 100}%` }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
