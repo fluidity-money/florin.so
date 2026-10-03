@@ -31,6 +31,8 @@ import {
   type TransactionFailureStage,
 } from '../lib/transaction-error';
 import { useWallet } from './wallet/wallet';
+import useAccount from '../hooks/useAccount';
+import useFeature from '../hooks/useFeature';
 import { captureEvent } from '../lib/analytics';
 import {
   borrowerOperationsAbi,
@@ -90,6 +92,8 @@ async function ensureRobinhoodTestnet(provider: NonNullable<ReturnType<typeof us
 
 export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMarkets }) {
   const wallet = useWallet();
+  const enableAccounts = useFeature('enable-accounts');
+  const { createAccountFlorinOpenPosition } = useAccount();
   const markets = useFlorinMarkets(initialMarkets);
   const { borrow: spyMarketDetails } = spyMarket(markets);
   const marketAverageRate = parseDisplayPercent(spyMarketDetails?.avgRatePa);
@@ -259,40 +263,38 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
     try {
       setStage('switching');
       await ensureRobinhoodTestnet(wallet.provider);
-      const walletClient = createWalletClient({
-        account,
-        chain: robinhoodTestnet,
-        transport: custom(wallet.provider),
-      });
-
       failureStage = 'preparing';
       const requiredApproval = requiredSpyApproval(collateralWei);
-      const [balance, allowance, wethBalance, wethAllowance, nativeBalance, predictedFee, troveCount] = await Promise.all([
+      const directStatePromise = enableAccounts
+        ? Promise.resolve(null)
+        : Promise.all([
+          publicClient.readContract({
+            address: CONTRACTS.spyToken,
+            abi: erc20Abi,
+            functionName: 'allowance',
+            args: [account, CONTRACTS.borrowerOperations],
+          }),
+          publicClient.readContract({
+            address: CONTRACTS.weth,
+            abi: wethAbi,
+            functionName: 'balanceOf',
+            args: [account],
+          }),
+          publicClient.readContract({
+            address: CONTRACTS.weth,
+            abi: wethAbi,
+            functionName: 'allowance',
+            args: [account, CONTRACTS.borrowerOperations],
+          }),
+          publicClient.getBalance({ address: account }),
+        ]);
+      const [balance, predictedFee, troveCount, directState] = await Promise.all([
         publicClient.readContract({
           address: CONTRACTS.spyToken,
           abi: erc20Abi,
           functionName: 'balanceOf',
           args: [account],
         }),
-        publicClient.readContract({
-          address: CONTRACTS.spyToken,
-          abi: erc20Abi,
-          functionName: 'allowance',
-          args: [account, CONTRACTS.borrowerOperations],
-        }),
-        publicClient.readContract({
-          address: CONTRACTS.weth,
-          abi: wethAbi,
-          functionName: 'balanceOf',
-          args: [account],
-        }),
-        publicClient.readContract({
-          address: CONTRACTS.weth,
-          abi: wethAbi,
-          functionName: 'allowance',
-          args: [account, CONTRACTS.borrowerOperations],
-        }),
-        publicClient.getBalance({ address: account }),
         publicClient.readContract({
           address: CONTRACTS.hintHelpers,
           abi: hintHelpersAbi,
@@ -304,11 +306,79 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
           abi: sortedTrovesAbi,
           functionName: 'size',
         }),
+        directStatePromise,
       ]);
 
       if (balance < requiredApproval) {
         throw new Error(`You need ${formatUnits(requiredApproval, 18)} SPY for this position.`);
       }
+
+      if (enableAccounts) {
+        let upperHint = 0n;
+        let lowerHint = 0n;
+        if (troveCount > 0n) {
+          const [approxHint] = await publicClient.readContract({
+            address: CONTRACTS.hintHelpers,
+            abi: hintHelpersAbi,
+            functionName: 'getApproxHint',
+            args: [0n, rateWei, hintTrials(troveCount), BigInt(Date.now())],
+          });
+          [upperHint, lowerHint] = await publicClient.readContract({
+            address: CONTRACTS.sortedTroves,
+            abi: sortedTrovesAbi,
+            functionName: 'findInsertPosition',
+            args: [rateWei, approxHint, approxHint],
+          });
+        }
+
+        failureStage = 'opening';
+        setStage('opening');
+        const ownerIndex = randomOwnerIndex();
+        const result = await createAccountFlorinOpenPosition({
+          openPosition: {
+            owner: account,
+            asset: 'SPY',
+            collateralAmt: collateralWei.toString(),
+            boldAmt: borrowedWei.toString(),
+            annualInterestRate: rateWei.toString(),
+            ownerIndex: ownerIndex.toString(),
+            maxUpfrontFee: maxUpfrontFee(predictedFee).toString(),
+            lowerHint: lowerHint.toString(),
+            upperHint: upperHint.toString(),
+            receiver: account,
+          },
+          gasToken: 'SPY',
+          gasTokenAmt: '0',
+          dryrun: false,
+        });
+        if (!/^0x[0-9a-fA-F]{64}$/.test(result.hash)) {
+          throw new Error('The account service returned an invalid transaction hash.');
+        }
+        const hash = result.hash as Hash;
+        transactionHash = hash;
+        setTxHash(hash);
+        failureStage = 'confirming';
+        setStage('confirming');
+        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        if (receipt.status !== 'success') throw new Error('The account open-position transaction reverted.');
+
+        await chainState.refetch();
+        captureEvent('position_open_succeeded', {
+          chain_id: ROBINHOOD_TESTNET_CHAIN_ID,
+          wallet_kind: wallet.kind,
+          redemption_risk: redemptionRisk,
+        });
+        setMinted(true);
+        return;
+      }
+
+      if (!directState) throw new Error('Direct wallet state was not loaded.');
+      const [allowance, wethBalance, wethAllowance, nativeBalance] = directState;
+      const walletClient = createWalletClient({
+        account,
+        chain: robinhoodTestnet,
+        transport: custom(wallet.provider),
+      });
 
       const wethToWrap = requiredWethWrap(wethBalance);
       if (wethToWrap > 0n) {

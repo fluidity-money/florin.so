@@ -1,15 +1,15 @@
 package gen
 
 import (
-	"time"
-	"fmt"
-	"encoding/hex"
-	"strings"
 	"database/sql"
+	"encoding/hex"
+	"fmt"
 	"log/slog"
 	"math"
 	"math/big"
 	"math/rand"
+	"strings"
+	"time"
 
 	acc_convertor "github.com/fluidity-money/accounts.superposition.so/lib/convertor"
 	acc_types "github.com/fluidity-money/accounts.superposition.so/lib/types"

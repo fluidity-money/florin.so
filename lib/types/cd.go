@@ -22,7 +22,7 @@ func MakeOpenTroveCd(
 	annualInterestRate, maxUpfrontFee *big.Int,
 	addManager, removeManager ethCommon.Address,
 	receiver ethCommon.Address,
-) ([]byte) {
+) []byte {
 	b, err := abi.Pack("openTrove",
 		owner,
 		ownerIndex,
