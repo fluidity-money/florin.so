@@ -3,9 +3,13 @@
 package main
 
 import (
+	"encoding/json"
 	"database/sql"
 	"log"
 	"net"
+	"context"
+	"strings"
+	"log/slog"
 	"math/big"
 	"net/http"
 	"os"
@@ -72,6 +76,7 @@ const (
 
 type middleware struct {
 	srv http.Handler
+	db *sql.DB
 }
 
 func (m middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -88,7 +93,63 @@ func (m middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(204)
 		return
 	}
-	m.srv.ServeHTTP(w, r)
+	switch bearer := r.Header.Get("Authorization"); bearer {
+	case "":
+		m.srv.ServeHTTP(w, r)
+	default:
+		bearerS := strings.Split(bearer, ":")
+		eoaPreferred_ := bearerS[0]
+		if !ethCommon.IsHexAddress(eoaPreferred_) {
+			slog.Error("not eoa address",
+				"eoa", eoaPreferred_,
+			)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		// Normalise with ethCommon's representation of addresses (which include
+		// the 0x):
+		eoaPreferred := strings.ToLower(ethCommon.HexToAddress(eoaPreferred_).String())
+		_, err := hex.DecodeString(bearerS[1])
+		if err != nil {
+			slog.Error("error decoding bearer",
+				"err", err,
+				"bearer", bearerS,
+			)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		secretX := strings.ToLower(bearerS[1])
+		row := m.db.QueryRow(`
+SELECT COUNT(1)
+FROM accounts_secrets_2
+WHERE eoa_addr = $1 AND secret = $2`,
+			eoaPreferred,
+			secretX,
+		)
+		var count int
+		if err := row.Scan(&count); err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			log.Fatalf("error scanning secrets, snowflake: %v: %v", "snowflake", err)
+			writeUnauthorised(w)
+			return
+		}
+		if count == 0 {
+			w.WriteHeader(http.StatusUnauthorized)
+			slog.Error("no rows found")
+			writeUnauthorised(w)
+			return
+		}
+		eoa := ethCommon.HexToAddress(eoaPreferred)
+		m.srv.ServeHTTP(w, r.WithContext(context.WithValue(
+			context.WithValue(
+				r.Context(),
+				"authed",
+				true,
+			),
+			"eoa",
+			eoa,
+		)))
+	}
 }
 
 func main() {
@@ -160,7 +221,10 @@ func main() {
 		Cache: lru.New[string](100),
 	})
 	http.Handle("/playground", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/", middleware{srv})
+	http.Handle("/", middleware{
+		srv,
+		db,
+	})
 	_ = os.Remove(HttpUnixSocket)
 	l, err := net.Listen("unix", HttpUnixSocket)
 	if err != nil {
@@ -168,4 +232,10 @@ func main() {
 	}
 	defer l.Close()
 	panic(http.Serve(l, nil))
+}
+
+func writeUnauthorised(w http.ResponseWriter) {
+	_ = json.NewEncoder(w).Encode(struct {
+		Error string `json:"error"`
+	}{"unauthorised"})
 }

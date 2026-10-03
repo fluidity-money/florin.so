@@ -100,6 +100,10 @@ func graphAssetToAsset(x model.Asset) *superposition_assets.Asset {
 	panic("bad asset")
 }
 
+func isDryrun(x *bool) bool {
+	return x != nil && *x
+}
+
 func pickMsTs() (b [6]byte) {
 	u := new(big.Int).SetInt64(time.Now().UnixMilli())
 	copy(b[:], u.Bytes())
@@ -114,23 +118,26 @@ func pickMsTsBig(lag int) (b [16]byte) {
 }
 
 func bigToBytes32(x *big.Int) (b [32]byte, err error) {
+	if x.Sign() < 0 {
+		return b, fmt.Errorf("int is negative")
+	}
 	y := x.Bytes()
 	if len(y) > 32 {
 		return b, fmt.Errorf("int too big")
 	}
-	copy(b[:], y)
+	copy(b[32-len(y):], y)
 	return
 }
 
 func bigFromStr(x string) (*big.Int, bool) {
 	y, ok := new(big.Int).SetString(x, 10)
-	if !ok {
+	if !ok || y.Sign() < 0 {
 		return nil, false
 	}
 	if len(y.Bytes()) > 32 {
 		return nil, false
 	}
-	return y, false
+	return y, true
 }
 
 func makeSecret() (secret []byte) {
