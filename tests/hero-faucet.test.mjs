@@ -14,15 +14,21 @@ test('the Florin SPY faucet is a distinct highlighted call to action', () => {
   assert.match(styles, /\.hero__btn--faucet:hover\s*\{/);
 });
 
-test('first-time visitors see a dismissible faucet tooltip and receive a cookie', () => {
+test('first-time visitors see a feature-flagged faucet call-to-action popup', () => {
   const hero = read('components/hero.tsx');
   const styles = read('app/globals.css');
 
+  assert.match(hero, /useFeature\('show-call-to-action-faucet'\)/);
+  assert.match(hero, /if \(!showFaucetCallToAction\) return;/);
+  assert.match(hero, /showFaucetCallToAction && \(\s*<dialog/);
   assert.match(hero, /florin_faucet_intro_seen/);
   assert.match(hero, /document\.cookie/);
-  assert.match(hero, /Start your testnet journey here/);
+  assert.match(hero, /Visit the Faucet to get started on your Testnet journey\./);
+  assert.match(hero, />\s*Visit the Faucet\s*</);
+  assert.match(hero, /href="https:\/\/faucet\.florin\.so"/);
   assert.match(hero, /aria-label="Dismiss faucet introduction"/);
-  assert.match(styles, /\.hero__faucet-tip\s*\{/);
+  assert.match(styles, /\.faucet-intro\s*\{/);
+  assert.match(styles, /\.faucet-intro__cta\s*\{/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
