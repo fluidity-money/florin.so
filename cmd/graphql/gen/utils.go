@@ -101,13 +101,14 @@ func graphAssetToAsset(x model.Asset) *superposition_assets.Asset {
 }
 
 func pickMsTs() (b [6]byte) {
-	u := new(big.Int).SetInt64(time.Now().Unix())
+	u := new(big.Int).SetInt64(time.Now().UnixMilli())
 	copy(b[:], u.Bytes())
 	return
 }
 
-func pickMsTsBig() (b [16]byte) {
-	u := new(big.Int).SetInt64(time.Now().Unix())
+func pickMsTsBig(lag int) (b [16]byte) {
+	t := time.Now().Add(time.Millisecond * time.Duration(lag))
+	u := new(big.Int).SetInt64(t.UnixMilli())
 	copy(b[:], u.Bytes())
 	return
 }

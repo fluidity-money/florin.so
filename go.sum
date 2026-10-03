@@ -13,6 +13,8 @@ github.com/ProjectZKM/Ziren/crates/go-runtime/zkvm_runtime v0.0.0-20261002012752
 github.com/ProjectZKM/Ziren/crates/go-runtime/zkvm_runtime v0.0.0-20261002012752-5695065f713a/go.mod h1:uO5tzF6zbEbGmzjjDjqrYuAdGqqGJYYYSGijnBePEeg=
 github.com/ProjectZKM/Ziren/crates/go-runtime/zkvm_runtime v0.0.0-20261003000859-10d23b1344e4 h1:lErHeMBnjyhT/YZs8J/keXPPrGmlZipgxG+QWcdSOIY=
 github.com/ProjectZKM/Ziren/crates/go-runtime/zkvm_runtime v0.0.0-20261003000859-10d23b1344e4/go.mod h1:uO5tzF6zbEbGmzjjDjqrYuAdGqqGJYYYSGijnBePEeg=
+github.com/ProjectZKM/Ziren/crates/go-runtime/zkvm_runtime v0.0.0-20261003120642-08e300fcb10f h1:k8Qn5SXBOvciMpRgNLoJ5YXR/4UCAmHV4NY2MMOM9QA=
+github.com/ProjectZKM/Ziren/crates/go-runtime/zkvm_runtime v0.0.0-20261003120642-08e300fcb10f/go.mod h1:uO5tzF6zbEbGmzjjDjqrYuAdGqqGJYYYSGijnBePEeg=
 github.com/StackExchange/wmi v1.2.1 h1:VIkavFPXSjcnS+O8yTq7NI32k0R5Aj+v39y29VYDOSA=
 github.com/StackExchange/wmi v1.2.1/go.mod h1:rcmrprowKIVzvc+NUiLncP2uuArMWLCbu9SBzvHz7e8=
 github.com/VictoriaMetrics/fastcache v1.13.0 h1:AW4mheMR5Vd9FkAPUv+NH6Nhw+fmbTMGMsNAoA/+4G0=
@@ -103,6 +105,10 @@ github.com/fluidity-money/accounts.superposition.so v0.0.0-20261002151149-e9241f
 github.com/fluidity-money/accounts.superposition.so v0.0.0-20261002151149-e9241fee65e7/go.mod h1:acbBgZVQTieYeUPHqOn2KqjgMZDSIK3xlMS/HBgG/Gg=
 github.com/fluidity-money/accounts.superposition.so v0.0.0-20261003102605-fddc71bc3a4a h1:oTfqR41zPnJlQhx2mOWoA5ggDudIHnMDrjhH4XjkPfE=
 github.com/fluidity-money/accounts.superposition.so v0.0.0-20261003102605-fddc71bc3a4a/go.mod h1:acbBgZVQTieYeUPHqOn2KqjgMZDSIK3xlMS/HBgG/Gg=
+github.com/fluidity-money/accounts.superposition.so v0.0.0-20261003115715-a52d401f54b5 h1:yqF/gIPgIbAR0MueABeyxZfMYAEzipdaEtFJCiD82XE=
+github.com/fluidity-money/accounts.superposition.so v0.0.0-20261003115715-a52d401f54b5/go.mod h1:PA2hoNsA+2502ho3IJP6HU7ta5Q0w+iX50N8V5ui2rg=
+github.com/fluidity-money/faucet.florin.so v0.0.0-20261003120709-05d75d7f7b17 h1:l+8nlmTP1aN8opc0XyRUte/yuREbrZbmo3UjY2fDsOE=
+github.com/fluidity-money/faucet.florin.so v0.0.0-20261003120709-05d75d7f7b17/go.mod h1:lLJqzQN8KLbcc3kPGZwXohHQ/lBg3gPkyGOTh3AAVFg=
 github.com/fluidity-money/superposition-assets v0.0.0-20261001155344-45916b25e876 h1:SWGH6HIyiQ1sCxT4ZmJNeWpOg2BGaJPU8NvypEgbMGI=
 github.com/fluidity-money/superposition-assets v0.0.0-20261001155344-45916b25e876/go.mod h1:ej95AmAf8Q5FHYIfLMq+cyqS4aXIiVowwR0zQZTDeuI=
 github.com/fluidity-money/superposition-assets v0.0.0-20261002160639-e69f1628bca5 h1:vhL+RnLv8VrIC8eNmMJt+sZHSwss9FiZntJqtdAkULg=
