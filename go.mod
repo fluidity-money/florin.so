@@ -8,14 +8,14 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/orandin/slog-gorm v1.4.0
 	github.com/stretchr/testify v1.12.1
-	github.com/vektah/gqlparser/v2 v2.5.59
+	github.com/vektah/gqlparser/v2 v2.5.60
 	gorm.io/driver/postgres v1.6.3
 	gorm.io/gorm v1.31.2
 )
 
 require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
-	github.com/ProjectZKM/Ziren/crates/go-runtime/zkvm_runtime v0.0.0-20261002012752-5695065f713a // indirect
+	github.com/ProjectZKM/Ziren/crates/go-runtime/zkvm_runtime v0.0.0-20261003000859-10d23b1344e4 // indirect
 	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/aws/aws-lambda-go v1.55.1 // indirect
@@ -31,8 +31,8 @@ require (
 	github.com/ethereum/c-kzg-4844/v2 v2.1.8 // indirect
 	github.com/ethereum/go-verkle v0.2.2 // indirect
 	github.com/fjl/jsonw v0.1.0 // indirect
-	github.com/fluidity-money/accounts.superposition.so v0.0.0-20261002151149-e9241fee65e7 // indirect
-	github.com/fluidity-money/superposition-assets v0.0.0-20261001155344-45916b25e876 // indirect
+	github.com/fluidity-money/accounts.superposition.so v0.0.0-20261003102605-fddc71bc3a4a // indirect
+	github.com/fluidity-money/superposition-assets v0.0.0-20261002160639-e69f1628bca5 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect

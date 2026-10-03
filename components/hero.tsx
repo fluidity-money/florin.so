@@ -134,7 +134,7 @@ export function Hero({ markets }: { markets: FlorinMarkets }) {
               rel="noreferrer"
               onClick={() => captureEvent('social_follow_clicked', { account: 'florinprotocol', source: 'home_hero' })}
             >
-              Follow florinprotocol on X
+              Follow @florinprotocol on X
             </a>
           )}
         </div>

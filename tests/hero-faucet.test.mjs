@@ -33,6 +33,6 @@ test('the X follow button sits below the primary actions and is feature flagged'
   assert.match(hero, /useFeature\('show-x-follow-button'\)/);
   assert.match(hero, /showXFollowButton &&/);
   assert.match(hero, /https:\/\/x\.com\/florinprotocol/);
-  assert.match(hero, /Follow florinprotocol on X/);
+  assert.match(hero, /Follow @florinprotocol on X/);
   assert.match(styles, /\.hero__cta-row\s*\{/);
 });

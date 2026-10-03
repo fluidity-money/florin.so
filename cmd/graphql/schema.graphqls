@@ -68,6 +68,13 @@ type EarnRewards {
   coverage: Percent!
 }
 
+input Permit {
+  deadline: Int!,
+  permitV: Int!,
+  permitR: String!,
+  permitS: String!
+}
+
 type Query {
   """
   Details of the borrowed amount of SPY in circulation with FUSD.
@@ -106,13 +113,19 @@ input CreateAccount {
 
 input FlorinOpenPosition {
   owner: Address!,
+  """
+  The asset to start the open position interaction from. At first, this will convert using
+  Uniswap V4.
+  """
+  asset: Asset!,
   collateralAmt: Amount!,
   boldAmt: Amount!,
   annualInterestRate: Amount!,
   maxUpfrontFee: Amount!,
   addManager: Address,
   removeManager: Address,
-  receiver: Address!
+  receiver: Address!,
+  permit: Permit
 }
 
 type Mutation {
