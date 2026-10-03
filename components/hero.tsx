@@ -157,11 +157,11 @@ export function Hero({ markets }: { markets: FlorinMarkets }) {
             ×
           </button>
           <span className="faucet-intro__eyebrow">Welcome to Florin</span>
-          <h2 id="faucet-intro-title">Start with testnet SPY</h2>
+          <h2 id="faucet-intro-title">Start with Testnet <span className="swap__tok">SPY</span></h2>
           <p>Visit the Faucet to get started on your Testnet journey.</p>
           <a
             href="https://faucet.florin.so"
-            className="faucet-intro__cta"
+            className="btn btn--primary faucet-intro__cta"
             onClick={() => {
               captureEvent('faucet_link_clicked', {
                 source: 'home_popup',
