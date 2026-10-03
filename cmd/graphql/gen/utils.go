@@ -2,7 +2,14 @@ package gen
 
 import (
 	"time"
+	"fmt"
+	"encoding/hex"
+	"strings"
+	"database/sql"
+	"log/slog"
+	"math"
 	"math/big"
+	"math/rand"
 
 	acc_convertor "github.com/fluidity-money/accounts.superposition.so/lib/convertor"
 	acc_types "github.com/fluidity-money/accounts.superposition.so/lib/types"
@@ -20,38 +27,26 @@ func createAccountToFreshBackwardsGraph(
 	if err != nil {
 		return nil, fmt.Errorf("eoa: %v", err)
 	}
-
-	var authority *types.ArgsAuthorityAddr
-	if a := createAccount.Authority; a != nil {
-		x, err := strToAddr(*a)
-		if err != nil {
-			return nil, fmt.Errorf("authority: %v", err)
-		}
-		v := types.ArgsAuthorityAddr(x)
-		authority = &v
-	}
-
+	// TODO: authority = &AuthorityAddr
 	if createAccount.SigV < 0 || createAccount.SigV > math.MaxUint8 {
 		return nil, fmt.Errorf("v exceeds")
 	}
-
 	r, err := strToBytes32(createAccount.SigR)
 	if err != nil {
 		return nil, fmt.Errorf("r: %v", err)
 	}
-
 	s, err := strToBytes32(createAccount.SigS)
 	if err != nil {
 		return nil, fmt.Errorf("s: %v", err)
 	}
-
-	return CreateAccountToFreshBackwards(
+	return acc_convertor.CreateAccountToFreshBackwards(
 		pubKey,
 		eoa,
 		uint8(createAccount.SigV),
 		r,
 		s,
-		authority,
+		// TODO: set the authority here
+		nil,
 	), nil
 }
 
@@ -72,7 +67,7 @@ func newPermitGraph(
 	if err != nil {
 		return nil, fmt.Errorf("permit s: %v", err)
 	}
-	return NewPermit(
+	return acc_convertor.NewPermit(
 		asset,
 		deadline,
 		uint8(permitV),
@@ -96,10 +91,13 @@ func strToBytes32(s string) ([32]byte, error) {
 func graphAssetToAsset(x model.Asset) *superposition_assets.Asset {
 	switch x {
 	case "USDG":
-		return &superposition_assets.AssetUsdg
+		x := superposition_assets.AssetUsdg
+		return &x
 	case "SPY":
-		return &superposition_assets.AssetSpy
+		x := superposition_assets.AssetSpy
+		return &x
 	}
+	panic("bad asset")
 }
 
 func pickMsTs() (b [6]byte) {
@@ -108,11 +106,71 @@ func pickMsTs() (b [6]byte) {
 	return
 }
 
+func pickMsTsBig() (b [16]byte) {
+	u := new(big.Int).SetInt64(time.Now().Unix())
+	copy(b[:], u.Bytes())
+	return
+}
+
 func bigToBytes32(x *big.Int) (b [32]byte, err error) {
 	y := x.Bytes()
-	if y.Len() > 32 {
+	if len(y) > 32 {
 		return b, fmt.Errorf("int too big")
 	}
 	copy(b[:], y)
 	return
+}
+
+func bigFromStr(x string) (*big.Int, bool) {
+	y, ok := new(big.Int).SetString(x, 10)
+	if !ok {
+		return nil, false
+	}
+	if len(y.Bytes()) > 32 {
+		return nil, false
+	}
+	return y, false
+}
+
+func makeSecret() (secret []byte) {
+	secret = make([]byte, 32)
+	if n, err := rand.Read(secret); n != 32 || err != nil {
+		panic(fmt.Errorf("error with randomness: %v", err))
+	}
+	return
+}
+
+func trackTx(db *sql.DB, eoaS, txHash string, gasLimit uint64, desc string) {
+	_, err := db.Exec(`
+INSERT INTO accounts_executed_transactions_2 (
+	eoa_addr,
+	transaction_hash,
+	gas_limit,
+	desc_
+)
+VALUES ($1, $2, $3, $4)`,
+		eoaS,
+		txHash,
+		gasLimit,
+		desc,
+	)
+	if err != nil {
+		slog.Error("error tracking executed transactions", "err", err)
+		// We'll ignore this and not propagate up to the user this error.
+	}
+}
+
+func strToAddr(s string) ([20]byte, error) {
+	var b [20]byte
+	if s == "" {
+		return b, nil
+	}
+	i, err := hex.Decode(b[:], []byte(strings.TrimPrefix(s, "0x")))
+	if err != nil {
+		return b, fmt.Errorf("decode str: %v", err)
+	}
+	if i != 20 {
+		return b, fmt.Errorf("decode str len: %v", i)
+	}
+	return b, nil
 }

@@ -8,7 +8,8 @@ package gen
 import (
 	"log"
 	"context"
-	"math/big"
+	"strings"
+	"encoding/hex"
 	"database/sql"
 	"fmt"
 	"log/slog"
@@ -16,8 +17,10 @@ import (
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	acc_convertor "github.com/fluidity-money/accounts.superposition.so/lib/convertor"
 	acc_types "github.com/fluidity-money/accounts.superposition.so/lib/types"
+	acc_db "github.com/fluidity-money/accounts.superposition.so/lib/db"
+	acc_client "github.com/fluidity-money/accounts.superposition.so/lib/client"
 	"github.com/fluidity-money/florin.so/cmd/graphql/gen/model"
-	superposition_assets "github.com/fluidity-money/superposition-assets"
+	"github.com/fluidity-money/florin.so/lib/types"
 )
 
 // CreateAccountFlorinOpenPosition is the resolver for the createAccountFlorinOpenPosition field.
@@ -61,7 +64,7 @@ func (r *mutationResolver) CreateAccountFlorinOpenPosition(ctx context.Context, 
 			return nil, fmt.Errorf("creating permit: %v", err)
 		}
 	}
-	collateralAmt, ok := new(big.Int).SetString(openPosition.CollateralAmt, 10)
+	collateralAmt, ok := bigFromStr(openPosition.CollateralAmt)
 	if !ok {
 		return nil, fmt.Errorf("bad collateral amt")
 	}
@@ -73,13 +76,68 @@ func (r *mutationResolver) CreateAccountFlorinOpenPosition(ctx context.Context, 
 		)
 		return nil, fmt.Errorf("collateral amt too big")
 	}
+	if !ethCommon.IsHexAddress(openPosition.Owner) {
+		return nil, fmt.Errorf("open position owner bad")
+	}
+	owner := ethCommon.HexToAddress(openPosition.Owner)
+	ownerIndex, ok := bigFromStr(openPosition.OwnerIndex)
+	if !ok {
+		return nil, fmt.Errorf("owner index bad")
+	}
+	boldAmt, ok := bigFromStr(openPosition.BoldAmt)
+	if !ok {
+		return nil, fmt.Errorf("bold amount bad")
+	}
+	upperHint, ok := bigFromStr(openPosition.UpperHint)
+	if !ok {
+		return nil, fmt.Errorf("upper hint bad")
+	}
+	lowerHint, ok := bigFromStr(openPosition.LowerHint)
+	if !ok {
+		return nil, fmt.Errorf("lower hint bad")
+	}
+	annualInterestRate, ok := bigFromStr(openPosition.AnnualInterestRate)
+	if !ok {
+		return nil, fmt.Errorf("annual interest rate bad")
+	}
+	maxUpfrontFee, ok := bigFromStr(openPosition.MaxUpfrontFee)
+	if !ok {
+		return nil, fmt.Errorf("max upfront fee bad")
+	}
+	addManager := ethCommon.HexToAddress("0x0000000000000000000000000000000000000000")
+	removeManager := addManager
+	if x := openPosition.AddManager; x != nil {
+		if !ethCommon.IsHexAddress(*x) {
+			return nil, fmt.Errorf("bad add manager")
+		}
+		addManager = ethCommon.HexToAddress(*x)
+	}
+	if x := openPosition.RemoveManager; x != nil {
+		if !ethCommon.IsHexAddress(*x) {
+			return nil, fmt.Errorf("bad remove manager")
+		}
+		removeManager = ethCommon.HexToAddress(*x)
+	}
+	msTs := pickMsTsBig()
 	err = acc_convertor.TagFreshBackwards(
 		ProgDalek,
 		f,
 		*asset,
 		r.AddrBorrowerOperations,
 		collateralAmtB,
-		acc_types.MakeOpenTroveCd(),
+		types.MakeOpenTroveCd(
+			owner,
+			ownerIndex,
+			collateralAmt,
+			boldAmt,
+			upperHint,
+			lowerHint,
+			annualInterestRate,
+			maxUpfrontFee,
+			addManager,
+			removeManager,
+			owner,
+		),
 		permit,
 		msTs,
 	)
@@ -91,7 +149,7 @@ func (r *mutationResolver) CreateAccountFlorinOpenPosition(ctx context.Context, 
 	if err != nil {
 		return nil, fmt.Errorf("mint tagging: %v", err)
 	}
-	privKey, sender, err := db.PickPrivateKey(ctx, r.Db)
+	privKey, sender, err := acc_db.PickPrivateKey(ctx, r.Db)
 	if err != nil {
 		slog.Error("Error picking the private key",
 			"err", err,
@@ -108,18 +166,18 @@ func (r *mutationResolver) CreateAccountFlorinOpenPosition(ctx context.Context, 
 		"snowflake", snowflake,
 		"args", args,
 	)
-	h, gasLimit, err := client.SendArguments(
+	h, gasLimit, err := acc_client.SendArguments(
 		ctx,
 		r.Client,
-		r.SafetyRouterAddr,
+		r.AddrSafetyRouter,
 		// We disable the SafetyRouter here since the interaction is a factory:
 		false,
 		r.ChainId,
 		privKey,
 		*sender,
-		r.AccountsFactoryAddr,
+		r.AddrAccountsFactory,
 		args,
-		isDryrun(dryrun),
+		false,
 	)
 	if err != nil {
 		slog.Error("error creating an account",
@@ -130,16 +188,6 @@ func (r *mutationResolver) CreateAccountFlorinOpenPosition(ctx context.Context, 
 			"create r", createAccount.SigR,
 			"create s", createAccount.SigS,
 		)
-		// We ignore messages if someone is trying to buy at the end of a market:
-		if !isIgnorable(err) {
-			activateSoftAlarm(r.UrlAlarm, snowflake, fmt.Errorf(
-				"create account exec, user address: %v, sender: %v, contract: %v, err: %v",
-				eoa,
-				sender,
-				r.AccountsFactoryAddr,
-				err,
-			))
-		}
 		return nil, fmt.Errorf("send arguments: fresh backwards %+v: %v", f, err)
 	}
 	slog.Debug("Sent transaction on-chain for new account creation",
@@ -152,27 +200,23 @@ func (r *mutationResolver) CreateAccountFlorinOpenPosition(ctx context.Context, 
 	// reauthenticate when the user tries.
 	secret := makeSecret()
 	secretX := hex.EncodeToString(secret)
-	if !isDryrun(dryrun) {
-		slog.Debug("Inserting into database accounts secret",
-			"h", h,
-			"eoa", eoa,
-			"snowflake", snowflake,
-		)
-		eoaS := strings.ToLower(eoa.String())
-		if !isDryrun(dryrun) {
-			_, err = r.Db.Exec(`
+	slog.Debug("Inserting into database accounts secret",
+		"h", h,
+		"eoa", eoa,
+		"snowflake", snowflake,
+	)
+	eoaS := strings.ToLower(eoa.String())
+	_, err = r.Db.Exec(`
 INSERT INTO accounts_secrets_2 (eoa_addr, secret)
 VALUES ($1, $2)`,
-				eoaS,
-				secretX,
-			)
-			if err != nil {
-				slog.Error("error inserting a secret", "err", err)
-				return nil, fmt.Errorf("error inserting secret")
-			}
-		}
-		trackTx(r.Db, eoaS, h.Hex(), gasLimit, "create account")
+		eoaS,
+		secretX,
+	)
+	if err != nil {
+		slog.Error("error inserting a secret", "err", err)
+		return nil, fmt.Errorf("error inserting secret")
 	}
+	trackTx(r.Db, eoaS, h.Hex(), gasLimit, "create account")
 	return &model.CreateAccountExec{
 		Hash:   h.Hex(),
 		Secret: secretX,
@@ -194,11 +238,11 @@ func (r *queryResolver) BorrowDetails(ctx context.Context) ([]*model.BorrowDetai
 			DebtIssued: "2.34M",
 		}}, nil
 	}
-	if r.DB == nil {
+	if r.Db == nil {
 		return nil, fmt.Errorf("database is not configured")
 	}
 	var collateral, debt, averageRateRaw string
-	err := r.DB.QueryRowContext(ctx, `
+	err := r.Db.QueryRowContext(ctx, `
 SELECT
 	collateral.amount::text,
 	fusd.amount::text,
@@ -246,11 +290,11 @@ func (r *queryResolver) EarnRewards(ctx context.Context) ([]*model.EarnRewards, 
 			Coverage:   "38%",
 		}}, nil
 	}
-	if r.DB == nil {
+	if r.Db == nil {
 		return nil, fmt.Errorf("database is not configured")
 	}
 	var poolSizeRaw, aprRaw, coverageRaw string
-	err := r.DB.QueryRowContext(ctx, `
+	err := r.Db.QueryRowContext(ctx, `
 SELECT
 	pool.amount::text,
 	COALESCE((
@@ -300,10 +344,10 @@ func (r *queryResolver) OpenPositions(ctx context.Context, owner string) ([]*mod
 	if r.FeatureFakeData {
 		return []*model.Position{}, nil
 	}
-	if r.DB == nil {
+	if r.Db == nil {
 		return nil, fmt.Errorf("database is not configured")
 	}
-	rows, err := r.DB.QueryContext(ctx, `
+	rows, err := r.Db.QueryContext(ctx, `
 SELECT
 	trove_id::text,
 	TRIM(trove_manager::text),

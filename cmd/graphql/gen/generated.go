@@ -428,13 +428,13 @@ type BorrowDetails {
 An open Florin borrowing position owned by an address.
 """
 type Position {
-  troveId: String!
-  troveManager: Address!
-  owner: Address!
-  debt: Amount!
-  collateral: Amount!
-  stake: Amount!
-  annualInterestRate: Percent!
+  troveId: String!,
+  troveManager: Address!,
+  owner: Address!,
+  debt: Amount!,
+  collateral: Amount!,
+  stake: Amount!,
+  annualInterestRate: Percent!,
   interestBatchManager: Address
 }
 
@@ -501,7 +501,10 @@ input FlorinOpenPosition {
   collateralAmt: Amount!,
   boldAmt: Amount!,
   annualInterestRate: Amount!,
+  ownerIndex: Amount!,
   maxUpfrontFee: Amount!,
+  lowerHint: Amount!,
+  upperHint: Amount!,
   addManager: Address,
   removeManager: Address,
   receiver: Address!,
@@ -2744,7 +2747,7 @@ func (ec *executionContext) unmarshalInputFlorinOpenPosition(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"owner", "asset", "collateralAmt", "boldAmt", "annualInterestRate", "maxUpfrontFee", "addManager", "removeManager", "receiver", "permit"}
+	fieldsInOrder := [...]string{"owner", "asset", "collateralAmt", "boldAmt", "annualInterestRate", "ownerIndex", "maxUpfrontFee", "lowerHint", "upperHint", "addManager", "removeManager", "receiver", "permit"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -2786,6 +2789,13 @@ func (ec *executionContext) unmarshalInputFlorinOpenPosition(ctx context.Context
 				return it, err
 			}
 			it.AnnualInterestRate = data
+		case "ownerIndex":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ownerIndex"))
+			data, err := ec.unmarshalNAmount2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OwnerIndex = data
 		case "maxUpfrontFee":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxUpfrontFee"))
 			data, err := ec.unmarshalNAmount2string(ctx, v)
@@ -2793,6 +2803,20 @@ func (ec *executionContext) unmarshalInputFlorinOpenPosition(ctx context.Context
 				return it, err
 			}
 			it.MaxUpfrontFee = data
+		case "lowerHint":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("lowerHint"))
+			data, err := ec.unmarshalNAmount2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LowerHint = data
+		case "upperHint":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("upperHint"))
+			data, err := ec.unmarshalNAmount2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UpperHint = data
 		case "addManager":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("addManager"))
 			data, err := ec.unmarshalOAddress2ᚖstring(ctx, v)
