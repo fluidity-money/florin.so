@@ -30,7 +30,7 @@ test('the X follow button sits below the primary actions and is feature flagged'
   const hero = read('components/hero.tsx');
   const styles = read('app/globals.css');
 
-  assert.match(hero, /useFeature\('show x follow button'\)/);
+  assert.match(hero, /useFeature\('show-x-follow-button'\)/);
   assert.match(hero, /showXFollowButton &&/);
   assert.match(hero, /https:\/\/x\.com\/florinprotocol/);
   assert.match(hero, /Follow florinprotocol on X/);
