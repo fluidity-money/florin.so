@@ -11,10 +11,12 @@ import (
 	"fmt"
 	"log/slog"
 
-	ethCommon "github.com/ethereum/go-ethereum/common"
-	acc_convertor "github.com/fluidity-money/accounts.superposition.so/lib/convertor"
 	"github.com/fluidity-money/florin.so/cmd/graphql/gen/model"
-	superposition_assets "github.com/fluidity-money/superposition-assets"
+	ethCommon "github.com/ethereum/go-ethereum/common"
+	acc_client "github.com/fluidity-money/accounts.superposition.so/lib/client"
+	acc_db "github.com/fluidity-money/accounts.superposition.so/lib/db"
+	acc_convertor "github.com/fluidity-money/accounts.superposition.so/lib/convertor"
+	"github.com/fluidity-money/superposition-assets"
 )
 
 // CreateAccountFlorinOpenPosition is the resolver for the createAccountFlorinOpenPosition field.
@@ -24,7 +26,7 @@ func (r *mutationResolver) CreateAccountFlorinOpenPosition(ctx context.Context, 
 	if err != nil {
 		slog.Error("create account",
 			"create account", createAccount,
-			"mint", mint,
+			"open position", openPosition,
 			"err", err,
 		)
 		return nil, fmt.Errorf("create account: %v", err)
@@ -34,27 +36,31 @@ func (r *mutationResolver) CreateAccountFlorinOpenPosition(ctx context.Context, 
 	}
 	eoa := ethCommon.HexToAddress(createAccount.EoaAddr)
 	slog.Debug("Creating a new account", "eoa", eoa, "snowflake", snowflake)
-	if mint != nil {
-		err = convertor.TagFreshBackwards(
-			ProgDalek,
-			f,
-			superposition_assets.AssetUsdc,
-			mint.Market,
-			mint.Outcome,
-			mint.Amount,
-			mint.Referrer,
-			eoa,
-			mint.Permit,
-			mint.MsTs,
-		)
-		slog.Error("Error creating the mint blob",
-			"err", err,
-			"snowflake", snowflake,
-			"eoa", eoa,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("mint tagging: %v", err)
-		}
+	// TODO: the current version doesn't take a gas token for this.
+	err = convertor.TagFreshBackwards(
+		ProgDalek,
+		f,
+		superposition_assets.AssetUsdg,
+		// TODO: use a lower level function so we don't need to
+		// convert this again (the accounts functions are
+		// specialised for the 9lives graph)
+		r.AddrBorrowerOperationsStr,
+		openPosition.CollateralAmt,
+		mint.Market,
+		mint.Outcome,
+		mint.Amount,
+		mint.Referrer,
+		eoa,
+		mint.Permit,
+		mint.MsTs,
+	)
+	slog.Error("Error creating the mint blob",
+		"err", err,
+		"snowflake", snowflake,
+		"eoa", eoa,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("mint tagging: %v", err)
 	}
 	privKey, sender, err := db.PickPrivateKey(ctx, r.Db)
 	if err != nil {

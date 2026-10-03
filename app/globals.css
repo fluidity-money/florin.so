@@ -3091,6 +3091,13 @@ input:focus-visible {
 
 .hero__cta {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.hero__cta-row {
+  display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: 12px;
