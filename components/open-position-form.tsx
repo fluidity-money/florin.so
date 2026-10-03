@@ -128,6 +128,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   const oraclePrice = useQuery({
     queryKey: ['spy-oracle-price'],
     refetchInterval: 15_000,
+    retry: false,
     queryFn: async () => {
       const simulation = await publicClient.simulateContract({
         address: CONTRACTS.spyPriceFeed,
@@ -591,7 +592,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       </div>
       <div className="swap__meta">
         <span>
-          Oracle price <b>{priceReady ? `$${money(spyPrice)}` : 'loading…'}</b>{' '}
+          Oracle price <b>{priceReady ? `$${money(spyPrice)}` : oraclePrice.isError ? 'unavailable' : 'loading…'}</b>{' '}
           {priceReady && <><i className="swap__dot swap__dot--ok" /> onchain</>}
         </span>
         <span>Max LTV <b>{pct(MAX_LTV * 100, 1)}</b></span>
@@ -677,7 +678,8 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       {protocolError && active && <p className="warn">{protocolError}</p>}
       {unsafe && <p className="warn">This position is below the protocol&apos;s 110% minimum collateral ratio.</p>}
       {insufficientSpy && <p className="warn">Your wallet does not have enough testnet SPY for the collateral.</p>}
-      {(chainState.isError || oraclePrice.isError) && <p className="warn">Could not read the Robinhood testnet contracts. Try again before submitting.</p>}
+      {chainState.isError && <p className="warn">Could not read the Robinhood testnet contracts. Try again before submitting.</p>}
+      {oraclePrice.isError && <p className="warn">The SPY oracle is unavailable or rejected its latest round. Borrowing is disabled until the oracle is repaired.</p>}
       {upfrontFee.isError && <p className="warn">Could not quote the onchain upfront fee. Try again before submitting.</p>}
       {error && (
         <div className="swap__error" role="alert">

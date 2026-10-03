@@ -87,6 +87,8 @@ test('open-position risk calculations use the validated price returned by fetchP
   assert.match(open, /simulateContract/);
   assert.match(open, /functionName:\s*'fetchPrice'/);
   assert.match(open, /validatedOraclePrice/);
+  assert.match(open, /oraclePrice\.isError\s*\?\s*'unavailable'\s*:\s*'loading…'/);
+  assert.match(open, /SPY oracle is unavailable or rejected its latest round/);
   assert.doesNotMatch(open, /functionName:\s*'lastGoodPrice'/);
 });
 
