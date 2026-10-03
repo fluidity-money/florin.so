@@ -23,7 +23,7 @@ export function Hero({ markets }: { markets: FlorinMarkets }) {
   const { borrow, earn } = spyMarket(liveMarkets);
   const { price: spyPrice, live: priceLive } = useSpyPrice();
   const [showFaucetIntro, setShowFaucetIntro] = useState(false);
-  const showXFollowButton = useFeature('show x follow button');
+  const showXFollowButton = useFeature('show-x-follow-button');
 
   useEffect(() => {
     const hasSeenFaucetIntro = document.cookie
