@@ -197,7 +197,7 @@ func (r *mutationResolver) CreateAccountFlorinOpenPosition(ctx context.Context, 
 		*sender,
 		r.AddrAccountsFactory,
 		args,
-		false,
+		isDryrun(dryrun),
 	)
 	if err != nil {
 		slog.Error("error creating an account",
@@ -226,17 +226,19 @@ func (r *mutationResolver) CreateAccountFlorinOpenPosition(ctx context.Context, 
 		"snowflake", snowflake,
 	)
 	eoaS := strings.ToLower(eoa.String())
-	_, err = r.Db.Exec(`
+	if !isDryrun(dryrun) {
+		_, err = r.Db.Exec(`
 INSERT INTO accounts_secrets_2 (eoa_addr, secret)
 VALUES ($1, $2)`,
-		eoaS,
-		secretX,
-	)
-	if err != nil {
-		slog.Error("error inserting a secret", "err", err)
-		return nil, fmt.Errorf("error inserting secret")
+			eoaS,
+			secretX,
+		)
+		if err != nil {
+			slog.Error("error inserting a secret", "err", err)
+			return nil, fmt.Errorf("error inserting secret")
+		}
+		trackTx(r.Db, eoaS, h.Hex(), gasLimit, "create account")
 	}
-	trackTx(r.Db, eoaS, h.Hex(), gasLimit, "create account")
 	return &model.CreateAccountExec{
 		Hash:   h.Hex(),
 		Secret: secretX,
