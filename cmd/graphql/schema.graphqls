@@ -48,13 +48,13 @@ type BorrowDetails {
 An open Florin borrowing position owned by an address.
 """
 type Position {
-  troveId: String!
-  troveManager: Address!
-  owner: Address!
-  debt: Amount!
-  collateral: Amount!
-  stake: Amount!
-  annualInterestRate: Percent!
+  troveId: String!,
+  troveManager: Address!,
+  owner: Address!,
+  debt: Amount!,
+  collateral: Amount!,
+  stake: Amount!,
+  annualInterestRate: Percent!,
   interestBatchManager: Address
 }
 
@@ -121,7 +121,10 @@ input FlorinOpenPosition {
   collateralAmt: Amount!,
   boldAmt: Amount!,
   annualInterestRate: Amount!,
+  ownerIndex: Amount!,
   maxUpfrontFee: Amount!,
+  lowerHint: Amount!,
+  upperHint: Amount!,
   addManager: Address,
   removeManager: Address,
   receiver: Address!,

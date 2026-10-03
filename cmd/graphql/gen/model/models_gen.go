@@ -50,7 +50,10 @@ type FlorinOpenPosition struct {
 	CollateralAmt      string  `json:"collateralAmt"`
 	BoldAmt            string  `json:"boldAmt"`
 	AnnualInterestRate string  `json:"annualInterestRate"`
+	OwnerIndex         string  `json:"ownerIndex"`
 	MaxUpfrontFee      string  `json:"maxUpfrontFee"`
+	LowerHint          string  `json:"lowerHint"`
+	UpperHint          string  `json:"upperHint"`
 	AddManager         *string `json:"addManager,omitempty"`
 	RemoveManager      *string `json:"removeManager,omitempty"`
 	Receiver           string  `json:"receiver"`
