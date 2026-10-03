@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { parseDisplayNumber, spyMarket, type FlorinMarkets } from '../lib/florin-markets';
 import { useFlorinMarkets } from '../lib/use-florin-markets';
 import { useSpyPrice } from '../lib/use-spy-price';
@@ -23,19 +23,24 @@ export function Hero({ markets }: { markets: FlorinMarkets }) {
   const { borrow, earn } = spyMarket(liveMarkets);
   const { price: spyPrice, live: priceLive } = useSpyPrice();
   const [showFaucetIntro, setShowFaucetIntro] = useState(false);
+  const faucetIntroRef = useRef<HTMLDialogElement>(null);
+  const showFaucetCallToAction = useFeature('show-call-to-action-faucet');
   const showXFollowButton = useFeature('show-x-follow-button');
 
   useEffect(() => {
+    if (!showFaucetCallToAction) return;
+
     const hasSeenFaucetIntro = document.cookie
       .split(';')
       .some((cookie) => cookie.trim().startsWith(`${FAUCET_INTRO_COOKIE}=`));
 
     if (hasSeenFaucetIntro) return;
 
+    faucetIntroRef.current?.showModal();
     setShowFaucetIntro(true);
     const secure = window.location.protocol === 'https:' ? '; Secure' : '';
     document.cookie = `${FAUCET_INTRO_COOKIE}=1; Path=/; Max-Age=${FAUCET_INTRO_MAX_AGE}; SameSite=Lax${secure}`;
-  }, []);
+  }, [showFaucetCallToAction]);
 
   // All three read in dollars. FUSD is a dollar stablecoin so those two are a
   // relabel, but collateral is held in SPY and has to be priced: it waits for
@@ -92,22 +97,6 @@ export function Hero({ markets }: { markets: FlorinMarkets }) {
               Earn with FUSD
             </Link>
             <div className="hero__faucet">
-              {showFaucetIntro && (
-                <span className="hero__faucet-tip" role="status">
-                  <span>Start your testnet journey here</span>
-                  <button
-                    className="hero__faucet-tip-close"
-                    type="button"
-                    aria-label="Dismiss faucet introduction"
-                    onClick={() => {
-                      captureEvent('faucet_intro_dismissed', { source: 'home_hero' });
-                      setShowFaucetIntro(false);
-                    }}
-                  >
-                    ×
-                  </button>
-                </span>
-              )}
               <Link
                 href="https://faucet.florin.so"
                 className="hero__btn hero__btn--faucet"
@@ -148,6 +137,45 @@ export function Hero({ markets }: { markets: FlorinMarkets }) {
           </div>
         ))}
       </div>
+
+      {showFaucetCallToAction && (
+        <dialog
+          ref={faucetIntroRef}
+          className="faucet-intro"
+          aria-labelledby="faucet-intro-title"
+          onClose={() => setShowFaucetIntro(false)}
+        >
+          <button
+            className="faucet-intro__close"
+            type="button"
+            aria-label="Dismiss faucet introduction"
+            onClick={() => {
+              captureEvent('faucet_intro_dismissed', { source: 'home_popup' });
+              faucetIntroRef.current?.close();
+            }}
+          >
+            ×
+          </button>
+          <span className="faucet-intro__eyebrow">Welcome to Florin</span>
+          <h2 id="faucet-intro-title">Start with testnet SPY</h2>
+          <p>Visit the Faucet to get started on your Testnet journey.</p>
+          <a
+            href="https://faucet.florin.so"
+            className="faucet-intro__cta"
+            onClick={() => {
+              captureEvent('faucet_link_clicked', {
+                source: 'home_popup',
+                intro_visible: true,
+                destination_host: 'faucet.florin.so',
+              });
+              faucetIntroRef.current?.close();
+            }}
+          >
+            Visit the Faucet
+            <span aria-hidden="true">↗</span>
+          </a>
+        </dialog>
+      )}
     </section>
   );
 }
