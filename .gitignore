@@ -13,3 +13,5 @@ pkg/
 *.swp
 *.tsbuildinfo
 .tmp
+graphql
+ingestor
