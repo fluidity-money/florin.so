@@ -302,6 +302,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputCreateAccount,
 		ec.unmarshalInputFlorinOpenPosition,
+		ec.unmarshalInputPermit,
 	)
 	first := true
 
@@ -447,6 +448,13 @@ type EarnRewards {
   coverage: Percent!
 }
 
+input Permit {
+  deadline: Int!,
+  permitV: Int!,
+  permitR: String!,
+  permitS: String!
+}
+
 type Query {
   """
   Details of the borrowed amount of SPY in circulation with FUSD.
@@ -485,13 +493,19 @@ input CreateAccount {
 
 input FlorinOpenPosition {
   owner: Address!,
+  """
+  The asset to start the open position interaction from. At first, this will convert using
+  Uniswap V4.
+  """
+  asset: Asset!,
   collateralAmt: Amount!,
   boldAmt: Amount!,
   annualInterestRate: Amount!,
   maxUpfrontFee: Amount!,
   addManager: Address,
   removeManager: Address,
-  receiver: Address!
+  receiver: Address!,
+  permit: Permit
 }
 
 type Mutation {
@@ -2730,7 +2744,7 @@ func (ec *executionContext) unmarshalInputFlorinOpenPosition(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"owner", "collateralAmt", "boldAmt", "annualInterestRate", "maxUpfrontFee", "addManager", "removeManager", "receiver"}
+	fieldsInOrder := [...]string{"owner", "asset", "collateralAmt", "boldAmt", "annualInterestRate", "maxUpfrontFee", "addManager", "removeManager", "receiver", "permit"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -2744,6 +2758,13 @@ func (ec *executionContext) unmarshalInputFlorinOpenPosition(ctx context.Context
 				return it, err
 			}
 			it.Owner = data
+		case "asset":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("asset"))
+			data, err := ec.unmarshalNAsset2githubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐAsset(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Asset = data
 		case "collateralAmt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("collateralAmt"))
 			data, err := ec.unmarshalNAmount2string(ctx, v)
@@ -2793,6 +2814,64 @@ func (ec *executionContext) unmarshalInputFlorinOpenPosition(ctx context.Context
 				return it, err
 			}
 			it.Receiver = data
+		case "permit":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("permit"))
+			data, err := ec.unmarshalOPermit2ᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐPermit(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Permit = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputPermit(ctx context.Context, obj any) (model.Permit, error) {
+	var it model.Permit
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"deadline", "permitV", "permitR", "permitS"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "deadline":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deadline"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Deadline = data
+		case "permitV":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("permitV"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PermitV = data
+		case "permitR":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("permitR"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PermitR = data
+		case "permitS":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("permitS"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PermitS = data
 		}
 	}
 	return it, nil
@@ -4111,6 +4190,14 @@ func (ec *executionContext) marshalOFlorinOpenPositionResult2ᚖgithubᚗcomᚋf
 		return graphql.Null
 	}
 	return ec._FlorinOpenPositionResult(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOPermit2ᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐPermit(ctx context.Context, v any) (*model.Permit, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputPermit(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v any) (*string, error) {

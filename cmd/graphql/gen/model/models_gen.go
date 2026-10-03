@@ -43,7 +43,10 @@ type EarnRewards struct {
 }
 
 type FlorinOpenPosition struct {
-	Owner              string  `json:"owner"`
+	Owner string `json:"owner"`
+	// The asset to start the open position interaction from. At first, this will convert using
+	// Uniswap V4.
+	Asset              Asset   `json:"asset"`
 	CollateralAmt      string  `json:"collateralAmt"`
 	BoldAmt            string  `json:"boldAmt"`
 	AnnualInterestRate string  `json:"annualInterestRate"`
@@ -51,6 +54,7 @@ type FlorinOpenPosition struct {
 	AddManager         *string `json:"addManager,omitempty"`
 	RemoveManager      *string `json:"removeManager,omitempty"`
 	Receiver           string  `json:"receiver"`
+	Permit             *Permit `json:"permit,omitempty"`
 }
 
 type FlorinOpenPositionResult struct {
@@ -58,6 +62,13 @@ type FlorinOpenPositionResult struct {
 }
 
 type Mutation struct {
+}
+
+type Permit struct {
+	Deadline int    `json:"deadline"`
+	PermitV  int    `json:"permitV"`
+	PermitR  string `json:"permitR"`
+	PermitS  string `json:"permitS"`
 }
 
 // An open Florin borrowing position owned by an address.

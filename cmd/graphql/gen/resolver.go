@@ -1,9 +1,14 @@
 package gen
 
-import "database/sql"
+import (
+	"database/sql"
+
+	ethCommon "github.com/ethereum/go-ethereum/common"
+)
 
 type Resolver struct {
 	FeatureFakeData bool
 	DB              *sql.DB
-	AddrBorrowerOperationsStr string
+	AccPubKey [32]byte
+	AddrBorrowerOperations ethCommon.Address
 }
