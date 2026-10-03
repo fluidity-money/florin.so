@@ -21,6 +21,8 @@ import (
 	acc_client "github.com/fluidity-money/accounts.superposition.so/lib/client"
 	"github.com/fluidity-money/florin.so/cmd/graphql/gen/model"
 	"github.com/fluidity-money/florin.so/lib/types"
+	"github.com/fluidity-money/florin.so/lib/weth"
+	"github.com/fluidity-money/faucet.florin.so/lib/faucet"
 )
 
 // CreateAccountFlorinOpenPosition is the resolver for the createAccountFlorinOpenPosition field.
@@ -118,7 +120,25 @@ func (r *mutationResolver) CreateAccountFlorinOpenPosition(ctx context.Context, 
 		}
 		removeManager = ethCommon.HexToAddress(*x)
 	}
-	msTs := pickMsTsBig()
+	// The code for Florin's Open Position on testnet uses a step in the
+	// Solve process where at first it calls receiveWeth for the transaction
+	// that happens, then it sends an approval blob to the WETH contract that points.
+	err = acc_convertor.TagFreshBackwardsNoToken(
+		ProgDalek,
+		f,
+		r.AddrFaucet,
+		faucet.MakeReceiveWethCd(RequiredEthAmt),
+		// We use a staggered system for the millisecond system
+		// so that signatures aren't invalidated:
+		pickMsTsBig(0),
+	)
+	err = acc_convertor.TagFreshBackwardsNoToken(
+		ProgDalek,
+		f,
+		r.AddrWeth,
+		weth.MakeApproveCd(r.AddrBorrowerOperations, RequiredEthAmt),
+		pickMsTsBig(1),
+	)
 	err = acc_convertor.TagFreshBackwards(
 		ProgDalek,
 		f,
@@ -139,7 +159,7 @@ func (r *mutationResolver) CreateAccountFlorinOpenPosition(ctx context.Context, 
 			owner,
 		),
 		permit,
-		msTs,
+		pickMsTsBig(2),
 	)
 	slog.Error("Error creating the mint blob",
 		"err", err,
