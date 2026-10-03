@@ -50,6 +50,7 @@ import {
   ROBINHOOD_TESTNET_CHAIN_ID,
   sortedTrovesAbi,
   validateOpenTrove,
+  validatedOraclePrice,
   wethAbi,
 } from '../lib/borrow-contract';
 
@@ -127,11 +128,14 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   const oraclePrice = useQuery({
     queryKey: ['spy-oracle-price'],
     refetchInterval: 15_000,
-    queryFn: () => publicClient.readContract({
-      address: CONTRACTS.spyPriceFeed,
-      abi: priceFeedAbi,
-      functionName: 'lastGoodPrice',
-    }),
+    queryFn: async () => {
+      const simulation = await publicClient.simulateContract({
+        address: CONTRACTS.spyPriceFeed,
+        abi: priceFeedAbi,
+        functionName: 'fetchPrice',
+      });
+      return validatedOraclePrice(simulation.result);
+    },
   });
 
   // Balance and allowance are the parts that genuinely need an address.
@@ -649,7 +653,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         </div>
         <span className="swap__usd">${money(annualInterest)} FUSD / year</span>
       </div>
-      {/* The right-hand slot used to read "Redeemable before you <amount>":
+      {/* The right-hand slot used to show a redemption-queue amount:
           the debt sitting on cheaper rates, and so ahead of this position in
           the redemption queue. That needs a rate distribution, and the graph
           exposes only an aggregate average plus openPositions(owner), which

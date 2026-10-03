@@ -30,7 +30,10 @@ test('SPY price and wallet balances come from Robinhood contracts without consta
   const footer = read('components/Footer.tsx');
 
   assert.match(price, /CONTRACTS\.spyPriceFeed/);
-  assert.match(price, /functionName:\s*'lastGoodPrice'/);
+  assert.match(price, /simulateContract/);
+  assert.match(price, /functionName:\s*'fetchPrice'/);
+  assert.match(price, /validatedOraclePrice/);
+  assert.doesNotMatch(price, /functionName:\s*'lastGoodPrice'/);
   assert.doesNotMatch(price, /SPY_PRICE_USD|mockData|CoinGecko/);
   assert.match(balances, /CONTRACTS\.spyToken/);
   assert.match(balances, /CONTRACTS\.boldToken/);
@@ -49,7 +52,9 @@ test('position screen submits every supported borrower operation onchain', () =>
   const stability = read('components/stability-pool.tsx');
 
   assert.match(manage, /queryKey:\s*\['manage-position-state', account\]/);
-  assert.match(manage, /functionName:\s*'lastGoodPrice'/);
+  assert.match(manage, /functionName:\s*'fetchPrice'/);
+  assert.match(manage, /validatedOraclePrice/);
+  assert.doesNotMatch(manage, /functionName:\s*'lastGoodPrice'/);
   assert.doesNotMatch(manage, /MOCK_WALLET|queueAhead|RATE_BOOK_TOTAL|AVG_RATE/);
   assert.doesNotMatch(manage, /setCollateral\(nextCollateral\)|setDebt\(nextDebt\)|setHasClosed\(true\)/);
   assert.doesNotMatch(manage, /Position transactions coming soon/);
@@ -74,6 +79,15 @@ test('position screen submits every supported borrower operation onchain', () =>
   assert.doesNotMatch(stability, /setDeposited/);
   assert.match(stability, /provideToSP/);
   assert.match(stability, /withdrawFromSP/);
+});
+
+test('open-position risk calculations use the validated price returned by fetchPrice', () => {
+  const open = read('components/open-position-form.tsx');
+
+  assert.match(open, /simulateContract/);
+  assert.match(open, /functionName:\s*'fetchPrice'/);
+  assert.match(open, /validatedOraclePrice/);
+  assert.doesNotMatch(open, /functionName:\s*'lastGoodPrice'/);
 });
 
 test('all borrower screens use one 110 percent collateral ratio', () => {

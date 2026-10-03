@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { formatUnits } from 'viem';
-import { CONTRACTS, priceFeedAbi } from './borrow-contract';
+import { CONTRACTS, priceFeedAbi, validatedOraclePrice } from './borrow-contract';
 import { robinhoodPublicClient } from './robinhood-client';
 
 export interface SpyPrice {
@@ -23,11 +23,12 @@ export function useSpyPrice(): SpyPrice {
 
     async function refresh() {
       try {
-        const value = await robinhoodPublicClient.readContract({
+        const simulation = await robinhoodPublicClient.simulateContract({
           address: CONTRACTS.spyPriceFeed,
           abi: priceFeedAbi,
-          functionName: 'lastGoodPrice',
+          functionName: 'fetchPrice',
         });
+        const value = validatedOraclePrice(simulation.result);
         if (!cancelled) {
           setState({ price: Number(formatUnits(value, 18)), live: true, change24h: null });
         }

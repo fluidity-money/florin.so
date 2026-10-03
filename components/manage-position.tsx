@@ -36,6 +36,7 @@ import {
   ROBINHOOD_TESTNET_CHAIN_ID,
   sortedTrovesAbi,
   validatePositionAmount,
+  validatedOraclePrice,
 } from '../lib/borrow-contract';
 import { robinhoodPublicClient } from '../lib/robinhood-client';
 import { captureEvent } from '../lib/analytics';
@@ -372,7 +373,7 @@ function PositionEditor({
     enabled: Boolean(account),
     refetchInterval: 15_000,
     queryFn: async () => {
-      const [spyBalance, fusdBalance, price] = await Promise.all([
+      const [spyBalance, fusdBalance, priceSimulation] = await Promise.all([
         robinhoodPublicClient.readContract({
           address: CONTRACTS.spyToken,
           abi: erc20Abi,
@@ -385,13 +386,13 @@ function PositionEditor({
           functionName: 'balanceOf',
           args: [account!],
         }),
-        robinhoodPublicClient.readContract({
+        robinhoodPublicClient.simulateContract({
           address: CONTRACTS.spyPriceFeed,
           abi: priceFeedAbi,
-          functionName: 'lastGoodPrice',
+          functionName: 'fetchPrice',
         }),
       ]);
-      return { spyBalance, fusdBalance, price };
+      return { spyBalance, fusdBalance, price: validatedOraclePrice(priceSimulation.result) };
     },
   });
   const priceReady = chainState.data !== undefined && chainState.data.price > 0n;
@@ -580,19 +581,20 @@ function PositionEditor({
       } else if (action === 'borrow') {
         const validation = validatePositionAmount('borrow', debtWei, 0n);
         if (validation) throw new Error(validation);
-        const [predictedFee, latestPrice] = await Promise.all([
+        const [predictedFee, latestPriceSimulation] = await Promise.all([
           robinhoodPublicClient.readContract({
             address: CONTRACTS.hintHelpers,
             abi: hintHelpersAbi,
             functionName: 'predictAdjustTroveUpfrontFee',
             args: [0n, troveId, debtWei],
           }),
-          robinhoodPublicClient.readContract({
+          robinhoodPublicClient.simulateContract({
             address: CONTRACTS.spyPriceFeed,
             abi: priceFeedAbi,
-            functionName: 'lastGoodPrice',
+            functionName: 'fetchPrice',
           }),
         ]);
+        const latestPrice = validatedOraclePrice(latestPriceSimulation.result);
         const latestCapacity = (currentCollateralWei * latestPrice * 10n) / (10n ** 18n * 11n);
         if (latestPrice <= 0n || currentDebtWei + debtWei + predictedFee > latestCapacity) {
           throw new Error('This borrowing, including its upfront fee, would make the position unsafe, or the SPY oracle is unavailable.');

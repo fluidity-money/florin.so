@@ -93,8 +93,15 @@ export const borrowerOperationsAbi = parseAbi([
 ]);
 
 export const priceFeedAbi = parseAbi([
-  'function lastGoodPrice() view returns (uint256)',
+  'function fetchPrice() returns (uint256 price, bool newOracleFailure)',
 ]);
+
+export function validatedOraclePrice(result: readonly [bigint, boolean]): bigint {
+  const [price, newOracleFailure] = result;
+  if (newOracleFailure) throw new Error('The SPY oracle reported a new failure.');
+  if (price <= 0n) throw new Error('The SPY oracle returned an invalid price.');
+  return price;
+}
 
 export function maxUpfrontFee(predictedFee: bigint): bigint {
   if (predictedFee === 0n) return 0n;
