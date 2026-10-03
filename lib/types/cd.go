@@ -22,8 +22,8 @@ func MakeOpenTroveCd(
 	annualInterestRate, maxUpfrontFee *big.Int,
 	addManager, removeManager ethCommon.Address,
 	receiver ethCommon.Address,
-) ([]byte, error) {
-	return abi.Pack("openTrove",
+) ([]byte) {
+	b, err := abi.Pack("openTrove",
 		owner,
 		ownerIndex,
 		collAmt,
@@ -36,6 +36,10 @@ func MakeOpenTroveCd(
 		removeManager,
 		receiver,
 	)
+	if err != nil {
+		panic(err)
+	}
+	return b
 }
 
 func MakeFindInsertPositionCd(

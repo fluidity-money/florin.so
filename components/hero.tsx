@@ -7,6 +7,7 @@ import { useFlorinMarkets } from '../lib/use-florin-markets';
 import { useSpyPrice } from '../lib/use-spy-price';
 import { compact } from '../lib/format';
 import { captureEvent } from '../lib/analytics';
+import { useFeature } from '../hooks/useFeature';
 
 const FAUCET_INTRO_COOKIE = 'florin_faucet_intro_seen';
 const FAUCET_INTRO_MAX_AGE = 60 * 60 * 24 * 365;
@@ -22,6 +23,7 @@ export function Hero({ markets }: { markets: FlorinMarkets }) {
   const { borrow, earn } = spyMarket(liveMarkets);
   const { price: spyPrice, live: priceLive } = useSpyPrice();
   const [showFaucetIntro, setShowFaucetIntro] = useState(false);
+  const showXFollowButton = useFeature('show x follow button');
 
   useEffect(() => {
     const hasSeenFaucetIntro = document.cookie
@@ -74,54 +76,67 @@ export function Hero({ markets }: { markets: FlorinMarkets }) {
           position or the dividends it pays.
         </p>
         <div className="hero__cta">
-          <Link
-            href="/open"
-            className="hero__btn hero__btn--solid"
-            onClick={() => captureEvent('product_cta_clicked', { product: 'borrow', source: 'hero', destination: '/open' })}
-          >
-            Open position
-          </Link>
-          <Link
-            href="/stability"
-            className="hero__btn hero__btn--ghost"
-            onClick={() => captureEvent('product_cta_clicked', { product: 'earn', source: 'hero', destination: '/stability' })}
-          >
-            Earn with FUSD
-          </Link>
-          <div className="hero__faucet">
-            {showFaucetIntro && (
-              <span className="hero__faucet-tip" role="status">
-                <span>Start your testnet journey here</span>
-                <button
-                  className="hero__faucet-tip-close"
-                  type="button"
-                  aria-label="Dismiss faucet introduction"
-                  onClick={() => {
-                    captureEvent('faucet_intro_dismissed', { source: 'home_hero' });
-                    setShowFaucetIntro(false);
-                  }}
-                >
-                  ×
-                </button>
-              </span>
-            )}
+          <div className="hero__cta-row">
             <Link
-              href="https://faucet.florin.so"
-              className="hero__btn hero__btn--faucet"
-              onClick={() => {
-                captureEvent('faucet_link_clicked', {
-                  source: 'home_hero',
-                  intro_visible: showFaucetIntro,
-                  destination_host: 'faucet.florin.so',
-                });
-                setShowFaucetIntro(false);
-              }}
+              href="/open"
+              className="hero__btn hero__btn--solid"
+              onClick={() => captureEvent('product_cta_clicked', { product: 'borrow', source: 'hero', destination: '/open' })}
             >
-              <span className="hero__btn-spark" aria-hidden="true">✦</span>
-              Florin SPY Faucet
-              <span className="hero__btn-arrow" aria-hidden="true">↗</span>
+              Open position
             </Link>
+            <Link
+              href="/stability"
+              className="hero__btn hero__btn--ghost"
+              onClick={() => captureEvent('product_cta_clicked', { product: 'earn', source: 'hero', destination: '/stability' })}
+            >
+              Earn with FUSD
+            </Link>
+            <div className="hero__faucet">
+              {showFaucetIntro && (
+                <span className="hero__faucet-tip" role="status">
+                  <span>Start your testnet journey here</span>
+                  <button
+                    className="hero__faucet-tip-close"
+                    type="button"
+                    aria-label="Dismiss faucet introduction"
+                    onClick={() => {
+                      captureEvent('faucet_intro_dismissed', { source: 'home_hero' });
+                      setShowFaucetIntro(false);
+                    }}
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              <Link
+                href="https://faucet.florin.so"
+                className="hero__btn hero__btn--faucet"
+                onClick={() => {
+                  captureEvent('faucet_link_clicked', {
+                    source: 'home_hero',
+                    intro_visible: showFaucetIntro,
+                    destination_host: 'faucet.florin.so',
+                  });
+                  setShowFaucetIntro(false);
+                }}
+              >
+                <span className="hero__btn-spark" aria-hidden="true">✦</span>
+                Florin SPY Faucet
+                <span className="hero__btn-arrow" aria-hidden="true">↗</span>
+              </Link>
+            </div>
           </div>
+          {showXFollowButton && (
+            <a
+              href="https://x.com/florinprotocol"
+              className="hero__btn hero__btn--ghost"
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => captureEvent('social_follow_clicked', { account: 'florinprotocol', source: 'home_hero' })}
+            >
+              Follow florinprotocol on X
+            </a>
+          )}
         </div>
       </div>
 

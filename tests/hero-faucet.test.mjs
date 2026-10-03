@@ -25,3 +25,14 @@ test('first-time visitors see a dismissible faucet tooltip and receive a cookie'
   assert.match(styles, /\.hero__faucet-tip\s*\{/);
   assert.match(styles, /@media \(prefers-reduced-motion: reduce\)/);
 });
+
+test('the X follow button sits below the primary actions and is feature flagged', () => {
+  const hero = read('components/hero.tsx');
+  const styles = read('app/globals.css');
+
+  assert.match(hero, /useFeature\('show x follow button'\)/);
+  assert.match(hero, /showXFollowButton &&/);
+  assert.match(hero, /https:\/\/x\.com\/florinprotocol/);
+  assert.match(hero, /Follow florinprotocol on X/);
+  assert.match(styles, /\.hero__cta-row\s*\{/);
+});
