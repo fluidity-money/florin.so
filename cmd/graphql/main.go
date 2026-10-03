@@ -6,8 +6,12 @@ import (
 	"database/sql"
 	"log"
 	"net"
+	"math/big"
 	"net/http"
 	"os"
+	"encoding/hex"
+
+	"github.com/fluidity-money/florin.so/cmd/graphql/gen"
 
 	_ "github.com/lib/pq"
 
@@ -16,8 +20,11 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
-	"github.com/fluidity-money/florin.so/cmd/graphql/gen"
+
 	"github.com/vektah/gqlparser/v2/ast"
+
+	"github.com/ethereum/go-ethereum/ethclient"
+	ethCommon "github.com/ethereum/go-ethereum/common"
 )
 
 // HttpUnixSocket that we listen on using a socket.
@@ -30,6 +37,37 @@ const (
 
 	// EnvFeatureFakeData if set to anything other than "", renders fake data.
 	EnvFeatureFakeData = "SPN_FEATURE_FAKE_DATA"
+
+	// EnvChainId to send transactions to.
+	EnvChainId = "SPN_CHAIN_ID"
+
+	// EnvGethAddr to connect to make requests to Superposition.
+	EnvGethAddr = "SPN_GETH_URL"
+
+	// EnvAccountsFactoryAddr to derive the addresses to send
+	// transactions to when users ask to solve with mint, or to
+	// create accounts with.
+	EnvAccountsFactoryAddr = "SPN_ACCOUNTS_ADDR"
+
+	// EnvAccPublicKey, set since we feed the Rust code the private key, and
+	// it expects a differently sized key, so we can't derive the same key reliably here.
+	EnvAccPublicKey = "SPN_ACCOUNTS_PUBLIC_KEY"
+
+	// EnvAccPrivateKey to execute transactions on the behalf of users with.
+	EnvAccPrivateKey = "SPN_ACCOUNTS_PRIVATE_KEY"
+
+	// EnvSafetyRouter to use for the validation check on-chain
+	// before calldata sending.
+	EnvSafetyRouter = "SPN_SAFETY_ROUTER_ADDR"
+
+	// EnvBorrowerOperations to interact with using the graph to create borrowing.
+	EnvBorrowerOperations = "SPN_BORROWER_OPERATIONS"
+
+	// EnvFaucet to use to get the WETH amounts for the borrow collateral from.
+	EnvFaucet = "SPN_FAUCET_ADDR"
+
+	// EnvWeth to use for sending the approval in the router steps.
+	EnvWeth = "SPN_WETH_ADDR"
 )
 
 type middleware struct {
@@ -59,10 +97,58 @@ func main() {
 		log.Fatalf("connect postgres: %v", err)
 	}
 	defer db.Close()
+	client, err := ethclient.Dial(os.Getenv(EnvGethAddr))
+	if err != nil {
+		log.Fatalf("connect geth: %v", err)
+	}
+	defer client.Close()
+	chainId, ok := new(big.Int).SetString(os.Getenv(EnvChainId), 10)
+	if !ok {
+		log.Fatal("bad chain id")
+	}
+	accountsFactoryAddrS := os.Getenv(EnvAccountsFactoryAddr)
+	addrAccountsFactory := ethCommon.HexToAddress(accountsFactoryAddrS)
+	if _, err := hex.DecodeString(os.Getenv(EnvAccPrivateKey)); err != nil {
+		log.Fatalf("accounts private key needs to be set: %v", err)
+	}
+	accPubKeyB, err := hex.DecodeString(os.Getenv(EnvAccPublicKey))
+	if err != nil {
+		log.Fatalf("accounts public key: %v", err)
+	}
+	var accPubKey [32]byte
+	copy(accPubKey[:], accPubKeyB)
+	addrBorrowOperationsS := os.Getenv(EnvBorrowerOperations)
+	if !ethCommon.IsHexAddress(addrBorrowOperationsS) {
+		log.Fatal("borrower operations address")
+	}
+	addrBorrowerOperations := ethCommon.HexToAddress(addrBorrowOperationsS)
+	addrSafetyRouterS := os.Getenv(EnvSafetyRouter)
+	if !ethCommon.IsHexAddress(addrSafetyRouterS) {
+		log.Fatal("safety router address")
+	}
+	addrSafetyRouter := ethCommon.HexToAddress(addrSafetyRouterS)
+	addrFaucetS := os.Getenv(EnvFaucet)
+	if !ethCommon.IsHexAddress(addrFaucetS) {
+		log.Fatal("faucet address")
+	}
+	addrFaucet := ethCommon.HexToAddress(addrFaucetS)
+	addrWethS := os.Getenv(EnvWeth)
+	if !ethCommon.IsHexAddress(addrWethS) {
+		log.Fatal("weth address")
+	}
+	addrWeth := ethCommon.HexToAddress(addrWethS)
 	srv := handler.New(gen.NewExecutableSchema(gen.Config{
 		Resolvers: &gen.Resolver{
-			FeatureFakeData: os.Getenv(EnvFeatureFakeData) != "",
-			DB:              db,
+			FeatureFakeData:        os.Getenv(EnvFeatureFakeData) != "",
+			Db:                     db,
+			AccPubKey:              accPubKey,
+			AddrBorrowerOperations: addrBorrowerOperations,
+			AddrSafetyRouter:        addrSafetyRouter,
+			AddrAccountsFactory:    addrAccountsFactory,
+			AddrFaucet:             addrFaucet,
+			AddrWeth:               addrWeth,
+			Client:                 client,
+			ChainId:                chainId,
 		},
 	}))
 	srv.AddTransport(transport.Options{})

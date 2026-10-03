@@ -128,6 +128,7 @@ export interface CreateFlorinPositionInput {
   openPosition: FlorinOpenPositionInput;
   gasToken: 'USDG' | 'SPY';
   gasTokenAmt: string;
+  dryrun?: boolean;
 }
 
 export default function useAccount() {
@@ -162,6 +163,7 @@ export default function useAccount() {
     openPosition,
     gasToken,
     gasTokenAmt,
+    dryrun,
   }: CreateFlorinPositionInput) => {
     if (!wallet.address) throw new Error('No wallet is connected');
     if (await hasCreatedAccount(wallet.address)) {
@@ -174,6 +176,7 @@ export default function useAccount() {
       openPosition,
       gasToken,
       gasTokenAmt,
+      dryrun,
     };
     const result = await createAccountFlorinOpenPositionGraph(input);
     if (!result.secret) throw new Error('Florin account creation returned no secret');
