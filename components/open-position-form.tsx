@@ -16,6 +16,7 @@ import { robinhoodTestnet } from '@reown/appkit/networks';
 import { Button } from './ui';
 import { RisksDialog } from './risks-dialog';
 import { Token, TokenIcon } from './token-icon';
+import { TokenSelect } from './token-select';
 import { money, pct, xnum } from '../lib/format';
 import {
   DEFAULT_RATE,
@@ -58,6 +59,9 @@ const publicClient = createPublicClient({ chain: robinhoodTestnet, transport: ht
 const MAX_LTV = 1 / MIN_COLLATERAL_RATIO;
 
 type TxStage = 'idle' | 'switching' | 'wrapping' | 'approving-weth' | 'approving' | 'opening' | 'confirming';
+
+const LOAN_TOKENS = ['FUSD', 'USDG'] as const;
+type LoanToken = (typeof LOAN_TOKENS)[number];
 
 function parseToken(value: string): bigint {
   if (!value.trim()) return 0n;
@@ -102,6 +106,10 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   const [spyStr, setSpyStr] = useState('');
   const [debtStr, setDebtStr] = useState('');
   const [rate, setRate] = useState(DEFAULT_RATE);
+  // USDG is offered ahead of support for it: picking it shows the loan in USDG
+  // and holds the submit button disabled until borrowing USDG is wired up.
+  const [loanToken, setLoanToken] = useState<LoanToken>('FUSD');
+  const usdgSelected = loanToken === 'USDG';
   const [stage, setStage] = useState<TxStage>('idle');
   const [error, setError] = useState<TransactionErrorDescription | null>(null);
   const [txHash, setTxHash] = useState<Hash | null>(null);
@@ -566,12 +574,13 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
               : stage === 'confirming'
                 ? 'Waiting for confirmation…'
                 : 'Mint FUSD →';
+  const submitLabel = usdgSelected ? 'Borrow USDG' : buttonLabel;
 
   return (
     <div className="swap">
       <h1 className="swap__title">
         <span>Borrow</span>
-        <span className="swap__pair"><TokenIcon symbol="FUSD" size={30} /><span className="swap__tok">FUSD</span></span>
+        <span className="swap__pair"><TokenIcon symbol={loanToken} size={30} /><span className="swap__tok">{loanToken}</span></span>
         <span>with</span>
         <span className="swap__pair"><TokenIcon symbol="SPY" size={30} /><span className="swap__tok">SPY</span></span>
       </h1>
@@ -605,13 +614,13 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
             onChange={(event) => {
               markFormStarted('borrow_amount');
               setDebtStr(event.target.value.replaceAll(',', ''));
-            }} aria-label="FUSD to borrow" />
+            }} aria-label={`${loanToken} to borrow`} />
           <button
             type="button"
             className="swap__max"
             disabled={maxBorrow <= 0}
             onClick={() => {
-              captureEvent('max_amount_selected', { context: 'open_position', asset: 'FUSD' });
+              captureEvent('max_amount_selected', { context: 'open_position', asset: loanToken });
               // Floor, never round: toFixed rounds half up, so the field
               // could be filled with up to half a cent more than the ceiling
               // the number was derived from.
@@ -620,7 +629,15 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
           >
             Max
           </button>
-          <span className="swap__pill"><Token symbol="FUSD" size={18} /></span>
+          <TokenSelect
+            options={LOAN_TOKENS}
+            value={loanToken}
+            label="Token to borrow"
+            onChange={(symbol) => {
+              if (symbol !== loanToken) captureEvent('loan_token_selected', { context: 'open_position', asset: symbol });
+              setLoanToken(symbol);
+            }}
+          />
         </div>
         <span className="swap__usd">
           ${money(borrow)} received{fee > 0 ? ` · ${money(totalDebt)} debt including ${money(fee)} upfront interest` : ''}
@@ -652,7 +669,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
               setRate(parseFloat(event.target.value));
             }} aria-label="Interest rate" />
         </div>
-        <span className="swap__usd">${money(annualInterest)} FUSD / year</span>
+        <span className="swap__usd">${money(annualInterest)} {loanToken} / year</span>
       </div>
       {/* The right-hand slot used to show a redemption-queue amount:
           the debt sitting on cheaper rates, and so ahead of this position in
@@ -701,10 +718,12 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 
       <Button
         variant="primary"
-        disabled={wallet.connected && (!active || Boolean(protocolError) || unsafe || insufficientSpy || pending || !chainReady || !feeReady || chainState.isError || oraclePrice.isError || upfrontFee.isError)}
-        onClick={() => void openTrove()}
+        disabled={usdgSelected || (wallet.connected && (!active || Boolean(protocolError) || unsafe || insufficientSpy || pending || !chainReady || !feeReady || chainState.isError || oraclePrice.isError || upfrontFee.isError))}
+        onClick={() => {
+          if (!usdgSelected) void openTrove();
+        }}
       >
-        {buttonLabel}
+        {submitLabel}
       </Button>
 
       <RisksDialog />

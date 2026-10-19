@@ -2827,6 +2827,51 @@ input:focus-visible {
   gap: 7px;
 }
 
+/* ---- token dropdown ----------------------------------------------------------- */
+
+/* A pill that opens the position picker's menu, so choosing a token looks like
+   the fixed pill beside it plus a chevron, and the menu matches the manage page. */
+.tok-select {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.tok-select__trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Buttons don't inherit either from the page. Without the line height the
+     pill is 4.5px shorter than the fixed SPY pill above it. */
+  font-family: inherit;
+  line-height: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.tok-select__trigger:hover,
+.tok-select__trigger[aria-expanded='true'] {
+  background: color-mix(in srgb, var(--sp-hawkes) 70%, var(--sp-biscay) 12%);
+}
+
+.tok-select__chev {
+  width: 7px;
+  height: 7px;
+  margin-right: 0;
+  border-color: var(--sp-biscay);
+}
+
+.tok-select__menu {
+  left: auto;
+  right: 0;
+  width: 170px;
+}
+
+.tok-select__opt {
+  gap: 9px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
 /* The title is a flex row: centring the marks against large type by eye with
    vertical-align never holds across font sizes or breakpoints. */
 .swap__pair {

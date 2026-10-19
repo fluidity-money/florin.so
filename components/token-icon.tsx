@@ -5,11 +5,18 @@
 // rendering of it. It ships from /public instead of hotlinking, which keeps
 // the icon alive if CoinGecko reorganises its asset paths.
 //
+// USDG uses Global Dollar's own token image, for the same reason as SPY.
+//
 // FUSD uses the Florin mark, black on white, matching the header logo. It reuses
 // the existing SVG as a CSS mask rather than being a second copy of the logo
 // baked to a fixed hue.
 
-export type TokenSymbol = 'SPY' | 'FUSD';
+export type TokenSymbol = 'SPY' | 'FUSD' | 'USDG';
+
+const IMAGE_SRC: Partial<Record<TokenSymbol, string>> = {
+  SPY: '/spy-token.png',
+  USDG: '/usdg-token.png',
+};
 
 export function TokenIcon({
   symbol,
@@ -20,11 +27,12 @@ export function TokenIcon({
 }) {
   const px = `${size}px`;
 
-  if (symbol === 'SPY') {
+  const src = IMAGE_SRC[symbol];
+  if (src) {
     return (
       <img
         className="tok-icon"
-        src="/spy-token.png"
+        src={src}
         alt=""
         aria-hidden="true"
         width={size}
