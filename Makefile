@@ -12,6 +12,8 @@ build: cli
 
 CLIS := ingestor graphql
 
+UNITS := florin-graph.service florin-graph.socket
+
 cli: ${CLIS}
 
 ingestor: ${FILES_GO} $(shell find cmd/ingestor -type f)
