@@ -4,7 +4,11 @@ go 1.27.0
 
 require (
 	github.com/99designs/gqlgen v0.17.95
+	github.com/coreos/go-systemd/v22 v22.7.0
 	github.com/ethereum/go-ethereum v1.17.7
+	github.com/fluidity-money/accounts.superposition.so v0.0.0-20261003115715-a52d401f54b5
+	github.com/fluidity-money/faucet.florin.so v0.0.0-20261003120709-05d75d7f7b17
+	github.com/fluidity-money/superposition-assets v0.0.0-20261002160639-e69f1628bca5
 	github.com/lib/pq v1.12.3
 	github.com/orandin/slog-gorm v1.4.0
 	github.com/stretchr/testify v1.12.1
@@ -16,24 +20,16 @@ require (
 require (
 	github.com/Microsoft/go-winio v0.6.2 // indirect
 	github.com/ProjectZKM/Ziren/crates/go-runtime/zkvm_runtime v0.0.0-20261003120642-08e300fcb10f // indirect
-	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/agnivade/levenshtein v1.2.1 // indirect
-	github.com/aws/aws-lambda-go v1.55.1 // indirect
-	github.com/awslabs/aws-lambda-go-api-proxy v0.16.2 // indirect
 	github.com/bits-and-blooms/bitset v1.25.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/coder/websocket v1.8.15 // indirect
 	github.com/consensys/gnark-crypto v0.22.0 // indirect
 	github.com/crate-crypto/go-eth-kzg v1.5.0 // indirect
-	github.com/crate-crypto/go-ipa v0.0.0-20240724233137-53bbb0ceb27a // indirect
 	github.com/deckarep/golang-set/v2 v2.9.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.4.1 // indirect
 	github.com/ethereum/c-kzg-4844/v2 v2.1.8 // indirect
-	github.com/ethereum/go-verkle v0.2.2 // indirect
 	github.com/fjl/jsonw v0.1.0 // indirect
-	github.com/fluidity-money/accounts.superposition.so v0.0.0-20261003115715-a52d401f54b5 // indirect
-	github.com/fluidity-money/faucet.florin.so v0.0.0-20261003120709-05d75d7f7b17 // indirect
-	github.com/fluidity-money/superposition-assets v0.0.0-20261002160639-e69f1628bca5 // indirect
 	github.com/go-logr/logr v1.4.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
@@ -49,6 +45,7 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
+	github.com/klauspost/cpuid/v2 v2.2.4 // indirect
 	github.com/near/borsh-go v0.3.1 // indirect
 	github.com/shirou/gopsutil v3.21.11+incompatible // indirect
 	github.com/sosodev/duration v1.4.0 // indirect
@@ -64,7 +61,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.47.0 // indirect
 	go.opentelemetry.io/otel/trace v1.47.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/crypto v0.57.0 // indirect
+	golang.org/x/exp v0.0.0-20240112132812-db7319d0e0e3 // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect

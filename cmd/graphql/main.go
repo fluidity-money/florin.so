@@ -3,17 +3,17 @@
 package main
 
 import (
-	"encoding/json"
-	"database/sql"
-	"log"
-	"net"
 	"context"
-	"strings"
+	"database/sql"
+	"encoding/hex"
+	"encoding/json"
+	"log"
 	"log/slog"
 	"math/big"
 	"net/http"
 	"os"
-	"encoding/hex"
+	"strings"
+	"sync"
 
 	"github.com/fluidity-money/florin.so/cmd/graphql/gen"
 
@@ -25,10 +25,12 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 
+	"github.com/coreos/go-systemd/v22/activation"
+
 	"github.com/vektah/gqlparser/v2/ast"
 
-	"github.com/ethereum/go-ethereum/ethclient"
 	ethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 // HttpUnixSocket that we listen on using a socket.
@@ -76,7 +78,7 @@ const (
 
 type middleware struct {
 	srv http.Handler
-	db *sql.DB
+	db  *sql.DB
 }
 
 func (m middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -204,7 +206,7 @@ func main() {
 			Db:                     db,
 			AccPubKey:              accPubKey,
 			AddrBorrowerOperations: addrBorrowerOperations,
-			AddrSafetyRouter:        addrSafetyRouter,
+			AddrSafetyRouter:       addrSafetyRouter,
 			AddrAccountsFactory:    addrAccountsFactory,
 			AddrFaucet:             addrFaucet,
 			AddrWeth:               addrWeth,
@@ -221,18 +223,18 @@ func main() {
 		Cache: lru.New[string](100),
 	})
 	http.Handle("/playground", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/", middleware{
-		srv,
-		db,
-	})
-	_ = os.Remove(HttpUnixSocket)
-	l, err := net.Listen("unix", HttpUnixSocket)
+	http.Handle("/", middleware{srv, db})
+	l, err := activation.Listeners()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("listeners: %v", err)
 	}
-	defer l.Close()
-	_ = os.Chmod(HttpUnixSocket, 0o0777)
-	panic(http.Serve(l, nil))
+	var wg sync.WaitGroup
+	for _, l := range l {
+		wg.Go(func() {
+			panic(http.Serve(l, nil))
+		})
+	}
+	wg.Wait()
 }
 
 func writeUnauthorised(w http.ResponseWriter) {
