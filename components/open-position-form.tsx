@@ -40,7 +40,7 @@ import {
   CONTRACTS,
   erc20Abi,
   hintHelpersAbi,
-  hintTrials,
+  getApproxHintBatched,
   LIQUIDATOR_COMPENSATION_WETH,
   maxUpfrontFee,
   MIN_DEBT,
@@ -330,12 +330,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         let upperHint = 0n;
         let lowerHint = 0n;
         if (troveCount > 0n) {
-          const [approxHint] = await publicClient.readContract({
-            address: CONTRACTS.hintHelpers,
-            abi: hintHelpersAbi,
-            functionName: 'getApproxHint',
-            args: [0n, rateWei, hintTrials(troveCount), BigInt(Date.now())],
-          });
+          const approxHint = await getApproxHintBatched(publicClient, rateWei, troveCount);
           [upperHint, lowerHint] = await publicClient.readContract({
             address: CONTRACTS.sortedTroves,
             abi: sortedTrovesAbi,
@@ -450,12 +445,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       let upperHint = 0n;
       let lowerHint = 0n;
       if (troveCount > 0n) {
-        const [approxHint] = await publicClient.readContract({
-          address: CONTRACTS.hintHelpers,
-          abi: hintHelpersAbi,
-          functionName: 'getApproxHint',
-          args: [0n, rateWei, hintTrials(troveCount), BigInt(Date.now())],
-        });
+        const approxHint = await getApproxHintBatched(publicClient, rateWei, troveCount);
         [upperHint, lowerHint] = await publicClient.readContract({
           address: CONTRACTS.sortedTroves,
           abi: sortedTrovesAbi,

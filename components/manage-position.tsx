@@ -28,7 +28,7 @@ import {
   CONTRACTS,
   erc20Abi,
   hintHelpersAbi,
-  hintTrials,
+  getApproxHintBatched,
   maxBorrowPrincipal,
   maxRepayableDebt,
   maxUpfrontFee,
@@ -650,12 +650,7 @@ function PositionEditor({
         let upperHint = 0n;
         let lowerHint = 0n;
         if (troveCount > 1n) {
-          const [approxHint] = await robinhoodPublicClient.readContract({
-            address: CONTRACTS.hintHelpers,
-            abi: hintHelpersAbi,
-            functionName: 'getApproxHint',
-            args: [0n, rateWei, hintTrials(troveCount), BigInt(Date.now())],
-          });
+          const approxHint = await getApproxHintBatched(robinhoodPublicClient, rateWei, troveCount);
           [upperHint, lowerHint] = await robinhoodPublicClient.readContract({
             address: CONTRACTS.sortedTroves,
             abi: sortedTrovesAbi,

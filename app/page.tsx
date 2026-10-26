@@ -31,16 +31,16 @@ export default async function HomePage() {
           </span>
         </Link>
 
-        <div className="card home-action home-action--soon" aria-disabled="true">
+        <Link href="/multiply" className="card home-action">
           <span className="card__row">
             <span className="card__title">Multiply</span>
-            <span className="card__soon">coming soon</span>
+            <span className="card__arrow">→</span>
           </span>
           <span className="card__body">
             Increase your exposure to tokenized equities and their dividends with
             a single click
           </span>
-        </div>
+        </Link>
       </div>
 
       <Markets initialData={markets} />

@@ -1,4 +1,4 @@
-import { parseAbi, parseUnits, type Address } from 'viem';
+import { parseAbi, parseUnits, type Address, type PublicClient } from 'viem';
 
 export const ROBINHOOD_TESTNET_CHAIN_ID = 46_630;
 export const TOKEN_DECIMALS = 18;
@@ -203,6 +203,41 @@ export function validateOpenTrove(
 export function hintTrials(troveCount: bigint): bigint {
   if (troveCount === 0n) return 1n;
   return BigInt(Math.max(1, Math.ceil(15 * Math.sqrt(Number(troveCount)))));
+}
+
+// Robinhood's public RPC caps eth_call at 50M gas. Keep each sampling
+// call small rather than letting the sqrt(position count) search exceed it.
+const HINT_TRIALS_PER_CALL = 50n;
+
+export async function getApproxHintBatched(
+  client: Pick<PublicClient, 'readContract'>,
+  interestRate: bigint,
+  troveCount: bigint,
+  seed = BigInt(Date.now()),
+): Promise<bigint> {
+  if (troveCount === 0n) return 0n;
+  let remainingSamples = hintTrials(troveCount) - 1n;
+  let bestHint = 0n;
+  let bestDiff: bigint | undefined;
+  do {
+    const trials = remainingSamples + 1n < HINT_TRIALS_PER_CALL
+      ? remainingSamples + 1n
+      : HINT_TRIALS_PER_CALL;
+    const [hint, diff, nextSeed] = await client.readContract({
+      address: CONTRACTS.hintHelpers,
+      abi: hintHelpersAbi,
+      functionName: 'getApproxHint',
+      args: [0n, interestRate, trials, seed],
+    });
+    if (bestDiff === undefined || diff < bestDiff) {
+      bestHint = hint;
+      bestDiff = diff;
+    }
+    seed = nextSeed;
+    // Each call initializes its candidate from the tail, then samples trials - 1 times.
+    remainingSamples -= trials - 1n;
+  } while (remainingSamples > 0n);
+  return bestHint;
 }
 
 export function randomOwnerIndex(): bigint {
