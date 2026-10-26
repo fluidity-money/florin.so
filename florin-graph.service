@@ -1,0 +1,22 @@
+[Unit]
+Description=Florin Graph
+Requires=florin-graph.socket
+After=network-online.target florin-graph.socket
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=florin
+Group=database-users
+EnvironmentFile=/etc/graph.florin.so/config
+ExecStart=/usr/local/bin/florin
+Restart=on-failure
+RestartSec=3s
+
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+
+[Install]
+WantedBy=multi-user.target

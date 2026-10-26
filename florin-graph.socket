@@ -1,0 +1,13 @@
+[Unit]
+Description=Florin Graph
+
+[Socket]
+SocketUser=florin
+SocketGroup=www-data
+SocketMode=0660
+DirectoryMode=0755
+RemoveOnStop=yes
+ListenStream=/run/www/graph.florin.sock
+
+[Install]
+WantedBy=sockets.target
