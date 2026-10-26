@@ -10,17 +10,17 @@ FILES_GO := $(shell find cmd lib go.mod go.sum -type f)
 
 build: cli
 
-CLIS := ingestor graphql
+CLIS := florin-ingestor florin-graph
 
 UNITS := florin-graph.service florin-graph.socket
 
 cli: ${CLIS}
 
-ingestor: ${FILES_GO} $(shell find cmd/ingestor -type f)
-	@CGO_ENABLED=0 go build -o ingestor ./cmd/ingestor
+florin-ingestor: ${FILES_GO} $(shell find cmd/ingestor -type f)
+	@CGO_ENABLED=0 go build -o florin-ingestor ./cmd/ingestor
 
-graphql: ${FILES_GO} $(shell find cmd/graphql -type f)
-	@CGO_ENABLED=0 go build -o graphql ./cmd/graphql
+florin-graph: ${FILES_GO} $(shell find cmd/graphql -type f)
+	@CGO_ENABLED=0 go build -o florin-graph ./cmd/graphql
 
 install: cli
 	@mkdir -p ${DESTDIR}${PREFIX}/bin

@@ -9,7 +9,7 @@ Type=simple
 User=florin
 Group=database-users
 EnvironmentFile=/etc/graph.florin.so/config
-ExecStart=/usr/local/bin/florin
+ExecStart=/usr/local/bin/florin-graph
 Restart=on-failure
 RestartSec=3s
 

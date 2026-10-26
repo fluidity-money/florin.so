@@ -2,8 +2,8 @@
 .env*.local
 .env.local
 .gopath/
-ingestor
-graph
+florin-ingestor
+florin-graph
 .next
 next-env.d.ts
 node_modules
