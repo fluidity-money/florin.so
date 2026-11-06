@@ -2,31 +2,32 @@ import { parseAbi, parseUnits, type Address, type PublicClient } from 'viem';
 
 export const ROBINHOOD_TESTNET_CHAIN_ID = 46_630;
 export const TOKEN_DECIMALS = 18;
-export const MIN_DEBT = 10n * 10n ** 18n;
+export const MIN_DEBT = 1_000n * 10n ** 18n;
 export const MIN_ANNUAL_INTEREST_RATE = 5n * 10n ** 15n;
 export const MAX_ANNUAL_INTEREST_RATE = 25n * 10n ** 17n;
 export const LIQUIDATOR_COMPENSATION_WETH = 1_000_000_000_000_000n;
 export const MIN_FUSD_IN_STABILITY_POOL = 10n ** 18n;
 
+// florin-contracts/contracts/addresses/46630.json, SPY branch (index 0).
+// base is the branch AddressesRegistry; spyPriceFeed is PriceFeedTestnet, not Chainlink.
 export const CONTRACTS = {
   spyToken: '0x8823b40A23387Df76E127744FFB38b26eB012A5c',
-  spyChainlinkAggregator: '0xcc794A65915A7Ec2B4753bB9d6b983C60035cd74',
-  metadataNft: '0x09F7156AAE9C903F90B1CB1E312582C4f208A759',
-  base: '0x79070369bf7539483a9a0a256b7d126e4b03a6a7',
-  boldToken: '0xfc3e6bd02605f609f962a1e13705e5d9a21b206b',
-  collateralRegistry: '0xade0b1fee76e3016f8d3e364b9da25c5648f286c',
-  hintHelpers: '0x5c65d65df809fe09f88985f0ed74430688f92d84',
-  multiTroveGetter: '0x6c98a67d418d79728581958ecd2aba530a12d64a',
-  activePool: '0x4fb3f66bbeec447f000731cac3a6d96f892286a8',
-  borrowerOperations: '0x90e8728f7a4ec88469a1df0e85ffbacd4895a0d6',
-  collSurplusPool: '0x1eb6f459e4150cfe85f029bdb20cc7a4a81e1628',
-  defaultPool: '0x9a32a9f41517958b48e884ee1be7af7d5e653595',
-  gasPool: '0xa8b0ffd5bc8f32ca5ad30d6d9fbafcfbd8746d57',
-  sortedTroves: '0x8cab45712316e93b27d514e23be7c246a9d97d20',
-  stabilityPool: '0xfd90a40cfc4825621debef6c2a3b9ff15c44e286',
-  troveManager: '0xab8cc5790a0b8cc4cd40f1be0c239e568b028b6b',
-  troveNft: '0x52e8127cc9e0c8fbf4cff05036c5a7fdbabd7545',
-  spyPriceFeed: '0xd504f01637b349b079ecfd921a6eece16d17d146',
+  metadataNft: '0x332b4f1473160f418cbbd7c9f6c89eb08879e587',
+  base: '0x670baf9f4ee72e512d0c54f9ac963c015f066523',
+  boldToken: '0x8395919e3dddd2f73ec8ad8d187d8f9a5e7b20e9',
+  collateralRegistry: '0x873787097630e8095483186343e4738cc88cfffd',
+  hintHelpers: '0xf1ed4861246d88b4ab0dbcfd0015d716b4887859',
+  multiTroveGetter: '0x3b6bb5c168d3ef3b3fd2c23af50f301c8d05dc3b',
+  activePool: '0x5abf687eea1fe36187ccd27d0edb666dfb8f0dcc',
+  borrowerOperations: '0x4d261fd6d568cbad37ac75371aa3ca65f5daf216',
+  collSurplusPool: '0x5a120ca45392eff69dfac4ea8929e46f693bc41f',
+  defaultPool: '0xec1711b2b0ffa7223924ab8cab1601da8e03b68a',
+  gasPool: '0xf8b5e13ba1d345921755e229c33314849dcaac3c',
+  sortedTroves: '0x9e1785f500950fec0504c8beb54f64807cc6526a',
+  stabilityPool: '0xcfb96d8a9979a8f245c434ab7ff06f9431a680b8',
+  troveManager: '0xe235b5c3f68595e1d24390c04bacb58550eb8a0c',
+  troveNft: '0x831d94bd07fecdc40617b38b4f01d2c06d09e3a4',
+  spyPriceFeed: '0x86f868fa0c1704e6a6774f0d7ecbbe92dd6986e8',
   weth: '0x7943e237c7F95DA44E0301572D358911207852Fa',
 } as const satisfies Record<string, Address>;
 
@@ -61,6 +62,61 @@ export const hintHelpersAbi = parseAbi([
   'function predictAdjustTroveUpfrontFee(uint256 collIndex, uint256 troveId, uint256 debtIncrease) view returns (uint256)',
   'function predictAdjustInterestRateUpfrontFee(uint256 collIndex, uint256 troveId, uint256 newAnnualInterestRate) view returns (uint256)',
 ]);
+
+// LatestTroveData field order and Troves getter match the deployment's TroveManager.
+export const troveManagerAbi = parseAbi([
+  'function getLatestTroveData(uint256 troveId) view returns ((uint256 entireDebt, uint256 entireColl, uint256 redistBoldDebtGain, uint256 redistCollGain, uint256 accruedInterest, uint256 recordedDebt, uint256 annualInterestRate, uint256 weightedRecordedDebt, uint256 accruedBatchManagementFee, uint256 lastInterestRateAdjTime))',
+  'function Troves(uint256 troveId) view returns (uint256 debt, uint256 coll, uint256 stake, uint8 status, uint64 arrayIndex, uint64 lastDebtUpdateTime, uint64 lastInterestRateAdjTime, uint256 annualInterestRate, address interestBatchManager, uint256 batchDebtShares)',
+]);
+
+export function validateTroveManager(manager: string): void {
+  if (manager.toLowerCase() !== CONTRACTS.troveManager.toLowerCase()) {
+    throw new Error('This position belongs to an unsupported TroveManager deployment.');
+  }
+}
+
+export async function readLivePosition(client: Pick<PublicClient, 'readContract'>, manager: string, troveId: bigint) {
+  validateTroveManager(manager);
+  const [latest, trove] = await Promise.all([
+    client.readContract({
+      address: CONTRACTS.troveManager, abi: troveManagerAbi,
+      functionName: 'getLatestTroveData', args: [troveId],
+    }),
+    client.readContract({
+      address: CONTRACTS.troveManager, abi: troveManagerAbi,
+      functionName: 'Troves', args: [troveId],
+    }),
+  ]);
+  if (trove[3] !== 1 && trove[3] !== 4) throw new Error('This position is no longer open.');
+  return { ...latest, interestBatchManager: trove[8] };
+}
+
+// React Query retains cached data on failed refetches. Never authorize from it.
+export function requireFreshRead<T>(result: { data?: T; isError: boolean; error?: unknown }): T {
+  if (result.isError || result.data === undefined) {
+    throw result.error ?? new Error('Live position data is unavailable.');
+  }
+  return result.data;
+}
+
+export function maxWithdrawableCollateral(collateral: bigint, debt: bigint, price: bigint): bigint {
+  if (price <= 0n || collateral < 0n || debt < 0n) throw new Error('Invalid position or oracle price.');
+  const denominator = price * 10n;
+  const requiredCollateral = (debt * 11n * 10n ** 18n + denominator - 1n) / denominator;
+  return collateral > requiredCollateral ? collateral - requiredCollateral : 0n;
+}
+
+export function rateChangePreview(collateral: bigint, debt: bigint, price: bigint, rate: bigint, fee: bigint) {
+  const resultingDebt = debt + fee;
+  const annualInterest = resultingDebt * rate / 10n ** 18n;
+  return {
+    fee,
+    resultingDebt,
+    annualInterest,
+    monthlyInterest: annualInterest / 12n,
+    safe: price > 0n && collateral * price * 10n >= resultingDebt * 11n * 10n ** 18n,
+  };
+}
 
 export const sortedTrovesAbi = parseAbi([
   'function size() view returns (uint256)',
@@ -190,7 +246,7 @@ export function validateOpenTrove(
   annualInterestRate: bigint,
 ): string | null {
   if (collateral <= 0n) return 'Enter SPY collateral.';
-  if (borrowed < MIN_DEBT) return 'Borrow at least 10 FUSD.';
+  if (borrowed < MIN_DEBT) return 'Borrow at least 1,000 FUSD.';
   if (annualInterestRate < MIN_ANNUAL_INTEREST_RATE) {
     return 'Choose an interest rate of at least 0.5%.';
   }

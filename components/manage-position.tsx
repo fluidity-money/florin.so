@@ -23,7 +23,11 @@ import { MAX_RATE, MIN_COLLATERAL_RATIO, MIN_RATE } from '../lib/protocol-consta
 import { parseDisplayPercent, spyMarket, type FlorinMarkets } from '../lib/florin-markets';
 import { useFlorinMarkets } from '../lib/use-florin-markets';
 import {
-  annualRateFromDisplayPercent,
+  maxWithdrawableCollateral,
+  rateChangePreview,
+  requireFreshRead,
+  readLivePosition,
+  validateTroveManager,
   borrowerOperationsAbi,
   CONTRACTS,
   erc20Abi,
@@ -341,9 +345,9 @@ function PositionEditor({
 }) {
   const w = useWallet();
   const account = w.address as Address | null;
-  const collateral = position.collateralSPY;
-  const debt = position.debtFUSD;
+  const deploymentMatches = position.troveManager.toLowerCase() === CONTRACTS.troveManager.toLowerCase();
   const [rate, setRate] = useState(position.rate);
+  const [rateEdited, setRateEdited] = useState(false);
 
   const [collMode, setCollMode] = useState<CollMode>('deposit');
   const [debtMode, setDebtMode] = useState<DebtMode>('repay');
@@ -357,21 +361,35 @@ function PositionEditor({
 
   const collateralWei = useMemo(() => parseToken(collStr), [collStr]);
   const debtWei = useMemo(() => parseToken(debtStr), [debtStr]);
-  const currentCollateralWei = BigInt(position.collateral);
-  const currentDebtWei = BigInt(position.debt);
   const troveId = BigInt(position.troveId);
   const rateWei = parseUnits(rate.toString(), 18);
-  const currentRateWei = annualRateFromDisplayPercent(position.annualInterestRate);
   const pendingTx = stage !== 'idle';
-  const batched = Boolean(
-    position.interestBatchManager
-      && position.interestBatchManager.toLowerCase() !== zeroAddress,
-  );
+  const livePosition = useQuery({
+    queryKey: ['manage-position-live', account, position.troveManager, position.troveId],
+    enabled: Boolean(account) && deploymentMatches,
+    refetchInterval: 15_000,
+    retry: false,
+    queryFn: () => readLivePosition(robinhoodPublicClient, position.troveManager, troveId),
+  });
+  // Keep successful values visible during background refreshes; submissions always refetch.
+  const positionReady = deploymentMatches && livePosition.isSuccess;
+  const currentCollateralWei = positionReady ? livePosition.data.entireColl : 0n;
+  const currentDebtWei = positionReady ? livePosition.data.entireDebt : 0n;
+  const collateral = Number(formatUnits(currentCollateralWei, 18));
+  const debt = Number(formatUnits(currentDebtWei, 18));
+  const currentRateWei = positionReady ? livePosition.data.annualInterestRate : null;
+  const batched = !positionReady || livePosition.data.interestBatchManager.toLowerCase() !== zeroAddress;
+  useEffect(() => {
+    if (!rateEdited && livePosition.isSuccess) {
+      setRate(Number(formatUnits(livePosition.data.annualInterestRate, 18)));
+    }
+  }, [rateEdited, livePosition.isSuccess, livePosition.data?.annualInterestRate]);
 
   const chainState = useQuery({
     queryKey: ['manage-position-state', account],
     enabled: Boolean(account),
     refetchInterval: 15_000,
+    retry: false,
     queryFn: async () => {
       const [spyBalance, fusdBalance, priceSimulation] = await Promise.all([
         robinhoodPublicClient.readContract({
@@ -395,20 +413,22 @@ function PositionEditor({
       return { spyBalance, fusdBalance, price: validatedOraclePrice(priceSimulation.result) };
     },
   });
-  const priceReady = chainState.data !== undefined && chainState.data.price > 0n;
+  const priceReady = positionReady && chainState.isSuccess && chainState.data.price > 0n;
   const spyPrice = chainState.data ? Number(formatUnits(chainState.data.price, 18)) : 0;
   const spyBalanceWei = chainState.data?.spyBalance ?? 0n;
   const fusdBalanceWei = chainState.data?.fusdBalance ?? 0n;
   const spyBalance = Number(formatUnits(spyBalanceWei, 18));
   const fusdBalance = Number(formatUnits(fusdBalanceWei, 18));
-  const debtCapacityWei = chainState.data
+  const debtCapacityWei = priceReady && chainState.data
     ? (currentCollateralWei * chainState.data.price * 10n) / (10n ** 18n * 11n)
     : 0n;
   const debtRoomWei = debtCapacityWei > currentDebtWei ? debtCapacityWei - currentDebtWei : 0n;
 
   const borrowFee = useQuery({
     queryKey: ['adjust-trove-fee', position.troveId, debtWei.toString()],
-    enabled: debtMode === 'borrow' && debtWei > 0n,
+    enabled: positionReady && debtMode === 'borrow' && debtWei > 0n,
+    retry: false,
+    refetchInterval: 15_000,
     queryFn: () => robinhoodPublicClient.readContract({
       address: CONTRACTS.hintHelpers,
       abi: hintHelpersAbi,
@@ -419,6 +439,8 @@ function PositionEditor({
   const maxBorrowFee = useQuery({
     queryKey: ['adjust-trove-max-fee', position.troveId, debtRoomWei.toString()],
     enabled: priceReady && debtRoomWei > 0n,
+    retry: false,
+    refetchInterval: 15_000,
     queryFn: () => robinhoodPublicClient.readContract({
       address: CONTRACTS.hintHelpers,
       abi: hintHelpersAbi,
@@ -426,8 +448,8 @@ function PositionEditor({
       args: [0n, troveId, debtRoomWei],
     }),
   });
-  const borrowFeeReady = debtMode !== 'borrow' || debtWei <= 0n || borrowFee.data !== undefined;
-  const maxBorrowWei = maxBorrowFee.data === undefined
+  const borrowFeeReady = debtMode !== 'borrow' || debtWei <= 0n || borrowFee.isSuccess;
+  const maxBorrowWei = !priceReady || !maxBorrowFee.isSuccess
     ? 0n
     : maxBorrowPrincipal(debtCapacityWei, currentDebtWei, maxBorrowFee.data);
 
@@ -450,25 +472,51 @@ function PositionEditor({
   const preview = positionMetrics(nextCollateral, nextDebt, spyPrice);
   const pending = collAmt > 0 || debtAmt > 0;
 
-  const collMaxWei = collMode === 'deposit' ? spyBalanceWei : currentCollateralWei;
+  const withdrawalMaxWei = priceReady && chainState.data
+    ? maxWithdrawableCollateral(currentCollateralWei, currentDebtWei, chainState.data.price) : 0n;
+  const collMaxWei = collMode === 'deposit' ? spyBalanceWei : withdrawalMaxWei;
   const repayableDebtWei = maxRepayableDebt(currentDebtWei);
   const repayMaxWei = fusdBalanceWei < repayableDebtWei ? fusdBalanceWei : repayableDebtWei;
   const debtMaxWei = debtMode === 'borrow' ? maxBorrowWei : repayMaxWei;
   const debtMax = Number(formatUnits(debtMaxWei, 18));
-  const collOver = chainState.data !== undefined && collateralWei > collMaxWei;
-  const debtOver = chainState.data !== undefined && debtWei > debtMaxWei;
+  const collOver = positionReady && chainState.isSuccess
+    && (collMode === 'deposit' || priceReady) && collateralWei > collMaxWei;
+  const debtOver = positionReady && chainState.isSuccess
+    && (debtMode === 'repay' || (priceReady && maxBorrowFee.isSuccess)) && debtWei > debtMaxWei;
 
   // Withdrawing or borrowing must not push the position under the floor.
-  const wouldBreach =
-    priceReady && pending && nextDebt > 0 && preview.collateralRatio < MIN_COLLATERAL_RATIO;
+  const previewCollateralWei = collMode === 'deposit'
+    ? currentCollateralWei + collateralWei : currentCollateralWei - collateralWei;
+  const previewDebtWei = debtMode === 'borrow'
+    ? currentDebtWei + debtWei + (borrowFee.data ?? 0n) : currentDebtWei - debtWei;
+  const wouldBreach = priceReady && pending && chainState.data && borrowFeeReady
+    && previewCollateralWei * chainState.data.price * 10n < previewDebtWei * 11n * 10n ** 18n;
   const collateralWouldBreach = collMode === 'withdraw'
     && priceReady
-    && debt > 0
-    && positionMetrics(Math.max(0, collateral - collAmt), debt, spyPrice).collateralRatio < MIN_COLLATERAL_RATIO;
+    && collateralWei > withdrawalMaxWei;
   const debtWouldBreach = debtMode === 'borrow'
     && priceReady
     && borrowFee.data !== undefined
     && currentDebtWei + debtWei + borrowFee.data > debtCapacityWei;
+
+  const rateFee = useQuery({
+    queryKey: ['rate-change-fee', position.troveManager, position.troveId, rateWei.toString()],
+    enabled: positionReady && !batched && rateWei !== currentRateWei,
+    retry: false,
+    refetchInterval: 15_000,
+    queryFn: () => {
+      validateTroveManager(position.troveManager);
+      return robinhoodPublicClient.readContract({
+        address: CONTRACTS.hintHelpers, abi: hintHelpersAbi,
+        functionName: 'predictAdjustInterestRateUpfrontFee', args: [0n, troveId, rateWei],
+      });
+    },
+  });
+  const ratePreview = priceReady && chainState.data && rateFee.isSuccess
+    ? rateChangePreview(currentCollateralWei, currentDebtWei, chainState.data.price, rateWei, rateFee.data)
+    : null;
+  const rateMetrics = ratePreview
+    ? positionMetrics(collateral, Number(formatUnits(ratePreview.resultingDebt, 18)), spyPrice) : null;
 
   async function runTransaction(action: TxAction) {
     const account = w.address as Address | null;
@@ -487,6 +535,7 @@ function PositionEditor({
 
     try {
       setStage('switching');
+      validateTroveManager(position.troveManager);
       await ensureRobinhoodTestnet(w.provider);
       const walletClient = createWalletClient({
         account,
@@ -523,6 +572,9 @@ function PositionEditor({
       }
 
       failureStage = 'preparing';
+      const latest = requireFreshRead(await livePosition.refetch());
+      const currentCollateralWei = latest.entireColl;
+      const currentDebtWei = latest.entireDebt;
       if (action === 'deposit') {
         const [balance, allowance] = await Promise.all([
           robinhoodPublicClient.readContract({
@@ -564,11 +616,10 @@ function PositionEditor({
         await writeAndConfirm(adjustment.request, 'The collateral deposit reverted.');
         setCollStr('');
       } else if (action === 'withdraw') {
-        const validation = validatePositionAmount('withdraw', collateralWei, currentCollateralWei);
+        const state = requireFreshRead(await chainState.refetch());
+        const validation = validatePositionAmount('withdraw', collateralWei,
+          maxWithdrawableCollateral(currentCollateralWei, currentDebtWei, state.price));
         if (validation) throw new Error(validation);
-        if (!priceReady || collateralWouldBreach) {
-          throw new Error('This withdrawal would make the position unsafe, or the SPY oracle is unavailable.');
-        }
         const adjustment = await robinhoodPublicClient.simulateContract({
           account,
           address: CONTRACTS.borrowerOperations,
@@ -630,23 +681,15 @@ function PositionEditor({
         await writeAndConfirm(adjustment.request, 'The FUSD repayment reverted.');
         setDebtStr('');
       } else if (action === 'rate') {
-        if (batched) throw new Error('This position is managed by an interest-rate batch.');
-        if (currentRateWei !== null && rateWei === currentRateWei) {
+        if (latest.interestBatchManager.toLowerCase() !== zeroAddress) throw new Error('This position is managed by an interest-rate batch.');
+        if (rateWei === latest.annualInterestRate) {
           throw new Error('Choose a different interest rate.');
         }
-        const [predictedFee, troveCount] = await Promise.all([
-          robinhoodPublicClient.readContract({
-            address: CONTRACTS.hintHelpers,
-            abi: hintHelpersAbi,
-            functionName: 'predictAdjustInterestRateUpfrontFee',
-            args: [0n, troveId, rateWei],
-          }),
-          robinhoodPublicClient.readContract({
-            address: CONTRACTS.sortedTroves,
-            abi: sortedTrovesAbi,
-            functionName: 'size',
-          }),
-        ]);
+        const troveCount = await robinhoodPublicClient.readContract({
+          address: CONTRACTS.sortedTroves,
+          abi: sortedTrovesAbi,
+          functionName: 'size',
+        });
         let upperHint = 0n;
         let lowerHint = 0n;
         if (troveCount > 1n) {
@@ -658,12 +701,26 @@ function PositionEditor({
             args: [rateWei, approxHint, approxHint],
           });
         }
+        // Hint search can take time; refresh the fee and safety inputs afterwards.
+        const [freshResult, feeResult, stateResult] = await Promise.all([
+          livePosition.refetch(), rateFee.refetch(), chainState.refetch(),
+        ]);
+        const fresh = requireFreshRead(freshResult);
+        const freshFee = requireFreshRead(feeResult);
+        const state = requireFreshRead(stateResult);
+        const feeLimit = maxUpfrontFee(freshFee);
+        if (fresh.interestBatchManager.toLowerCase() !== zeroAddress || rateWei === fresh.annualInterestRate) {
+          throw new Error('The position’s live interest-rate settings changed. Review and try again.');
+        }
+        if (!rateChangePreview(fresh.entireColl, fresh.entireDebt, state.price, rateWei, feeLimit).safe) {
+          throw new Error('The rate-change fee would make this position unsafe.');
+        }
         const adjustment = await robinhoodPublicClient.simulateContract({
           account,
           address: CONTRACTS.borrowerOperations,
           abi: borrowerOperationsAbi,
           functionName: 'adjustTroveInterestRate',
-          args: [troveId, rateWei, upperHint, lowerHint, maxUpfrontFee(predictedFee)],
+          args: [troveId, rateWei, upperHint, lowerHint, feeLimit],
         });
         await writeAndConfirm(adjustment.request, 'The interest-rate transaction reverted.');
       } else {
@@ -683,6 +740,7 @@ function PositionEditor({
         wallet_kind: w.kind,
       });
       setTxComplete(true);
+      await Promise.all([livePosition.refetch(), chainState.refetch(), rateFee.refetch(), borrowFee.refetch(), maxBorrowFee.refetch()]);
       window.setTimeout(onChanged, 2_000);
     } catch (cause) {
       const description = describeTransactionError(cause, failureStage);
@@ -727,13 +785,20 @@ function PositionEditor({
         </div>
       )}
 
+      {!positionReady && (
+        <p className="swap__over" role="status">
+          {!deploymentMatches ? 'Unsupported position deployment. Actions are disabled.'
+            : livePosition.isError ? 'Live position data unavailable. Actions are disabled until a successful refresh.'
+              : 'Refreshing live position data…'}
+        </p>
+      )}
       {/* Summary, in the same card as the pool on Earn */}
       <div className="pool">
         <div className="pool__head">
           <div className="pool__ident">
             <TokenIcon symbol="SPY" size={30} />
             <span>
-              <span className="pool__name">{money(collateral, 2)} SPY deposited</span>
+              <span className="pool__name">{positionReady ? money(collateral, 2) : '—'} SPY deposited</span>
               <span className="pool__tvl">
                 worth <b>{priceReady ? `$${money(m.collateralUsd)}` : '—'}</b>
               </span>
@@ -759,7 +824,7 @@ function PositionEditor({
         </div>
         <div className="pool__foot">
           <span className="tok-row">
-            Debt <b>${money(debt)}</b> <Token symbol="FUSD" size={16} />
+            Debt <b>{positionReady ? `$${money(debt)}` : '—'}</b> <Token symbol="FUSD" size={16} />
           </span>
           <span className="tok-row">
             Free to borrow <b>{priceReady ? `$${money(freeUsd)}` : '—'}</b>
@@ -777,7 +842,7 @@ function PositionEditor({
       </div>
       <div className="swap__meta">
         <span>
-          Interest <b>${money(debt * rate / 12)}</b> / mo
+          Interest <b>{currentRateWei === null ? '—' : `$${money(debt * Number(formatUnits(currentRateWei, 18)) / 12)}`}</b> / mo
         </span>
         <span>
           Market average <b>{marketAverageRate === null ? '—' : pct(marketAverageRate * 100, 2)}</b>
@@ -820,7 +885,7 @@ function PositionEditor({
             <button
               type="button"
               className="swap__max"
-              disabled={!chainState.data || collMaxWei <= 0n}
+              disabled={!positionReady || !chainState.isSuccess || chainState.isFetching || collMaxWei <= 0n}
               onClick={() => {
                 captureEvent('max_amount_selected', { context: 'manage_position', action: collMode, asset: 'SPY' });
                 setCollStr(collMaxWei > 0n ? formatUnits(collMaxWei, 18) : '');
@@ -840,17 +905,25 @@ function PositionEditor({
               : `${money(collateral, 2)} SPY in the position`}
           </span>
         </div>
+        {collMode === 'withdraw' && (
+          <p className="mgmt__hint">
+            Max leaves the position at the 110% collateralization boundary, with no safety buffer.
+            Interest accrual, price changes, batch requirements or branch restrictions may prevent withdrawal.
+            The amount is checked again before submission.
+          </p>
+        )}
         {collOver && (
           <p className="swap__over">
             {collMode === 'deposit'
               ? `You hold ${money(spyBalance, 2)} SPY.`
-              : `Only ${money(collateral, 2)} SPY is in the position.`}
+              : `The current 110% collateralization limit allows up to ${formatUnits(withdrawalMaxWei, 18)} SPY.`}
           </p>
         )}
         <Button
           variant={collMode === 'deposit' ? 'primary' : 'ghost'}
           disabled={
             pendingTx
+            || !positionReady
             || collateralWei <= 0n
             || collOver
             || (collMode === 'deposit' && (!chainState.data || chainState.isError))
@@ -899,7 +972,7 @@ function PositionEditor({
             <button
               type="button"
               className="swap__max"
-              disabled={!chainState.data || debtMaxWei <= 0n || (debtMode === 'borrow' && maxBorrowFee.data === undefined)}
+              disabled={!positionReady || !chainState.isSuccess || chainState.isFetching || debtMaxWei <= 0n || (debtMode === 'borrow' && !maxBorrowFee.isSuccess)}
               onClick={() => {
                 captureEvent('max_amount_selected', { context: 'manage_position', action: debtMode, asset: 'FUSD' });
                 setDebtStr(debtMaxWei > 0n ? formatUnits(debtMaxWei, 18) : '');
@@ -930,6 +1003,7 @@ function PositionEditor({
           variant={debtMode === 'repay' ? 'primary' : 'ghost'}
           disabled={
             pendingTx
+            || !positionReady
             || debtWei <= 0n
             || debtOver
             || (debtMode === 'borrow' && (!priceReady || !borrowFeeReady || borrowFee.isError || debtWouldBreach))
@@ -948,7 +1022,7 @@ function PositionEditor({
 
       {/* What the pending change does, before it is applied. Outside both
           sections above, because either one can be what is pending. */}
-      {pending && priceReady && (
+      {pending && priceReady && borrowFeeReady && (
         <div className={`swap__meta${wouldBreach ? ' swap__meta--bad' : ''}`}>
           <span>
             <i className={`swap__dot swap__dot--${wouldBreach ? 'liquidation' : preview.health}`} />
@@ -989,20 +1063,40 @@ function PositionEditor({
               step={0.0025}
               value={rate}
               disabled={batched || pendingTx}
-              onChange={(e) => setRate(parseFloat(e.target.value))}
+              onChange={(e) => {
+                setRateEdited(true);
+                setRate(parseFloat(e.target.value));
+              }}
               aria-label="Interest rate"
             />
           </div>
           <span className="swap__usd">
-            ${money(debt * rate)} FUSD / year on the <b>${money(debt)}</b> you owe
+            {rateWei === currentRateWei ? 'Choose a different rate to preview its upfront fee.'
+              : !deploymentMatches || livePosition.isError || chainState.isError ? 'Live position or price unavailable. Rate changes are disabled.'
+              : rateFee.isError ? 'Rate-change fee unavailable. Try again before submitting.'
+                : !ratePreview ? 'Loading live position, price and rate-change fee…'
+                  : `Upfront fee: $${money(Number(formatUnits(ratePreview.fee, 18)), 4)} FUSD`}
           </span>
         </div>
-        {batched && (
+        {rateWei !== currentRateWei && ratePreview && rateMetrics && (
+          <>
+            <div className="swap__meta">
+              <span>Resulting debt <b>${money(Number(formatUnits(ratePreview.resultingDebt, 18)), 4)}</b></span>
+              <span>Collateral ratio <b>{pct(rateMetrics.collateralRatioPct, 2)}</b></span>
+            </div>
+            <div className="swap__meta">
+              <span>Liquidation price <b>${money(rateMetrics.liquidationPriceUsd)}</b></span>
+              <span>Interest <b>${money(Number(formatUnits(ratePreview.annualInterest, 18)), 4)}</b> / year · <b>${money(Number(formatUnits(ratePreview.monthlyInterest, 18)), 4)}</b> / mo</span>
+            </div>
+            {!ratePreview.safe && <p className="swap__over">The rate-change fee would make this position unsafe.</p>}
+          </>
+        )}
+        {positionReady && batched && (
           <p className="swap__over">This position’s rate is managed by an interest-rate batch.</p>
         )}
         <Button
           variant="ghost"
-          disabled={pendingTx || batched || currentRateWei === null || rateWei === currentRateWei}
+          disabled={pendingTx || !positionReady || batched || currentRateWei === null || rateWei === currentRateWei || !ratePreview?.safe}
           onClick={() => void runTransaction('rate')}
         >
           {pendingTx && txAction === 'rate' ? 'Confirming…' : 'Update interest rate'}
@@ -1043,7 +1137,7 @@ function PositionEditor({
 
       <Button
         variant="danger"
-        disabled={pendingTx}
+        disabled={pendingTx || !positionReady}
         onClick={() => {
           if (window.confirm(`Close this position? Your wallet must repay the full ${money(debt)} FUSD debt.`)) {
             void runTransaction('close');

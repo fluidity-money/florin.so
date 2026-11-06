@@ -308,7 +308,7 @@ export function MultiplyForm() {
       ) {
         throw new Error('Multiply deployment contracts could not be verified on Robinhood testnet.');
       }
-      if (submittedBoldAmount < MIN_DEBT) throw new Error('The loop must borrow at least 10 FUSD.');
+      if (submittedBoldAmount < MIN_DEBT) throw new Error('The loop must borrow at least 1,000 FUSD.');
       if (balance < depositWei) throw new Error('Your wallet does not have enough SPY.');
       if (nativeBalance < LIQUIDATOR_COMPENSATION_WETH) {
         throw new Error('You need 0.001 ETH plus network fees for liquidator compensation.');
@@ -471,7 +471,7 @@ export function MultiplyForm() {
 
       {!zapperConfigured && <p className="warn">Multiply needs the leverage zapper and quote helper configured for this deployment.</p>}
       {unsafe && <p className="warn">This position is below the protocol&apos;s 110% minimum collateral ratio.</p>}
-      {belowMinimumDebt && <p className="warn">The loop must borrow at least 10 FUSD.</p>}
+      {belowMinimumDebt && <p className="warn">The loop must borrow at least 1,000 FUSD.</p>}
       {insufficientSpy && <p className="warn">Your wallet does not have enough SPY for this deposit.</p>}
       {insufficientEth && <p className="warn">You need 0.001 ETH plus network fees for liquidator compensation.</p>}
       {oraclePrice.isError && <p className="warn">The SPY oracle is unavailable. Multiply is disabled.</p>}
