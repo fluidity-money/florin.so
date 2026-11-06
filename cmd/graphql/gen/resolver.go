@@ -9,7 +9,6 @@ import (
 )
 
 type Resolver struct {
-	FeatureFakeData                          bool
 	Db                                       *sql.DB
 	AccPubKey                                [32]byte
 	AddrBorrowerOperations, AddrSafetyRouter ethCommon.Address

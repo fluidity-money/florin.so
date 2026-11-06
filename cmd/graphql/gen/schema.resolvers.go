@@ -252,17 +252,6 @@ func (r *mutationResolver) FlorinOpenPosition(ctx context.Context, openPosition 
 
 // BorrowDetails is the resolver for the borrowDetails field.
 func (r *queryResolver) BorrowDetails(ctx context.Context) ([]*model.BorrowDetails, error) {
-	if r.FeatureFakeData {
-		return []*model.BorrowDetails{{
-			Collateral: &model.Collateral{Name: "SPY"},
-			AvgRatePa:  "5.79%",
-			Deposited:  "4.2M",
-			DebtIssued: "2.34M",
-		}}, nil
-	}
-	if r.Db == nil {
-		return nil, fmt.Errorf("database is not configured")
-	}
 	var collateral, debt, averageRateRaw string
 	err := r.Db.QueryRowContext(ctx, `
 SELECT
@@ -304,17 +293,6 @@ CROSS JOIN florin_fusd_outstanding_1 fusd`).Scan(
 
 // EarnRewards is the resolver for the earnRewards field.
 func (r *queryResolver) EarnRewards(ctx context.Context) ([]*model.EarnRewards, error) {
-	if r.FeatureFakeData {
-		return []*model.EarnRewards{{
-			Collateral: &model.Collateral{Name: "SPY"},
-			Apr:        "11.29%",
-			PoolSize:   "900K",
-			Coverage:   "38%",
-		}}, nil
-	}
-	if r.Db == nil {
-		return nil, fmt.Errorf("database is not configured")
-	}
 	var poolSizeRaw, aprRaw, coverageRaw string
 	err := r.Db.QueryRowContext(ctx, `
 SELECT
@@ -362,12 +340,6 @@ func (r *queryResolver) OpenPositions(ctx context.Context, owner string) ([]*mod
 	normalizedOwner, err := normalizeAddress(owner)
 	if err != nil {
 		return nil, fmt.Errorf("invalid owner address: %w", err)
-	}
-	if r.FeatureFakeData {
-		return []*model.Position{}, nil
-	}
-	if r.Db == nil {
-		return nil, fmt.Errorf("database is not configured")
 	}
 	rows, err := r.Db.QueryContext(ctx, `
 SELECT

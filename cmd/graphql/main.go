@@ -41,9 +41,6 @@ const (
 	// and authentication key loading.
 	EnvTimescaleUri = "SPN_TIMESCALE"
 
-	// EnvFeatureFakeData if set to anything other than "", renders fake data.
-	EnvFeatureFakeData = "SPN_FEATURE_FAKE_DATA"
-
 	// EnvChainId to send transactions to.
 	EnvChainId = "SPN_CHAIN_ID"
 
@@ -202,7 +199,6 @@ func main() {
 	addrWeth := ethCommon.HexToAddress(addrWethS)
 	srv := handler.New(gen.NewExecutableSchema(gen.Config{
 		Resolvers: &gen.Resolver{
-			FeatureFakeData:        os.Getenv(EnvFeatureFakeData) != "",
 			Db:                     db,
 			AccPubKey:              accPubKey,
 			AddrBorrowerOperations: addrBorrowerOperations,
@@ -222,8 +218,8 @@ func main() {
 	srv.Use(extension.AutomaticPersistedQuery{
 		Cache: lru.New[string](100),
 	})
-	http.Handle("/playground", playground.Handler("GraphQL playground", "/query"))
-	http.Handle("/", middleware{srv, db})
+	http.Handle("/playground", playground.Handler("GraphQL playground", "/florin"))
+	http.Handle("/florin", middleware{srv, db})
 	l, err := activation.Listeners()
 	if err != nil {
 		log.Fatalf("listeners: %v", err)

@@ -1,11 +1,13 @@
-import type { Address } from 'viem';
+import { zeroAddress, type Address } from 'viem';
 
 export const MULTIPLY_SLIPPAGE_BPS = 50n;
 export const BPS = 10_000n;
 
+// Deployment placeholders: zero addresses keep Multiply transaction submission disabled.
+// Replace via public environment variables once the SPY leverage infrastructure is deployed.
 export const CONTRACTS = {
-  leverageZapper: process.env.NEXT_PUBLIC_LEVERAGE_ZAPPER_ADDRESS as Address | undefined,
-  exchangeHelpers: process.env.NEXT_PUBLIC_MULTIPLY_QUOTER_ADDRESS as Address | undefined,
+  leverageZapper: (process.env.NEXT_PUBLIC_LEVERAGE_ZAPPER_ADDRESS || zeroAddress) as Address,
+  exchangeHelpers: (process.env.NEXT_PUBLIC_MULTIPLY_QUOTER_ADDRESS || zeroAddress) as Address,
 } as const;
 
 export function multiplyAmounts(

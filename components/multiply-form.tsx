@@ -469,7 +469,7 @@ export function MultiplyForm() {
         <p>Higher multipliers increase both equity exposure and liquidation risk. The quote includes 0.5% swap protection; unused FUSD or SPY is returned by the contract.</p>
       </details>
 
-      {!zapperConfigured && <p className="warn">Multiply needs the leverage zapper and quote helper configured for this deployment.</p>}
+      {!zapperConfigured && <p className="warn">Multiply is not available yet. The leverage zapper and quote helper are pending deployment.</p>}
       {unsafe && <p className="warn">This position is below the protocol&apos;s 110% minimum collateral ratio.</p>}
       {belowMinimumDebt && <p className="warn">The loop must borrow at least 1,000 FUSD.</p>}
       {insufficientSpy && <p className="warn">Your wallet does not have enough SPY for this deposit.</p>}
