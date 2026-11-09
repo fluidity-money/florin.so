@@ -350,8 +350,6 @@ export function MultiplyForm() {
         <span className="swap__pair"><TokenIcon symbol="FUSD" size={30} /><span className="swap__tok">FUSD</span></span>
       </h1>
 
-      <p className="swap__note">Robinhood testnet · mock exchange. Oracle-priced swaps assume FUSD = $1, with no market price impact; prefunded SPY liquidity is required.</p>
-
       <div className="swap__field">
         <span className="swap__label">Your SPY deposit</span>
         <div className="swap__row">

@@ -52,6 +52,6 @@ test('Multiply refreshes after approval, uses fee-ceiling safety, and rejects er
   assert(form.indexOf('const params =', refresh) > refresh);
   assert.match(form, /oraclePrice.isError \|\| swapQuote.isError \|\| chainState.isError \|\| upfrontFee.isError/);
   assert.match(form, /disabled=\{[^\n]*invalidData/);
-  assert.match(form, /Robinhood testnet · mock exchange/);
+  assert.doesNotMatch(form, /Robinhood testnet · mock exchange|Oracle-priced swaps assume FUSD/);
   assert.doesNotMatch(form, /CONTRACTS.gasCompZapper/);
 });
