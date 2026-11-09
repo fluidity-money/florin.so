@@ -645,9 +645,6 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 
       {protocolError && active && <p className="warn">{protocolError}</p>}
       {unsafe && <p className="warn">This amount exceeds the current individual or branch borrowing limit.</p>}
-      {quoteReady && quote && collateralWei > 0n && quote.capacity < collateralWei * quote.price / quote.mcr && (
-        <p className="swap__note">Max is limited by the protocol&apos;s required system collateral ratio.</p>
-      )}
       {quoteReady && collateralWei > 0n && maxBorrowWei === 0n && (
         <p className="warn">No opening amount at cent precision meets the minimum debt and current collateral limits. Increase your collateral.</p>
       )}
