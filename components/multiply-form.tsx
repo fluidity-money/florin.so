@@ -36,9 +36,10 @@ import {
   validatedOraclePrice,
 } from '../lib/borrow-contract';
 import {
-  addMultiplySlippage,
+  quoteMultiply,
+  verifyMultiplyDeployment,
+  isMultiplyCollateralSafe,
   CONTRACTS,
-  exchangeHelpersAbi,
   leverageZapperAbi,
   multiplyAmounts,
 } from '../lib/multiply-contract';
@@ -90,14 +91,14 @@ export function MultiplyForm() {
   const wallet = useWallet();
   const account = wallet.address as Address | null;
   const zapperAddress = CONTRACTS.leverageZapper;
-  const quoterAddress = CONTRACTS.exchangeHelpers;
+  const exchangeAddress = CONTRACTS.exchange;
   const zapperConfigured = Boolean(
     zapperAddress
-    && quoterAddress
+    && exchangeAddress
     && isAddress(zapperAddress)
-    && isAddress(quoterAddress)
+    && isAddress(exchangeAddress)
     && zapperAddress !== zeroAddress
-    && quoterAddress !== zeroAddress,
+    && exchangeAddress !== zeroAddress,
   );
   const [depositStr, setDepositStr] = useState('');
   const [multiplierTenths, setMultiplierTenths] = useState(20);
@@ -127,72 +128,29 @@ export function MultiplyForm() {
   const amounts = multiplyAmounts(depositWei, multiplierTenths);
 
   const swapQuote = useQuery({
-    queryKey: ['multiply-swap-quote', quoterAddress, amounts.flashLoanAmount.toString()],
-    enabled: Boolean(zapperConfigured && quoterAddress && amounts.flashLoanAmount > 0n),
+    queryKey: ['multiply-swap-quote', exchangeAddress, amounts.flashLoanAmount.toString()],
+    enabled: Boolean(zapperConfigured && exchangeAddress && amounts.flashLoanAmount > 0n),
     retry: false,
-    queryFn: async () => {
-      if (!quoterAddress) throw new Error('Multiply quoter is not configured.');
-      const simulation = await publicClient.simulateContract({
-        address: quoterAddress,
-        abi: exchangeHelpersAbi,
-        functionName: 'quoteExactOutput',
-        args: [amounts.flashLoanAmount, false, BORROW_CONTRACTS.spyToken],
-      });
-      if (simulation.result <= 0n) throw new Error('The exchange returned an invalid quote.');
-      return addMultiplySlippage(simulation.result);
-    },
+    refetchInterval: 15_000,
+    queryFn: async () => (await quoteMultiply(publicClient, exchangeAddress, BORROW_CONTRACTS, amounts.flashLoanAmount)).boldAmount,
   });
-  const boldAmount = swapQuote.data ?? 0n;
+  const boldAmount = swapQuote.isError ? 0n : swapQuote.data ?? 0n;
 
+  async function readWalletState() {
+    if (!account) throw new Error('Connect a wallet first.');
+    const [balance, allowance, nativeBalance] = await Promise.all([
+      publicClient.readContract({ address: BORROW_CONTRACTS.spyToken, abi: erc20Abi, functionName: 'balanceOf', args: [account] }),
+      publicClient.readContract({ address: BORROW_CONTRACTS.spyToken, abi: erc20Abi, functionName: 'allowance', args: [account, zapperAddress] }),
+      publicClient.getBalance({ address: account }),
+      verifyMultiplyDeployment(publicClient, zapperAddress, exchangeAddress, BORROW_CONTRACTS),
+    ]);
+    return { balance, allowance, nativeBalance };
+  }
   const chainState = useQuery({
-    queryKey: ['multiply-state', account, zapperAddress],
+    queryKey: ['multiply-state', account, zapperAddress, exchangeAddress],
     enabled: Boolean(account && zapperConfigured),
     refetchInterval: 15_000,
-    queryFn: async () => {
-      if (!account || !zapperAddress || !quoterAddress) throw new Error('Multiply contracts are not configured.');
-      const [balance, allowance, nativeBalance, zapperCode, quoterCode, exchange, collToken, boldToken] = await Promise.all([
-        publicClient.readContract({
-          address: BORROW_CONTRACTS.spyToken,
-          abi: erc20Abi,
-          functionName: 'balanceOf',
-          args: [account],
-        }),
-        publicClient.readContract({
-          address: BORROW_CONTRACTS.spyToken,
-          abi: erc20Abi,
-          functionName: 'allowance',
-          args: [account, zapperAddress],
-        }),
-        publicClient.getBalance({ address: account }),
-        publicClient.getCode({ address: zapperAddress }),
-        publicClient.getCode({ address: quoterAddress }),
-        publicClient.readContract({
-          address: zapperAddress,
-          abi: leverageZapperAbi,
-          functionName: 'exchange',
-        }),
-        publicClient.readContract({
-          address: zapperAddress,
-          abi: leverageZapperAbi,
-          functionName: 'collToken',
-        }),
-        publicClient.readContract({
-          address: zapperAddress,
-          abi: leverageZapperAbi,
-          functionName: 'boldToken',
-        }),
-      ]);
-      if (
-        !zapperCode || zapperCode === '0x'
-        || !quoterCode || quoterCode === '0x'
-        || exchange === zeroAddress
-        || collToken.toLowerCase() !== BORROW_CONTRACTS.spyToken.toLowerCase()
-        || boldToken.toLowerCase() !== BORROW_CONTRACTS.boldToken.toLowerCase()
-      ) {
-        throw new Error('Multiply deployment contracts could not be verified on Robinhood testnet.');
-      }
-      return { balance, allowance, nativeBalance };
-    },
+    queryFn: readWalletState,
   });
 
   const upfrontFee = useQuery({
@@ -208,19 +166,22 @@ export function MultiplyForm() {
 
   const deposit = Math.max(0, xnum(depositStr));
   const multiplier = multiplierTenths / 10;
-  const spyPrice = oraclePrice.data ? Number(formatUnits(oraclePrice.data, 18)) : 0;
+  const spyPrice = !oraclePrice.isError && oraclePrice.data ? Number(formatUnits(oraclePrice.data, 18)) : 0;
   const exposure = Number(formatUnits(amounts.totalCollateral, 18));
   const principalDebt = Number(formatUnits(boldAmount, 18));
   const fee = Number(formatUnits(upfrontFee.data ?? 0n, 18));
   const totalDebt = principalDebt + fee;
   const exposureUsd = exposure * spyPrice;
   const ltv = exposureUsd > 0 ? totalDebt / exposureUsd : 0;
-  const collateralRatio = totalDebt > 0 ? exposureUsd / totalDebt : 0;
   const liquidationPrice = exposure > 0 ? MIN_COLLATERAL_RATIO * totalDebt / exposure : 0;
   const walletBalance = chainState.data ? Number(formatUnits(chainState.data.balance, 18)) : 0;
   const insufficientSpy = Boolean(chainState.data && chainState.data.balance < depositWei);
   const insufficientEth = Boolean(chainState.data && chainState.data.nativeBalance < LIQUIDATOR_COMPENSATION_WETH);
-  const unsafe = totalDebt > 0 && collateralRatio < MIN_COLLATERAL_RATIO;
+  const unsafe = boldAmount > 0n && !isMultiplyCollateralSafe(
+    amounts.totalCollateral, oraclePrice.data ?? 0n, boldAmount, maxUpfrontFee(upfrontFee.data ?? 0n),
+  );
+  const invalidData = oraclePrice.isError || swapQuote.isError || chainState.isError || upfrontFee.isError
+    || !oraclePrice.data || !swapQuote.data || !chainState.data || upfrontFee.data === undefined;
   const belowMinimumDebt = boldAmount > 0n && boldAmount < MIN_DEBT;
   const pending = stage !== 'idle';
   const active = depositWei > 0n && boldAmount > 0n;
@@ -234,11 +195,11 @@ export function MultiplyForm() {
       }
       return;
     }
-    if (!zapperAddress || !quoterAddress || !zapperConfigured) {
+    if (!zapperAddress || !exchangeAddress || !zapperConfigured) {
       setError('Multiply is not configured for this deployment.');
       return;
     }
-    if (!active || pending || unsafe || belowMinimumDebt || insufficientSpy || insufficientEth) return;
+    if (!active || invalidData || pending || unsafe || belowMinimumDebt || insufficientSpy || insufficientEth) return;
 
     setError(null);
     setTxHash(null);
@@ -246,69 +207,13 @@ export function MultiplyForm() {
       setStage('switching');
       await ensureRobinhoodTestnet(wallet.provider);
 
-      const quoteSimulation = await publicClient.simulateContract({
-        address: quoterAddress,
-        abi: exchangeHelpersAbi,
-        functionName: 'quoteExactOutput',
-        args: [amounts.flashLoanAmount, false, BORROW_CONTRACTS.spyToken],
-      });
-      const submittedBoldAmount = addMultiplySlippage(quoteSimulation.result);
-      if (submittedBoldAmount <= 0n) throw new Error('The exchange returned an invalid quote.');
-
-      const [balance, allowance, nativeBalance, predictedFee, troveCount, zapperCode, quoterCode, exchange, collToken, boldToken] = await Promise.all([
-        publicClient.readContract({
-          address: BORROW_CONTRACTS.spyToken,
-          abi: erc20Abi,
-          functionName: 'balanceOf',
-          args: [account],
-        }),
-        publicClient.readContract({
-          address: BORROW_CONTRACTS.spyToken,
-          abi: erc20Abi,
-          functionName: 'allowance',
-          args: [account, zapperAddress],
-        }),
-        publicClient.getBalance({ address: account }),
-        publicClient.readContract({
-          address: BORROW_CONTRACTS.hintHelpers,
-          abi: hintHelpersAbi,
-          functionName: 'predictOpenTroveUpfrontFee',
-          args: [0n, submittedBoldAmount, rateWei],
-        }),
-        publicClient.readContract({
-          address: BORROW_CONTRACTS.sortedTroves,
-          abi: sortedTrovesAbi,
-          functionName: 'size',
-        }),
-        publicClient.getCode({ address: zapperAddress }),
-        publicClient.getCode({ address: quoterAddress }),
-        publicClient.readContract({
-          address: zapperAddress,
-          abi: leverageZapperAbi,
-          functionName: 'exchange',
-        }),
-        publicClient.readContract({
-          address: zapperAddress,
-          abi: leverageZapperAbi,
-          functionName: 'collToken',
-        }),
-        publicClient.readContract({
-          address: zapperAddress,
-          abi: leverageZapperAbi,
-          functionName: 'boldToken',
-        }),
+      // Verify the spender and exchange identities before asking for any approval.
+      const [{ balance, allowance, nativeBalance }, initialQuote, troveCount] = await Promise.all([
+        readWalletState(),
+        quoteMultiply(publicClient, exchangeAddress, BORROW_CONTRACTS, amounts.flashLoanAmount),
+        publicClient.readContract({ address: BORROW_CONTRACTS.sortedTroves, abi: sortedTrovesAbi, functionName: 'size' }),
       ]);
-
-      if (
-        !zapperCode || zapperCode === '0x'
-        || !quoterCode || quoterCode === '0x'
-        || exchange === zeroAddress
-        || collToken.toLowerCase() !== BORROW_CONTRACTS.spyToken.toLowerCase()
-        || boldToken.toLowerCase() !== BORROW_CONTRACTS.boldToken.toLowerCase()
-      ) {
-        throw new Error('Multiply deployment contracts could not be verified on Robinhood testnet.');
-      }
-      if (submittedBoldAmount < MIN_DEBT) throw new Error('The loop must borrow at least 1,000 FUSD.');
+      if (initialQuote.boldAmount < MIN_DEBT) throw new Error('The loop must borrow at least 1,000 FUSD.');
       if (balance < depositWei) throw new Error('Your wallet does not have enough SPY.');
       if (nativeBalance < LIQUIDATOR_COMPENSATION_WETH) {
         throw new Error('You need 0.001 ETH plus network fees for liquidator compensation.');
@@ -348,6 +253,28 @@ export function MultiplyForm() {
         if (receipt.status !== 'success') throw new Error('The SPY approval transaction reverted.');
       }
 
+      // Hints and wallet approval can take minutes: do not submit their old quote/fee/oracle.
+      const [freshQuote, oracleSimulation, freshWallet] = await Promise.all([
+        quoteMultiply(publicClient, exchangeAddress, BORROW_CONTRACTS, amounts.flashLoanAmount),
+        publicClient.simulateContract({ address: BORROW_CONTRACTS.spyPriceFeed, abi: priceFeedAbi, functionName: 'fetchPrice' }),
+        readWalletState(),
+      ]);
+      if (freshWallet.balance < depositWei || freshWallet.allowance < depositWei
+        || freshWallet.nativeBalance < LIQUIDATOR_COMPENSATION_WETH) {
+        throw new Error('Wallet balance or SPY allowance changed. Please retry.');
+      }
+      const submittedBoldAmount = freshQuote.boldAmount;
+      const freshPrice = validatedOraclePrice(oracleSimulation.result);
+      const predictedFee = await publicClient.readContract({
+        address: BORROW_CONTRACTS.hintHelpers, abi: hintHelpersAbi,
+        functionName: 'predictOpenTroveUpfrontFee', args: [0n, submittedBoldAmount, rateWei],
+      });
+      const feeCeiling = maxUpfrontFee(predictedFee);
+      if (submittedBoldAmount < MIN_DEBT) throw new Error('The loop must borrow at least 1,000 FUSD.');
+      if (!isMultiplyCollateralSafe(amounts.totalCollateral, freshPrice, submittedBoldAmount, feeCeiling)) {
+        throw new Error('The refreshed position is below the 110% minimum collateral ratio at the fee ceiling.');
+      }
+
       const params = {
         owner: account,
         ownerIndex: randomOwnerIndex(),
@@ -358,7 +285,7 @@ export function MultiplyForm() {
         lowerHint,
         annualInterestRate: rateWei,
         batchManager: zeroAddress,
-        maxUpfrontFee: maxUpfrontFee(predictedFee),
+        maxUpfrontFee: feeCeiling,
         addManager: zeroAddress,
         removeManager: zeroAddress,
         receiver: zeroAddress,
@@ -369,7 +296,7 @@ export function MultiplyForm() {
         account,
         address: zapperAddress,
         abi: leverageZapperAbi,
-        functionName: 'openLeveragedTroveWithRawETH',
+        functionName: 'openLeveragedTroveWithSPY',
         args: [params],
         value: LIQUIDATOR_COMPENSATION_WETH,
       });
@@ -423,6 +350,8 @@ export function MultiplyForm() {
         <span className="swap__pair"><TokenIcon symbol="FUSD" size={30} /><span className="swap__tok">FUSD</span></span>
       </h1>
 
+      <p className="swap__note">Robinhood testnet · mock exchange. Oracle-priced swaps assume FUSD = $1, with no market price impact; prefunded SPY liquidity is required.</p>
+
       <div className="swap__field">
         <span className="swap__label">Your SPY deposit</span>
         <div className="swap__row">
@@ -469,13 +398,13 @@ export function MultiplyForm() {
         <p>Higher multipliers increase both equity exposure and liquidation risk. The quote includes 0.5% swap protection; unused FUSD or SPY is returned by the contract.</p>
       </details>
 
-      {!zapperConfigured && <p className="warn">Multiply is not available yet. The leverage zapper and quote helper are pending deployment.</p>}
+      {!zapperConfigured && <p className="warn">Multiply is disabled. Configure the SPY leverage zapper and mock exchange addresses.</p>}
       {unsafe && <p className="warn">This position is below the protocol&apos;s 110% minimum collateral ratio.</p>}
       {belowMinimumDebt && <p className="warn">The loop must borrow at least 1,000 FUSD.</p>}
       {insufficientSpy && <p className="warn">Your wallet does not have enough SPY for this deposit.</p>}
       {insufficientEth && <p className="warn">You need 0.001 ETH plus network fees for liquidator compensation.</p>}
       {oraclePrice.isError && <p className="warn">The SPY oracle is unavailable. Multiply is disabled.</p>}
-      {swapQuote.isError && <p className="warn">Could not quote the FUSD → SPY loop. Try again before submitting.</p>}
+      {swapQuote.isError && <p className="warn">Could not quote the FUSD → SPY loop: {errorMessage(swapQuote.error)}</p>}
       {chainState.isError && <p className="warn">Could not verify the Multiply deployment or wallet state.</p>}
       {upfrontFee.isError && <p className="warn">Could not quote the upfront fee. Try again before submitting.</p>}
       {error && <p className="warn" role="alert">{error}</p>}
@@ -485,7 +414,7 @@ export function MultiplyForm() {
 
       <Button
         variant="primary"
-        disabled={wallet.connected && (!zapperConfigured || !active || unsafe || belowMinimumDebt || insufficientSpy || insufficientEth || pending || !oraclePrice.data || !chainState.data || upfrontFee.data === undefined)}
+        disabled={wallet.connected && (!zapperConfigured || !active || unsafe || belowMinimumDebt || insufficientSpy || insufficientEth || pending || invalidData)}
         onClick={() => void openMultiplyPosition()}
       >
         {buttonLabel}

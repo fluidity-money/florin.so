@@ -29,12 +29,29 @@ test('multiply submits through the leverage zapper rather than borrower operatio
   const form = read('components/multiply-form.tsx');
 
   assert.match(form, /leverageZapperAbi/);
-  assert.match(form, /functionName: 'openLeveragedTroveWithRawETH'/);
+  assert.match(form, /functionName: 'openLeveragedTroveWithSPY'/);
   assert.match(form, /CONTRACTS\.leverageZapper/);
-  assert.match(form, /CONTRACTS\.exchangeHelpers/);
-  assert.match(form, /functionName: 'quoteExactOutput'/);
+  assert.match(form, /CONTRACTS\.exchange/);
+  assert.match(form, /quoteMultiply/);
+  assert.doesNotMatch(form, /quoteExactOutput|openLeveragedTroveWithRawETH/);
   assert.match(form, /flashLoanAmount/);
   assert.match(form, /boldAmount/);
   assert.match(form, /args: \[params\]/);
   assert.doesNotMatch(form, /functionName: 'openTrove'/);
+});
+
+
+test('Multiply refreshes after approval, uses fee-ceiling safety, and rejects errored cached queries', () => {
+  const form = read('components/multiply-form.tsx');
+  const approval = form.indexOf("functionName: 'approve'");
+  assert(form.indexOf('readWalletState(),') < approval);
+  const refresh = form.indexOf('const [freshQuote, oracleSimulation, freshWallet]');
+  assert(refresh > form.indexOf('waitForTransactionReceipt({ hash: approvalHash })'));
+  assert(form.indexOf("functionName: 'predictOpenTroveUpfrontFee'", refresh) > refresh);
+  assert(form.indexOf('isMultiplyCollateralSafe(amounts.totalCollateral, freshPrice, submittedBoldAmount, feeCeiling)', refresh) > refresh);
+  assert(form.indexOf('const params =', refresh) > refresh);
+  assert.match(form, /oraclePrice.isError \|\| swapQuote.isError \|\| chainState.isError \|\| upfrontFee.isError/);
+  assert.match(form, /disabled=\{[^\n]*invalidData/);
+  assert.match(form, /Robinhood testnet · mock exchange/);
+  assert.doesNotMatch(form, /CONTRACTS.gasCompZapper/);
 });

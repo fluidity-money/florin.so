@@ -1,13 +1,15 @@
-import { zeroAddress, type Address } from 'viem';
+import { parseAbi, zeroAddress, maxUint256, type Address, type PublicClient } from 'viem';
 
 export const MULTIPLY_SLIPPAGE_BPS = 50n;
 export const BPS = 10_000n;
 
-// Deployment placeholders: zero addresses keep Multiply transaction submission disabled.
-// Replace via public environment variables once the SPY leverage infrastructure is deployed.
+// Robinhood testnet mocks. Explicit zero overrides disable Multiply.
 export const CONTRACTS = {
-  leverageZapper: (process.env.NEXT_PUBLIC_LEVERAGE_ZAPPER_ADDRESS || zeroAddress) as Address,
-  exchangeHelpers: (process.env.NEXT_PUBLIC_MULTIPLY_QUOTER_ADDRESS || zeroAddress) as Address,
+  leverageZapper: (process.env.NEXT_PUBLIC_LEVERAGE_ZAPPER_ADDRESS || '0x951329B091FA939d8B39f30A520a17eb39Fd46D5') as Address,
+  // Legacy QUOTER is an exchange override, never an ExchangeHelpersV2 address.
+  exchange: (process.env.NEXT_PUBLIC_MULTIPLY_EXCHANGE_ADDRESS || process.env.NEXT_PUBLIC_MULTIPLY_QUOTER_ADDRESS || '0x951a4CC107b5DF2bb11AAa46C48D85C4c3b0F09E') as Address,
+  // Informational only: leverage inherits gas compensation; do not call this separately.
+  gasCompZapper: (process.env.NEXT_PUBLIC_GAS_COMP_ZAPPER_ADDRESS || '0xFF24F0BEc5DfB6B6E5890FEe493488a235d4fC31') as Address,
 } as const;
 
 export function multiplyAmounts(
@@ -26,19 +28,77 @@ export function addMultiplySlippage(quotedInput: bigint): bigint {
   return (quotedInput * (BPS + MULTIPLY_SLIPPAGE_BPS) + BPS - 1n) / BPS;
 }
 
-export const exchangeHelpersAbi = [{
-  type: 'function',
-  name: 'quoteExactOutput',
-  stateMutability: 'nonpayable',
-  inputs: [
-    { name: '_outputAmount', type: 'uint256' },
-    { name: '_collToBold', type: 'bool' },
-    { name: '_collToken', type: 'address' },
-  ],
-  outputs: [{ name: 'inputAmount', type: 'uint256' }],
-}] as const;
+export const mockExchangeAbi = parseAbi([
+  'function collToken() view returns (address)',
+  'function boldToken() view returns (address)',
+  'function priceFeed() view returns (address)',
+  'function priceScale() view returns (uint256)',
+  'function oracleScale() view returns (uint256)',
+]);
+const aggregatorAbi = parseAbi([
+  'function latestRoundData() view returns (uint80, int256, uint256, uint256, uint80)',
+]);
+const balanceAbi = parseAbi(['function balanceOf(address) view returns (uint256)']);
+type ReadClient = Pick<PublicClient, 'readContract' | 'getBlock' | 'getCode'>;
+type Branch = { spyToken: Address; boldToken: Address; borrowerOperations: Address };
+const sameAddress = (a: Address, b: Address) => a.toLowerCase() === b.toLowerCase();
+
+/** Exact-input mock pricing: no AMM fees/impact, assumes FUSD = USD.
+ * Match the contract's timestamp policy (no age limit, including market closures).
+ * Pin reads to one block so reserves, scales and answer describe the same state.
+ */
+export async function quoteMultiply(client: ReadClient, exchange: Address, branch: Branch, output: bigint) {
+  if (output <= 0n || output > maxUint256) throw new Error('Invalid flash loan amount.');
+  const block = await client.getBlock();
+  const blockNumber = block.number;
+  const read = <N extends 'collToken' | 'boldToken' | 'priceFeed' | 'priceScale' | 'oracleScale'>(functionName: N) =>
+    client.readContract({ address: exchange, abi: mockExchangeAbi, functionName, blockNumber });
+  const [collToken, boldToken, priceFeed, priceScale, oracleScale] = await Promise.all([
+    read('collToken'), read('boldToken'), read('priceFeed'), read('priceScale'), read('oracleScale'),
+  ]);
+  if (!sameAddress(collToken, branch.spyToken) || !sameAddress(boldToken, branch.boldToken)
+    || priceFeed === zeroAddress || priceScale <= 0n || oracleScale <= 0n) {
+    throw new Error('Mock exchange token or scale mismatch.');
+  }
+  const [round, spyBalance, boldBalance] = await Promise.all([
+    client.readContract({ address: priceFeed, abi: aggregatorAbi, functionName: 'latestRoundData', blockNumber }),
+    client.readContract({ address: collToken, abi: balanceAbi, functionName: 'balanceOf', args: [exchange], blockNumber }),
+    client.readContract({ address: boldToken, abi: balanceAbi, functionName: 'balanceOf', args: [exchange], blockNumber }),
+  ]);
+  const [, answer, , updatedAt] = round;
+  if (answer <= 0n || updatedAt === 0n || updatedAt > block.timestamp) throw new Error('Mock exchange oracle price is invalid.');
+  const price = answer * priceScale;
+  if (price > maxUint256) throw new Error('Mock exchange price overflows.');
+  const quotedInput = (output * price + oracleScale - 1n) / oracleScale;
+  const boldAmount = addMultiplySlippage(quotedInput);
+  const swapOutput = boldAmount * oracleScale / price;
+  if (boldAmount > maxUint256 || swapOutput > maxUint256) throw new Error('Multiply quote overflows.');
+  // The loan is outstanding when swapFromBold pays out its entire padded output.
+  if (spyBalance < output + swapOutput) throw new Error('Insufficient mock SPY liquidity for both flash loan and swap.');
+  return { boldAmount, quotedInput, swapOutput, spyBalance, boldBalance, priceFeed, blockNumber };
+}
+
+export async function verifyMultiplyDeployment(client: ReadClient, zapper: Address, exchange: Address, branch: Branch) {
+  const [zapperCode, exchangeCode, coll, bold, swap, lender, operations] = await Promise.all([
+    client.getCode({ address: zapper }), client.getCode({ address: exchange }),
+    ...(['collToken', 'boldToken', 'exchange', 'flashLoanProvider', 'borrowerOperations'] as const).map(functionName =>
+      client.readContract({ address: zapper, abi: leverageZapperAbi, functionName })),
+  ]);
+  if (!zapperCode || zapperCode === '0x' || !exchangeCode || exchangeCode === '0x'
+    || !sameAddress(coll, branch.spyToken) || !sameAddress(bold, branch.boldToken)
+    || !sameAddress(swap, exchange) || !sameAddress(lender, exchange)
+    || !sameAddress(operations, branch.borrowerOperations)) {
+    throw new Error('Multiply deployment contracts could not be verified on Robinhood testnet.');
+  }
+}
+
+export function isMultiplyCollateralSafe(collateral: bigint, oraclePrice: bigint, debt: bigint, feeCeiling: bigint): boolean {
+  // SPY and FUSD use 18 decimals in this branch; MCR is 110%.
+  return oraclePrice > 0n && debt > 0n && collateral * oraclePrice >= (debt + feeCeiling) * 1_100_000_000_000_000_000n;
+}
 
 export const leverageZapperAbi = [
+  ...parseAbi(['function flashLoanProvider() view returns (address)', 'function borrowerOperations() view returns (address)']),
   {
     type: 'function',
     name: 'collToken',
@@ -62,7 +122,7 @@ export const leverageZapperAbi = [
   },
   {
     type: 'function',
-    name: 'openLeveragedTroveWithRawETH',
+    name: 'openLeveragedTroveWithSPY',
     stateMutability: 'payable',
     inputs: [{
       name: '_params',
