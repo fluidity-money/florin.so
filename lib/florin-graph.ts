@@ -15,7 +15,7 @@ type FlorinFetchOptions = RequestInit & {
 async function queryFlorinMarkets(options: FlorinFetchOptions): Promise<FlorinMarkets> {
   const response = await fetch(FLORIN_GRAPH_URL, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', 'x-graphql-cache': 'BYPASS' },
     body: JSON.stringify({ query: MARKET_QUERY }),
     ...options,
   });

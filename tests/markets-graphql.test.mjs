@@ -4,13 +4,18 @@ import test from 'node:test';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
+test('server GraphQL requests bypass the upstream cache', () => {
+  assert.match(read('lib/florin-graph.ts'), /'x-graphql-cache': 'BYPASS'/);
+  assert.doesNotMatch(read('lib/use-florin-markets.ts'), /x-graphql-cache/);
+});
+
 test('server-rendered market data uses the Next data cache', () => {
   const graph = read('lib/florin-graph.ts');
   const query = read('lib/florin-market-query.ts');
   const markets = read('components/markets.tsx');
   const home = read('app/page.tsx');
 
-  assert.match(query, /https:\/\/graph\.florin\.so/);
+  assert.match(query, /https:\/\/graph\.superposition\.so\/florin/);
   for (const field of [
     'borrowDetails',
     'avgRatePa',
@@ -41,7 +46,7 @@ test('browser refreshes directly from Florin GraphQL and persists the latest dat
   assert.match(hook, /method:\s*'POST'/);
   assert.match(hook, /body:\s*JSON\.stringify\(\{\s*query:\s*MARKET_QUERY\s*\}\)/);
   assert.match(hook, /cache:\s*'no-store'/);
-  assert.match(query, /https:\/\/graph\.florin\.so/);
+  assert.match(query, /https:\/\/graph\.superposition\.so\/florin/);
   assert.doesNotMatch(hook, /\/api\/florin-markets/);
   assert.equal(
     existsSync(new URL('../app/api/florin-markets/route.ts', import.meta.url)),
