@@ -13,7 +13,6 @@ async function fetchMarkets(): Promise<FlorinMarkets> {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ query: MARKET_QUERY }),
-    cache: 'no-store',
   });
   if (!response.ok) throw new Error(`Florin GraphQL returned HTTP ${response.status}`);
 

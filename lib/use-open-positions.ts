@@ -34,7 +34,6 @@ export function useOpenPositions(owner: string | null) {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ query: OPEN_POSITIONS_QUERY, variables: { owner } }),
-          cache: 'no-store',
           signal: controller.signal,
         });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
