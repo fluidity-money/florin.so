@@ -218,7 +218,7 @@ func main() {
 	srv.Use(extension.AutomaticPersistedQuery{
 		Cache: lru.New[string](100),
 	})
-	http.Handle("/playground", playground.Handler("GraphQL playground", "/florin"))
+	http.Handle("/florin/playground", playground.Handler("GraphQL playground", "/florin"))
 	http.Handle("/florin", middleware{srv, db})
 	l, err := activation.Listeners()
 	if err != nil {
