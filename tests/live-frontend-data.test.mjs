@@ -85,10 +85,11 @@ test('open-position risk calculations use the validated price returned by fetchP
   const open = read('components/open-position-form.tsx');
 
   assert.match(open, /simulateContract/);
-  assert.match(open, /functionName:\s*'fetchPrice'/);
-  assert.match(open, /validatedOraclePrice/);
-  assert.match(open, /oraclePrice\.isError\s*\?\s*'unavailable'\s*:\s*'loading…'/);
-  assert.match(open, /SPY oracle is unavailable or rejected its latest round/);
+  const opening = read('lib/opening-capacity.ts');
+  assert.match(opening, /functionName:\s*'fetchPrice'/);
+  assert.match(opening, /validatedOraclePrice\(oracle.result\)/);
+  assert.match(open, /openingQuote\.isError\s*\?\s*'unavailable'\s*:\s*'loading…'/);
+  assert.match(open, /Live opening limits or the oracle are unavailable/);
   assert.doesNotMatch(open, /functionName:\s*'lastGoodPrice'/);
 });
 
@@ -120,7 +121,7 @@ test('SPY rows are selected by collateral name and Max includes the upfront fee'
   const open = read('components/open-position-form.tsx');
 
   assert.match(markets, /collateral\.name === 'SPY'/);
-  assert.match(open, /open-trove-max-fee/);
-  assert.match(open, /maxTotalDebtWei - \(maxBorrowFee\.data \?\? 0n\)/);
+  assert.match(open, /quoteOpening\(publicClient, collateralWei, borrowedWei, rateWei\)/);
+  assert.match(read('lib/opening-capacity.ts'), /solveOpeningMax\(capacity, state.feeDebt, state.weightedDebt, rate, predict\)/);
   assert.doesNotMatch(open, /const maxBorrow = collateralUsd \/ MIN_COLLATERAL_RATIO/);
 });

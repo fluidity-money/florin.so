@@ -32,7 +32,7 @@ test('opening a position uses the account mutation only behind enable-accounts',
   assert.match(openPosition, /boldAmt: borrowedWei\.toString\(\)/);
   assert.match(openPosition, /annualInterestRate: rateWei\.toString\(\)/);
   assert.match(openPosition, /ownerIndex: ownerIndex\.toString\(\)/);
-  assert.match(openPosition, /maxUpfrontFee: maxUpfrontFee\(predictedFee\)\.toString\(\)/);
+  assert.match(openPosition, /maxUpfrontFee: feeLimit\.toString\(\)/);
   assert.match(openPosition, /receiver: account/);
 });
 

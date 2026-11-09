@@ -24,7 +24,7 @@ test('mint page offers a maximum FUSD amount', () => {
   const open = read('components/open-position-form.tsx');
 
   assert.match(open, /className="swap__max"/);
-  assert.match(open, /setDebtStr\(maxBorrow/);
+  assert.match(open, /setDebtStr\(formatOpeningMax\(current.maxPrincipal\)\)/);
   assert.match(open, />\s*Max\s*</);
 });
 

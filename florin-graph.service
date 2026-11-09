@@ -7,8 +7,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=florin
-Group=database-users
-EnvironmentFile=/etc/graph.florin.so/config
+Group=fluidity_apps
+EnvironmentFile=/etc/fluidity-apps/robinhood-testnet.conf
 ExecStart=/usr/local/bin/florin-graph
 Restart=on-failure
 RestartSec=3s

@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createPublicClient,
   createWalletClient,
@@ -39,24 +39,20 @@ import {
   borrowerOperationsAbi,
   CONTRACTS,
   erc20Abi,
-  hintHelpersAbi,
   getApproxHintBatched,
   LIQUIDATOR_COMPENSATION_WETH,
-  maxUpfrontFee,
-  MIN_DEBT,
-  priceFeedAbi,
   randomOwnerIndex,
   requiredSpyApproval,
   requiredWethWrap,
   ROBINHOOD_TESTNET_CHAIN_ID,
   sortedTrovesAbi,
-  validateOpenTrove,
-  validatedOraclePrice,
   wethAbi,
 } from '../lib/borrow-contract';
 
+import { quoteOpening, requireOpeningQuote, reviewOpeningRefresh, validateOpeningAmount, formatOpeningMax } from '../lib/opening-capacity';
+
 const publicClient = createPublicClient({ chain: robinhoodTestnet, transport: http() });
-const MAX_LTV = 1 / MIN_COLLATERAL_RATIO;
+
 
 type TxStage = 'idle' | 'switching' | 'wrapping' | 'approving-weth' | 'approving' | 'opening' | 'confirming';
 
@@ -130,22 +126,17 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   const borrowedWei = useMemo(() => parseToken(debtStr), [debtStr]);
   const rateWei = BigInt(Math.round(rate * 1e18));
 
-  // The oracle price is a public read, so it is kept out of the account-gated
-  // query below. Someone sizing up a position before they connect anything
-  // still gets a live price, a collateral value in dollars and a working Max.
-  const oraclePrice = useQuery({
-    queryKey: ['spy-oracle-price'],
+  const queryClient = useQueryClient();
+  const openingKey = ['opening-capacity', collateralWei.toString(), borrowedWei.toString(), rateWei.toString()];
+  const openingQuote = useQuery({
+    queryKey: openingKey,
     refetchInterval: 15_000,
     retry: false,
-    queryFn: async () => {
-      const simulation = await publicClient.simulateContract({
-        address: CONTRACTS.spyPriceFeed,
-        abi: priceFeedAbi,
-        functionName: 'fetchPrice',
-      });
-      return validatedOraclePrice(simulation.result);
-    },
+    queryFn: () => quoteOpening(publicClient, collateralWei, borrowedWei, rateWei),
   });
+  let quoteReady = false;
+  try { requireOpeningQuote(openingQuote); quoteReady = true; } catch { /* fail closed */ }
+  const quote = openingQuote.data;
 
   // Balance and allowance are the parts that genuinely need an address.
   const chainState = useQuery({
@@ -171,56 +162,20 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
     },
   });
 
-  const upfrontFee = useQuery({
-    queryKey: ['open-trove-fee', borrowedWei.toString(), rateWei.toString()],
-    enabled: borrowedWei >= MIN_DEBT,
-    queryFn: () => publicClient.readContract({
-      address: CONTRACTS.hintHelpers,
-      abi: hintHelpersAbi,
-      functionName: 'predictOpenTroveUpfrontFee',
-      args: [0n, borrowedWei, rateWei],
-    }),
-  });
-
-  // Target the 110% minimum exactly. BorrowerOperations reverts only when the
-  // ratio is strictly below MCR, so a position landing on it is accepted, and
-  // this is the figure the "Max LTV 90.9%" line above already promises.
-  //
-  // Quote the fee at that ceiling, then subtract it from principal. The fee is
-  // linear in debt, so the resulting total lands a hair under the ceiling
-  // rather than over it: for a fee rate k, total debt is ceiling * (1 - k^2),
-  // which at current rates is about a millionth short. Conservative in the
-  // direction that matters, and not worth an extra round trip to recover.
-  const maxTotalDebtWei = oraclePrice.data
-    ? (collateralWei * oraclePrice.data * 10n) / (10n ** 18n * 11n)
-    : 0n;
-  const maxBorrowFee = useQuery({
-    queryKey: ['open-trove-max-fee', maxTotalDebtWei.toString(), rateWei.toString()],
-    enabled: maxTotalDebtWei >= MIN_DEBT,
-    queryFn: () => publicClient.readContract({
-      address: CONTRACTS.hintHelpers,
-      abi: hintHelpersAbi,
-      functionName: 'predictOpenTroveUpfrontFee',
-      args: [0n, maxTotalDebtWei, rateWei],
-    }),
-  });
-
-  const priceReady = oraclePrice.data !== undefined;
-  const chainReady = Boolean(chainState.data) && priceReady;
-  const feeReady = borrowedWei < MIN_DEBT || upfrontFee.data !== undefined;
-  const spyPrice = oraclePrice.data ? Number(formatUnits(oraclePrice.data, 18)) : 0;
+  const priceReady = quoteReady;
+  const chainReady = Boolean(chainState.data) && quoteReady;
+  const feeReady = quoteReady;
+  const spyPrice = quote ? Number(formatUnits(quote.price, 18)) : 0;
   const spy = Math.max(0, xnum(spyStr));
   const borrow = Math.max(0, xnum(debtStr));
-  const fee = Number(formatUnits(upfrontFee.data ?? 0n, 18));
+  const fee = Number(formatUnits(quote?.fee ?? 0n, 18));
   const totalDebt = borrow + fee;
   const collateralUsd = spy * spyPrice;
   const collateralRatio = totalDebt > 0 ? collateralUsd / totalDebt : 0;
   const ltv = collateralUsd > 0 ? totalDebt / collateralUsd : 0;
-  const maxBorrowWei = maxTotalDebtWei > (maxBorrowFee.data ?? maxTotalDebtWei)
-    ? maxTotalDebtWei - (maxBorrowFee.data ?? 0n)
-    : 0n;
-  const maxBorrow = Number(formatUnits(maxBorrowWei, 18));
-  const liquidationPrice = spy > 0 && totalDebt > 0 ? MIN_COLLATERAL_RATIO * totalDebt / spy : 0;
+  const maxBorrowWei = quote?.maxPrincipal ?? 0n;
+  const minimumRatio = quote ? Number(formatUnits(quote.mcr, 18)) : MIN_COLLATERAL_RATIO;
+  const liquidationPrice = spy > 0 && totalDebt > 0 ? minimumRatio * totalDebt / spy : 0;
   const annualInterest = totalDebt * rate;
   const redemptionRisk = marketAverageRate === null
     ? null
@@ -231,11 +186,11 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         : 'high';
   const pending = stage !== 'idle';
   const walletBalance = chainState.data ? Number(formatUnits(chainState.data.balance, 18)) : 0;
-  const protocolError = validateOpenTrove(collateralWei, borrowedWei, rateWei);
+  const protocolError = quoteReady && quote ? validateOpeningAmount(collateralWei, borrowedWei, rateWei, quote.fee, quote.capacity) : null;
   const insufficientSpy = chainState.data
     ? chainState.data.balance < requiredSpyApproval(collateralWei)
     : false;
-  const unsafe = totalDebt > 0 && collateralRatio < MIN_COLLATERAL_RATIO;
+  const unsafe = quoteReady && quote ? borrowedWei + quote.fee > quote.capacity : false;
   const active = collateralWei > 0n && borrowedWei > 0n;
 
   function reportError(cause: unknown, failureStage: TransactionFailureStage, transactionHash: Hash | null = null) {
@@ -262,7 +217,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       }
       return;
     }
-    if (pending || protocolError || unsafe || insufficientSpy) return;
+    if (pending || protocolError || unsafe || insufficientSpy || !quoteReady || chainState.isError) return;
 
     captureEvent('position_open_requested', {
       chain_id: ROBINHOOD_TESTNET_CHAIN_ID,
@@ -277,6 +232,15 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       setStage('switching');
       await ensureRobinhoodTestnet(wallet.provider);
       failureStage = 'preparing';
+      const reviewed = requireOpeningQuote(openingQuote);
+      // Re-read before approvals, and again after all approval/hint work. Never
+      // silently alter the principal, even when the newly available Max changes.
+      const refreshOpening = async () => {
+        const fresh = await quoteOpening(publicClient, collateralWei, borrowedWei, rateWei);
+        queryClient.setQueryData(openingKey, fresh);
+        return reviewOpeningRefresh(reviewed, fresh, collateralWei, borrowedWei, rateWei);
+      };
+      await refreshOpening();
       const requiredApproval = requiredSpyApproval(collateralWei);
       const directStatePromise = enableAccounts
         ? Promise.resolve(null)
@@ -301,18 +265,12 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
           }),
           publicClient.getBalance({ address: account }),
         ]);
-      const [balance, predictedFee, troveCount, directState] = await Promise.all([
+      const [balance, troveCount, directState] = await Promise.all([
         publicClient.readContract({
           address: CONTRACTS.spyToken,
           abi: erc20Abi,
           functionName: 'balanceOf',
           args: [account],
-        }),
-        publicClient.readContract({
-          address: CONTRACTS.hintHelpers,
-          abi: hintHelpersAbi,
-          functionName: 'predictOpenTroveUpfrontFee',
-          args: [0n, borrowedWei, rateWei],
         }),
         publicClient.readContract({
           address: CONTRACTS.sortedTroves,
@@ -339,6 +297,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
           });
         }
 
+        const feeLimit = await refreshOpening();
         failureStage = 'opening';
         setStage('opening');
         const ownerIndex = randomOwnerIndex();
@@ -350,7 +309,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
             boldAmt: borrowedWei.toString(),
             annualInterestRate: rateWei.toString(),
             ownerIndex: ownerIndex.toString(),
-            maxUpfrontFee: maxUpfrontFee(predictedFee).toString(),
+            maxUpfrontFee: feeLimit.toString(),
             lowerHint: lowerHint.toString(),
             upperHint: upperHint.toString(),
             receiver: account,
@@ -479,6 +438,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         transactionHash = null;
       }
 
+      const feeLimit = await refreshOpening();
       failureStage = 'opening';
       setStage('opening');
       const ownerIndex = randomOwnerIndex();
@@ -495,7 +455,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
           upperHint,
           lowerHint,
           rateWei,
-          maxUpfrontFee(predictedFee),
+          feeLimit,
           zeroAddress,
           zeroAddress,
           zeroAddress,
@@ -578,7 +538,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       <div className="swap__field">
         <span className="swap__label">Collateral</span>
         <div className="swap__row">
-          <input className="swap__amount" inputMode="decimal" placeholder="0.00" value={spyStr}
+          <input disabled={pending} className="swap__amount" inputMode="decimal" placeholder="0.00" value={spyStr}
             onChange={(event) => {
               markFormStarted('collateral');
               setSpyStr(event.target.value);
@@ -591,16 +551,16 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       </div>
       <div className="swap__meta">
         <span>
-          Oracle price <b>{priceReady ? `$${money(spyPrice)}` : oraclePrice.isError ? 'unavailable' : 'loading…'}</b>{' '}
+          Oracle price <b>{priceReady ? `$${money(spyPrice)}` : openingQuote.isError ? 'unavailable' : 'loading…'}</b>{' '}
           {priceReady && <><i className="swap__dot swap__dot--ok" /> onchain</>}
         </span>
-        <span>Max LTV <b>{pct(MAX_LTV * 100, 1)}</b></span>
+        <span>Individual max LTV <b>{quoteReady ? pct(100 / minimumRatio, 1) : '−'}</b></span>
       </div>
 
       <div className="swap__field">
         <span className="swap__label">Loan</span>
         <div className="swap__row">
-          <input className="swap__amount" inputMode="decimal" placeholder="10.00" value={debtStr}
+          <input disabled={pending} className="swap__amount" inputMode="decimal" placeholder="10.00" value={debtStr}
             onChange={(event) => {
               markFormStarted('borrow_amount');
               setDebtStr(event.target.value.replaceAll(',', ''));
@@ -608,13 +568,13 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
           <button
             type="button"
             className="swap__max"
-            disabled={maxBorrow <= 0}
+            disabled={pending || !quoteReady || maxBorrowWei <= 0n}
             onClick={() => {
               captureEvent('max_amount_selected', { context: 'open_position', asset: loanToken });
-              // Floor, never round: toFixed rounds half up, so the field
-              // could be filled with up to half a cent more than the ceiling
-              // the number was derived from.
-              setDebtStr(maxBorrow > 0 ? (Math.floor(maxBorrow * 100) / 100).toFixed(2) : '');
+              try {
+                const current = requireOpeningQuote(openingQuote);
+                setDebtStr(formatOpeningMax(current.maxPrincipal));
+              } catch (cause) { reportError(cause, 'preparing'); }
             }}
           >
             Max
@@ -635,7 +595,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       </div>
       <div className="swap__meta">
         <span><i className={`swap__dot swap__dot--${unsafe ? 'liquidation' : collateralRatio < 1.3 && active ? 'warning' : 'healthy'}`} /> Liquidation risk</span>
-        <span>Approx. max borrow <b>{spy > 0 ? `$${money(maxBorrow, 2)}` : '−'}</b></span>
+        <span>Current max borrow <b>{quoteReady && spy > 0 ? `${formatOpeningMax(maxBorrowWei)} FUSD` : '−'}</b></span>
       </div>
       <div className="swap__meta swap__meta--right">
         <span>Liquidation price <b>{active ? `$${money(liquidationPrice)}` : '−'}</b></span>
@@ -653,7 +613,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         </div>
         <div className="swap__row">
           <span className="swap__amount swap__amount--rate">{pct(rate * 100, 2)}</span>
-          <input className="slider swap__slider" type="range" min={MIN_RATE} max={MAX_RATE} step={0.0025}
+          <input disabled={pending} className="slider swap__slider" type="range" min={MIN_RATE} max={MAX_RATE} step={0.0025}
             value={rate} onChange={(event) => {
               markFormStarted('interest_rate');
               setRate(parseFloat(event.target.value));
@@ -679,15 +639,21 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       <details className="swap__note">
         <summary>What happens when you open a position?</summary>
         <p>Your wallet wraps up to 0.001 ETH into WETH and approves it for liquidator compensation. It separately approves the exact SPY collateral, then opens the position and mints FUSD.</p>
+        <p>Max includes the upfront fee and the live branch collateral requirement. It is a boundary, not a guarantee: price and accrued debt can change before execution. If your amount no longer fits, you must review it before submitting.</p>
         <p>Your interest rate also determines your place in the redemption queue: lower-rate positions are redeemed first.</p>
       </details>
 
       {protocolError && active && <p className="warn">{protocolError}</p>}
-      {unsafe && <p className="warn">This position is below the protocol&apos;s 110% minimum collateral ratio.</p>}
+      {unsafe && <p className="warn">This amount exceeds the current individual or branch borrowing limit.</p>}
+      {quoteReady && quote && collateralWei > 0n && quote.capacity < collateralWei * quote.price / quote.mcr && (
+        <p className="swap__note">Max is limited by the protocol&apos;s required system collateral ratio.</p>
+      )}
+      {quoteReady && collateralWei > 0n && maxBorrowWei === 0n && (
+        <p className="warn">No opening amount at cent precision meets the minimum debt and current collateral limits. Increase your collateral.</p>
+      )}
       {insufficientSpy && <p className="warn">Your wallet does not have enough testnet SPY for the collateral.</p>}
       {chainState.isError && <p className="warn">Could not read the Robinhood testnet contracts. Try again before submitting.</p>}
-      {oraclePrice.isError && <p className="warn">The SPY oracle is unavailable or rejected its latest round. Borrowing is disabled until the oracle is repaired.</p>}
-      {upfrontFee.isError && <p className="warn">Could not quote the onchain upfront fee. Try again before submitting.</p>}
+      {openingQuote.isError && <p className="warn">Live opening limits or the oracle are unavailable. Refresh before submitting.</p>}
       {error && (
         <div className="swap__error" role="alert">
           <p className="warn">{error.title}</p>
@@ -708,7 +674,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 
       <Button
         variant="primary"
-        disabled={usdgSelected || (wallet.connected && (!active || Boolean(protocolError) || unsafe || insufficientSpy || pending || !chainReady || !feeReady || chainState.isError || oraclePrice.isError || upfrontFee.isError))}
+        disabled={usdgSelected || (wallet.connected && (!active || Boolean(protocolError) || unsafe || insufficientSpy || pending || !chainReady || !feeReady || chainState.isError || openingQuote.isError))}
         onClick={() => {
           if (!usdgSelected) void openTrove();
         }}
