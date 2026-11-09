@@ -1,4 +1,4 @@
-export const FLORIN_GRAPH_URL = 'https://graph.florin.so';
+export const FLORIN_GRAPH_URL = 'https://graph.superposition.so/florin';
 
 export const MARKET_QUERY = `
   query Markets {
