@@ -1,0 +1,18 @@
+[Unit]
+Description=Florin Ingestor
+
+[Service]
+Type=simple
+User=florin
+Group=fluidity_apps
+EnvironmentFile=/etc/fluidity-apps/robinhood-testnet.conf
+ExecStart=/usr/local/bin/florin-ingestor
+Restart=on-failure
+RestartSec=3s
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict
+
+[Install]
+WantedBy=multi-user.target
