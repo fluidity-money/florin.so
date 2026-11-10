@@ -5,11 +5,11 @@ export const BPS = 10_000n;
 
 // Robinhood testnet mocks. Explicit zero overrides disable Multiply.
 export const CONTRACTS = {
-  leverageZapper: (process.env.NEXT_PUBLIC_LEVERAGE_ZAPPER_ADDRESS || '0x951329B091FA939d8B39f30A520a17eb39Fd46D5') as Address,
+  leverageZapper: (process.env.NEXT_PUBLIC_LEVERAGE_ZAPPER_ADDRESS || '0xf63a41A0C8fDB81704C92Ba39eAcfB11f8C3FD87') as Address,
   // Legacy QUOTER is an exchange override, never an ExchangeHelpersV2 address.
-  exchange: (process.env.NEXT_PUBLIC_MULTIPLY_EXCHANGE_ADDRESS || process.env.NEXT_PUBLIC_MULTIPLY_QUOTER_ADDRESS || '0x951a4CC107b5DF2bb11AAa46C48D85C4c3b0F09E') as Address,
+  exchange: (process.env.NEXT_PUBLIC_MULTIPLY_EXCHANGE_ADDRESS || process.env.NEXT_PUBLIC_MULTIPLY_QUOTER_ADDRESS || '0x6AfC499c52571F03272Fa6a4FBba0b73674f7f4c') as Address,
   // Informational only: leverage inherits gas compensation; do not call this separately.
-  gasCompZapper: (process.env.NEXT_PUBLIC_GAS_COMP_ZAPPER_ADDRESS || '0xFF24F0BEc5DfB6B6E5890FEe493488a235d4fC31') as Address,
+  gasCompZapper: (process.env.NEXT_PUBLIC_GAS_COMP_ZAPPER_ADDRESS || '0x2Ce45DC74397aE3A5082cc822A9A978fd387429b') as Address,
 } as const;
 
 export function multiplyAmounts(

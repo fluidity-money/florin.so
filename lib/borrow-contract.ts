@@ -9,25 +9,25 @@ export const LIQUIDATOR_COMPENSATION_WETH = 1_000_000_000_000_000n;
 export const MIN_FUSD_IN_STABILITY_POOL = 10n ** 18n;
 
 // florin-contracts/contracts/addresses/46630.json, SPY branch (index 0).
-// base is the branch AddressesRegistry; spyPriceFeed is PriceFeedTestnet, not Chainlink.
+// base is the branch AddressesRegistry; spyPriceFeed is the branch protocol price feed.
 export const CONTRACTS = {
   spyToken: '0x8823b40A23387Df76E127744FFB38b26eB012A5c',
-  metadataNft: '0x332b4f1473160f418cbbd7c9f6c89eb08879e587',
-  base: '0x670baf9f4ee72e512d0c54f9ac963c015f066523',
-  boldToken: '0x8395919e3dddd2f73ec8ad8d187d8f9a5e7b20e9',
-  collateralRegistry: '0x873787097630e8095483186343e4738cc88cfffd',
-  hintHelpers: '0xf1ed4861246d88b4ab0dbcfd0015d716b4887859',
-  multiTroveGetter: '0x3b6bb5c168d3ef3b3fd2c23af50f301c8d05dc3b',
-  activePool: '0x5abf687eea1fe36187ccd27d0edb666dfb8f0dcc',
-  borrowerOperations: '0x4d261fd6d568cbad37ac75371aa3ca65f5daf216',
-  collSurplusPool: '0x5a120ca45392eff69dfac4ea8929e46f693bc41f',
-  defaultPool: '0xec1711b2b0ffa7223924ab8cab1601da8e03b68a',
-  gasPool: '0xf8b5e13ba1d345921755e229c33314849dcaac3c',
-  sortedTroves: '0x9e1785f500950fec0504c8beb54f64807cc6526a',
-  stabilityPool: '0xcfb96d8a9979a8f245c434ab7ff06f9431a680b8',
-  troveManager: '0xe235b5c3f68595e1d24390c04bacb58550eb8a0c',
-  troveNft: '0x831d94bd07fecdc40617b38b4f01d2c06d09e3a4',
-  spyPriceFeed: '0x86f868fa0c1704e6a6774f0d7ecbbe92dd6986e8',
+  metadataNft: '0xd2e22b2a1ec0b287cb550e92255694aaa0b6e133',
+  base: '0xd48655f1fc1a6648246cc9802c6ee5190c93fec0',
+  boldToken: '0x1f93de989cd9d30b2c31f3227769632729858196',
+  collateralRegistry: '0xeb264317b915cb1a8c8e3ca27dd270d947bba968',
+  hintHelpers: '0xcd8bf0cb142d8e612b9685772b2c5439240c1ba5',
+  multiTroveGetter: '0x8fac04bbcaadced3074a2909d9490510033b4caa',
+  activePool: '0xf00a7eb2cf0d8dee71788bbb99d57d8a4ef98775',
+  borrowerOperations: '0xfea06161dbd14374ee6a746eae3502a1a6741990',
+  collSurplusPool: '0x43a5c00937b4aec0b56f0e12dedd2247e4a454f7',
+  defaultPool: '0x47697a6400bd3848519f469bbc0824b954826e66',
+  gasPool: '0xdc6041cc3ba941e96421ed13e26b2f4ffefb7b71',
+  sortedTroves: '0x83311690476dfa9239b55e732b4b6638a15142df',
+  stabilityPool: '0x9543b191c66c4fa68b9b7888df65b661842ace1b',
+  troveManager: '0xc1ebb33678176d7fb5c8fef3ba5a610d50bacc63',
+  troveNft: '0xe361393f4d0f3b40eca34c7a83e27e4b5dcfa1c3',
+  spyPriceFeed: '0xb7dc3a2596e9a0571b6e104d2f1a3d35b0653862',
   weth: '0x7943e237c7F95DA44E0301572D358911207852Fa',
 } as const satisfies Record<string, Address>;
 
