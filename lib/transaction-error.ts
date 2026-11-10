@@ -19,6 +19,7 @@ export type TransactionErrorDescription = {
 type ErrorDetails = {
   messages: string[];
   reasons: string[];
+  unauthorized?: boolean;
   code?: string;
 };
 
@@ -65,6 +66,8 @@ function collectErrorDetails(error: unknown): ErrorDetails {
       details.code = String(candidate.code);
     }
 
+    if (candidate.code === 4100 || candidate.code === '4100') details.unauthorized = true;
+
     visit(candidate.data, depth + 1);
     visit(candidate.cause, depth + 1);
   }
@@ -84,6 +87,16 @@ export function describeTransactionError(
     .slice(0, MAX_DETAIL_LENGTH);
   const searchable = `${details.code ?? ''} ${technicalDetails}`.toLowerCase();
   const reason = details.reasons[0];
+
+  if (details.unauthorized || /requested method and\/or account has not been authorized/.test(searchable)) {
+    return {
+      title: 'Reconnect your wallet.',
+      explanation: 'Disconnect and reconnect your wallet to authorize the account displayed in Florin. In MetaMask, allow this site to access that account, then try again.',
+      technicalDetails,
+      code: '4100',
+      stage,
+    };
+  }
 
   if (details.code === '4001' || /user (rejected|denied)|rejected the request|request rejected/.test(searchable)) {
     return {

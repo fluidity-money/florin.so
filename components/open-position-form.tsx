@@ -32,6 +32,7 @@ import {
   type TransactionFailureStage,
 } from '../lib/transaction-error';
 import { useWallet } from './wallet/wallet';
+import { requireAuthorizedAccount } from '../lib/wallet-authorization';
 import useAccount from '../hooks/useAccount';
 import useFeature from '../hooks/useFeature';
 import { captureEvent } from '../lib/analytics';
@@ -230,7 +231,9 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
     let transactionHash: Hash | null = null;
     try {
       setStage('switching');
+      await requireAuthorizedAccount(wallet.provider, account);
       await ensureRobinhoodTestnet(wallet.provider);
+      await requireAuthorizedAccount(wallet.provider, account);
       failureStage = 'preparing';
       const reviewed = requireOpeningQuote(openingQuote);
       // Re-read before approvals, and again after all approval/hint work. Never
