@@ -18,6 +18,7 @@ import { money, pct, xnum } from '../lib/format';
 import { useWallet } from './wallet/wallet';
 import { useOpenPositions } from '../lib/use-open-positions';
 import type { FlorinPosition } from '../lib/florin-positions';
+import { positionKey, selectPosition } from '../lib/position-navigation';
 import { positionMetrics } from '../lib/protocol-math';
 import { MAX_RATE, MIN_COLLATERAL_RATIO, MIN_RATE } from '../lib/protocol-constants';
 import { parseDisplayPercent, spyMarket, type FlorinMarkets } from '../lib/florin-markets';
@@ -138,13 +139,14 @@ function PositionNotice({
   );
 }
 
-export function ManagePosition({ initialMarkets }: { initialMarkets: FlorinMarkets }) {
+export function ManagePosition({ initialMarkets, requestedPosition = null }: { initialMarkets: FlorinMarkets; requestedPosition?: string | null }) {
   const w = useWallet();
   const markets = useFlorinMarkets(initialMarkets);
   const { borrow: spyMarketDetails } = spyMarket(markets);
   const marketAverageRate = parseDisplayPercent(spyMarketDetails?.avgRatePa);
   const { status, positions, error, refresh } = useOpenPositions(w.address);
-  const [selectedTroveId, setSelectedTroveId] = useState<string | null>(null);
+  const selectionScope = `${w.address?.toLowerCase()}:${requestedPosition}`;
+  const [selection, setSelection] = useState<{ scope: string; key: string } | null>(null);
 
   if (!w.connected || !w.address) {
     return (
@@ -171,13 +173,18 @@ export function ManagePosition({ initialMarkets }: { initialMarkets: FlorinMarke
     );
   }
 
-  const position = positions.find(({ troveId }) => troveId === selectedTroveId) ?? positions[0];
+  const position = selectPosition(positions, selection?.scope === selectionScope ? selection.key : requestedPosition);
+  if (!position) {
+    return <PositionNotice title="Position not available" retry={refresh}>
+      The requested position is not available for this wallet yet. Check the connected wallet or retry while indexing catches up.
+    </PositionNotice>;
+  }
   return (
     <PositionEditor
-      key={position.troveId}
+      key={`${w.address}:${positionKey(position)}`}
       position={position}
       positions={positions}
-      onSelect={setSelectedTroveId}
+      onSelect={key => setSelection({ scope: selectionScope, key })}
       onChanged={refresh}
       marketAverageRate={marketAverageRate}
     />
@@ -275,9 +282,9 @@ function PositionPicker({
   }, [open]);
 
   function step(delta: number) {
-    const at = positions.findIndex(({ troveId }) => troveId === selected.troveId);
+    const at = positions.findIndex(position => positionKey(position) === positionKey(selected));
     const next = positions[(at + delta + positions.length) % positions.length];
-    if (next) onSelect(next.troveId);
+    if (next) onSelect(positionKey(next));
   }
 
   return (
@@ -305,16 +312,16 @@ function PositionPicker({
       {open && (
         <ul className="picker__menu" role="listbox" aria-label="Your open positions">
           {positions.map((candidate) => {
-            const current = candidate.troveId === selected.troveId;
+            const current = positionKey(candidate) === positionKey(selected);
             return (
-              <li key={candidate.troveId}>
+              <li key={positionKey(candidate)}>
                 <button
                   type="button"
                   role="option"
                   aria-selected={current}
                   className={current ? 'picker__opt picker__opt--on' : 'picker__opt'}
                   onClick={() => {
-                    onSelect(candidate.troveId);
+                    onSelect(positionKey(candidate));
                     setOpen(false);
                   }}
                 >

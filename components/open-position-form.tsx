@@ -32,7 +32,10 @@ import {
   type TransactionFailureStage,
 } from '../lib/transaction-error';
 import { useWallet } from './wallet/wallet';
-import { pendingPositions } from '../lib/pending-positions';
+import Link from 'next/link';
+import { pendingPositions, positionsFromReceipt } from '../lib/pending-positions';
+import { managePositionHref } from '../lib/position-navigation';
+import type { FlorinPosition } from '../lib/florin-positions';
 import { requireAuthorizedAccount } from '../lib/wallet-authorization';
 import useAccount from '../hooks/useAccount';
 import useFeature from '../hooks/useFeature';
@@ -113,6 +116,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   const [error, setError] = useState<TransactionErrorDescription | null>(null);
   const [txHash, setTxHash] = useState<Hash | null>(null);
   const [minted, setMinted] = useState(false);
+  const [openedPosition, setOpenedPosition] = useState<FlorinPosition | null>(null);
   const formStarted = useRef(false);
 
   function markFormStarted(firstField: 'collateral' | 'borrow_amount' | 'interest_rate') {
@@ -229,6 +233,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
     });
     setError(null);
     setTxHash(null);
+    setOpenedPosition(null);
     let failureStage: TransactionFailureStage = 'switching';
     let transactionHash: Hash | null = null;
     try {
@@ -344,6 +349,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         if (replacementInvalid) throw new Error('The transaction was cancelled or replaced.');
         if (receipt.status !== 'success') throw new Error('The account open-position transaction reverted.');
         pendingPositions.confirm(account, CONTRACTS.troveManager, receipt);
+        setOpenedPosition(positionsFromReceipt(account, CONTRACTS.troveManager, receipt)[0] ?? null);
         updateMarkets(receipt, {
           deposited: Number(formatUnits(collateralWei, 18)),
           debtIssued: Number(formatUnits(borrowedWei, 18)),
@@ -499,6 +505,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       if (replacementInvalid) throw new Error('The transaction was cancelled or replaced.');
       if (receipt.status !== 'success') throw new Error('The open-trove transaction reverted.');
       pendingPositions.confirm(account, CONTRACTS.troveManager, receipt);
+      setOpenedPosition(positionsFromReceipt(account, CONTRACTS.troveManager, receipt)[0] ?? null);
       updateMarkets(receipt, {
         deposited: Number(formatUnits(collateralWei, 18)),
         debtIssued: Number(formatUnits(borrowedWei, 18)),
@@ -533,6 +540,9 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
           >
             View transaction ↗
           </a>
+          {openedPosition && openedPosition.owner.toLowerCase() === wallet.address?.toLowerCase() && (
+            <Link className="btn" href={managePositionHref(openedPosition)}>Manage position →</Link>
+          )}
         </div>
       </div>
     );

@@ -19,7 +19,10 @@ import { Button } from './ui';
 import { RisksDialog } from './risks-dialog';
 import { Token, TokenIcon } from './token-icon';
 import { useWallet } from './wallet/wallet';
-import { pendingPositions } from '../lib/pending-positions';
+import Link from 'next/link';
+import { pendingPositions, positionsFromReceipt } from '../lib/pending-positions';
+import { managePositionHref } from '../lib/position-navigation';
+import type { FlorinPosition } from '../lib/florin-positions';
 import { money, pct, xnum } from '../lib/format';
 import { DEFAULT_RATE, MAX_RATE, MIN_COLLATERAL_RATIO, MIN_RATE } from '../lib/protocol-constants';
 import {
@@ -108,6 +111,7 @@ export function MultiplyForm() {
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<Hash | null>(null);
   const [complete, setComplete] = useState(false);
+  const [openedPosition, setOpenedPosition] = useState<FlorinPosition | null>(null);
 
   const depositWei = useMemo(() => parseToken(depositStr), [depositStr]);
   const rateWei = BigInt(Math.round(rate * 1e18));
@@ -204,6 +208,7 @@ export function MultiplyForm() {
 
     setError(null);
     setTxHash(null);
+    setOpenedPosition(null);
     try {
       setStage('switching');
       await ensureRobinhoodTestnet(wallet.provider);
@@ -315,6 +320,7 @@ export function MultiplyForm() {
       if (replacementInvalid) throw new Error('The transaction was cancelled or replaced.');
       if (receipt.status !== 'success') throw new Error('The multiply transaction reverted.');
       pendingPositions.confirm(account, BORROW_CONTRACTS.troveManager, receipt);
+      setOpenedPosition(positionsFromReceipt(account, BORROW_CONTRACTS.troveManager, receipt)[0] ?? null);
       await chainState.refetch();
       setComplete(true);
     } catch (cause) {
@@ -334,6 +340,9 @@ export function MultiplyForm() {
           <a className="btn btn--primary" href={`${robinhoodTestnet.blockExplorers.default.url}/tx/${txHash}`} target="_blank" rel="noreferrer">
             View transaction ↗
           </a>
+          {openedPosition && openedPosition.owner.toLowerCase() === wallet.address?.toLowerCase() && (
+            <Link className="btn" href={managePositionHref(openedPosition)}>Manage position →</Link>
+          )}
         </div>
       </div>
     );
