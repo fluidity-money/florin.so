@@ -11,8 +11,8 @@ import { captureEvent } from '../lib/analytics';
 const NAV = [
   { href: '/', label: 'Home' },
   { href: '/open', label: 'Open position' },
+  { href: '/multiply', label: 'Multiply' },
   { href: '/stability', label: 'Earn' },
-  { href: '/multiply', label: 'MULTIPLY' },
   { href: '/position', label: 'Manage' },
 ];
 

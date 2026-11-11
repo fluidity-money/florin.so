@@ -8,8 +8,21 @@ import { captureEvent } from '../lib/analytics';
 // the top bar. They are something you read once before depositing, not a
 // destination you navigate to, and putting them fourth in the nav gave them a
 // prominence that pushed the actual product one slot further from the eye.
-export function RisksDialog({ label = 'What can go wrong' }: { label?: string }) {
+//
+// `variant="link"` is the footer's trigger: the same dialog behind a plain
+// text link, sitting with the other footer links.
+export function RisksDialog({
+  label = 'What can go wrong',
+  variant = 'card',
+}: {
+  label?: string;
+  variant?: 'card' | 'link';
+}) {
   const ref = useRef<HTMLDialogElement>(null);
+  const open = () => {
+    captureEvent('risk_dialog_opened');
+    ref.current?.showModal();
+  };
 
   // Native <dialog> gives focus trapping and Esc for free; all that is missing
   // is closing on a backdrop click.
@@ -28,27 +41,26 @@ export function RisksDialog({ label = 'What can go wrong' }: { label?: string })
 
   return (
     <>
-      <button
-        type="button"
-        className="risks-trigger"
-        onClick={() => {
-          captureEvent('risk_dialog_opened');
-          ref.current?.showModal();
-        }}
-      >
-        <span className="risks-trigger__mark" aria-hidden="true">
-          !
-        </span>
-        <span>
-          <strong>{label}</strong>
-          <span className="risks-trigger__sub">
-            Liquidation, redemption, pool conversion and collateral freeze
+      {variant === 'link' ? (
+        <button type="button" className="site-footer__link" onClick={open}>
+          {label}
+        </button>
+      ) : (
+        <button type="button" className="risks-trigger" onClick={open}>
+          <span className="risks-trigger__mark" aria-hidden="true">
+            !
           </span>
-        </span>
-        <span className="risks-trigger__arrow" aria-hidden="true">
-          →
-        </span>
-      </button>
+          <span>
+            <strong>{label}</strong>
+            <span className="risks-trigger__sub">
+              Liquidation, redemption, pool conversion and collateral freeze
+            </span>
+          </span>
+          <span className="risks-trigger__arrow" aria-hidden="true">
+            →
+          </span>
+        </button>
+      )}
 
       <dialog
         ref={ref}

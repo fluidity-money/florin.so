@@ -1235,9 +1235,8 @@ input:focus-visible {
   font-size: 12px;
 }
 
-/* Footer */
-/* The footer is the same surface as the page in both themes, so a hairline
-   marks where it starts. */
+/* Footer. A slim bar: where to go, what things cost, and two controls. It is
+   the same surface as the page in both themes, so a hairline marks its start. */
 .site-footer {
   margin-top: 0;
   border: 0;
@@ -1249,25 +1248,25 @@ input:focus-visible {
 .site-footer__inner {
   width: min(100%, 1500px);
   max-width: none;
-  min-height: 330px;
   margin: 0 auto;
-  padding: 64px var(--page-gutter);
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  padding: 14px var(--page-gutter);
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 50px;
+  gap: 12px 36px;
   color: var(--ink);
   font-family: var(--sans);
 }
 
 .site-footer__nav {
-  display: grid;
-  width: max-content;
-  grid-template-columns: repeat(2, max-content);
-  gap: 14px 42px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 26px;
 }
 
 .site-footer__nav a,
+.site-footer__link,
 .site-footer__legal {
   font-size: 10px;
   font-weight: 700;
@@ -1276,30 +1275,66 @@ input:focus-visible {
   text-transform: uppercase;
 }
 
-.site-footer__nav a:hover {
-  color: var(--ink);
+/* The risks link is a button, because it opens a dialog rather than a page. */
+.site-footer__link {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.site-footer__nav a:hover,
+.site-footer__link:hover {
+  color: var(--sp-biscay);
   text-decoration: underline;
 }
 
-/* The centre column now stacks the legal lines and the social link, so the
-   three-column balance across the footer is unchanged. */
-.site-footer__centre {
+/* Prices sit to the right with the controls; the auto margin is what pushes
+   the pair away from the links. */
+.site-footer__prices {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 18px;
+  gap: 6px 22px;
+  margin-left: auto;
+}
+
+.site-footer__price {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--gray-2);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.site-footer__price strong {
+  color: var(--ink);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.site-footer__controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .site-footer__legal {
-  margin: 0;
-  text-align: center;
+  margin: 0 6px 0 0;
+  color: var(--gray-2);
+  white-space: nowrap;
 }
 
 .site-footer__social {
   display: inline-grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 32px;
+  height: 32px;
   border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
   border-radius: 999px;
   color: var(--ink);
@@ -1312,23 +1347,17 @@ input:focus-visible {
   color: var(--paper);
 }
 
-.site-footer__controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
 /* Day and night switch. Same height and hairline as the social link beside
    it. The thumb sits over the sun by day and slides over the moon at night,
    reading its side from <html data-theme> so it is right before hydration. */
 .theme-switch {
   position: relative;
   display: inline-grid;
-  grid-template-columns: 30px 30px;
+  grid-template-columns: 26px 26px;
   place-items: center;
-  width: 68px;
-  height: 38px;
-  padding: 3px;
+  width: 58px;
+  height: 32px;
+  padding: 2px;
   border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
   border-radius: 999px;
   background: transparent;
@@ -1343,10 +1372,10 @@ input:focus-visible {
 
 .theme-switch__thumb {
   position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 30px;
-  height: 30px;
+  top: 2px;
+  left: 2px;
+  width: 26px;
+  height: 26px;
   border-radius: 999px;
   background: var(--ink);
   transition: transform 0.2s ease;
@@ -1370,22 +1399,6 @@ input:focus-visible {
   }
 }
 
-/* Same lockup as the header brand: mark left, wordmark right. */
-.site-footer__brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  justify-self: end;
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.035em;
-}
-
-.site-footer__mark {
-  width: 26px;
-  height: 30px;
-  color: var(--ink);
-}
 
 @media (max-width: 1050px) {
   .site-header__row {
@@ -1546,32 +1559,21 @@ input:focus-visible {
     font-size: clamp(39px, 12vw, 62px);
   }
 
+  /* Stacked on a phone: links, then prices, then the controls. */
   .site-footer__inner {
-    min-height: 0;
-    padding-top: 36px;
-    padding-bottom: 36px;
-    grid-template-columns: 1fr;
-    align-items: start;
-    gap: 24px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+    gap: 16px;
   }
 
-  .site-footer__nav {
-    grid-template-columns: repeat(2, max-content);
+  .site-footer__nav,
+  .site-footer__prices,
+  .site-footer__controls {
+    width: 100%;
   }
 
-  /* Single column here, so the centre block left-aligns with the nav above
-     it rather than floating in the middle of the stack. */
-  .site-footer__centre {
-    align-items: flex-start;
-    gap: 14px;
-  }
-
-  .site-footer__legal {
-    text-align: left;
-  }
-
-  .site-footer__brand {
-    justify-self: center;
+  .site-footer__prices {
+    margin-left: 0;
   }
 
   .panel {
@@ -3667,6 +3669,6 @@ input:focus-visible {
 }
 
 /* The switch thumb slides over the moon, and the icons trade emphasis. */
-:where([data-theme="dark"]) .theme-switch__thumb { transform: translateX(30px); }
+:where([data-theme="dark"]) .theme-switch__thumb { transform: translateX(26px); }
 :where([data-theme="dark"]) .theme-switch__icon--sun { color: inherit; opacity: 0.72; }
 :where([data-theme="dark"]) .theme-switch__icon--moon { color: var(--paper); opacity: 1; }
