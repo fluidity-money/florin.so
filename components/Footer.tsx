@@ -20,6 +20,27 @@ function XLogo() {
 // One FUSD redeems for a dollar of collateral. Shown until FUSD has a market.
 const FUSD_REDEMPTION_USD = 1;
 
+// Which build this is, as version and short commit. The commit links to the
+// change on GitHub, so anyone can see exactly what is deployed.
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION;
+const COMMIT_SHA = process.env.NEXT_PUBLIC_COMMIT_SHA;
+
+function VersionStamp() {
+  if (!APP_VERSION) return null;
+  if (!COMMIT_SHA) return <span className="site-footer__version">v{APP_VERSION}</span>;
+  return (
+    <a
+      className="site-footer__version"
+      href={`https://github.com/fluidity-money/florin.so/commit/${COMMIT_SHA}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={`Version ${APP_VERSION}, commit ${COMMIT_SHA}`}
+    >
+      v{APP_VERSION}-{COMMIT_SHA}
+    </a>
+  );
+}
+
 // Day and night. The thumb's position is drawn from <html data-theme> in CSS,
 // so it is already on the right side before this component hydrates.
 function ThemeSwitch() {
@@ -57,7 +78,7 @@ export function Footer() {
       <div className="site-footer__inner">
         <nav className="site-footer__nav" aria-label="Footer">
           <Link href="/">Home</Link>
-          <Link href="/open">Open position</Link>
+          <Link href="/open">Borrow</Link>
           <Link href="/multiply">Multiply</Link>
           <Link href="/stability">Earn</Link>
           <Link href="/position">Manage</Link>
@@ -83,7 +104,7 @@ export function Footer() {
         </div>
 
         <div className="site-footer__controls">
-          <p className="site-footer__legal">Florin © 2026</p>
+          <VersionStamp />
           <a
             className="site-footer__social"
             href="https://x.com/FlorinProtocol"

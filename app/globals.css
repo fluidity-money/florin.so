@@ -1266,8 +1266,7 @@ input:focus-visible {
 }
 
 .site-footer__nav a,
-.site-footer__link,
-.site-footer__legal {
+.site-footer__link {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.13em;
@@ -1324,10 +1323,18 @@ input:focus-visible {
   gap: 10px;
 }
 
-.site-footer__legal {
-  margin: 0 6px 0 0;
+/* Version and short commit of this build. */
+.site-footer__version {
+  margin-right: 6px;
   color: var(--gray-2);
+  font-family: var(--mono);
+  font-size: 11px;
   white-space: nowrap;
+}
+
+a.site-footer__version:hover {
+  color: var(--ink);
+  text-decoration: underline;
 }
 
 .site-footer__social {

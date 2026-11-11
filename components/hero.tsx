@@ -88,7 +88,7 @@ export function Hero({ markets, initialSpyPrice = null }: { markets: FlorinMarke
               className="hero__btn hero__btn--solid"
               onClick={() => captureEvent('product_cta_clicked', { product: 'borrow', source: 'hero', destination: '/open' })}
             >
-              Open position
+              Borrow
             </Link>
             <Link
               href="/stability"
