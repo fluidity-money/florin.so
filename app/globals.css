@@ -3516,34 +3516,37 @@ input:focus-visible {
   background: currentColor;
 }
 
-/* Adaptive product palette. Keep literal artwork black/white unchanged: the
-   hero scrim and token logos are artwork, not page surfaces. The historical
-   Biscay/Hawkes tokens are paired foreground/surface roles throughout the UI. */
+/* Night palette. Same four brand colours as the day theme, with the roles
+   swapped: black is the page, white is the ink, and the phthalo pair trades
+   places so pale reads on phthalo. Greys are white at reduced alpha, raised
+   surfaces are white at 4% over black. Literal artwork (the hero scrim, token
+   logos) is not a page surface and stays as it is. The token names `biscay`
+   and `hawkes` are historical: foreground and surface of the brand pair. */
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
-    --ink: #e8eee9;
-    --paper: #121916;
-    --gray-1: #d1dbd4;
-    --gray-2: #b2c1b7;
-    --gray-3: #99ada0;
-    --gray-4: #364d40;
-    --line: #708b79;
-    --line-soft: #3b5144;
-    --accent: #a5dbb8;
-    --tint-soft: #1b2921;
-    --tint-warm: #30291c;
-    --strong: #dcebe2;
-    --strong-fg: #17271e;
-    --sp-biscay: #a5dbb8;
-    --sp-hawkes: #203c2c;
+    --ink: #eeeeee;
+    --paper: #1e1e1e;
+    --gray-1: rgba(238, 238, 238, 0.86);
+    --gray-2: rgba(238, 238, 238, 0.66);
+    --gray-3: rgba(238, 238, 238, 0.52);
+    --gray-4: rgba(30, 30, 30, 0.62);
+    --line: rgba(238, 238, 238, 0.34);
+    --line-soft: rgba(238, 238, 238, 0.14);
+    --accent: #eeeeee;
+    --tint-soft: #262626;
+    --tint-warm: #262626;
+    --strong: #eeeeee;
+    --strong-fg: #1e1e1e;
+    --sp-biscay: #dcebe2;
+    --sp-hawkes: #0f3d2e;
     --gold: var(--ink);
-    --blue: #1b2921;
-    --blush: #1b2921;
-    --risk-ok: #81d59a;
-    --risk-warn: #e7bc6a;
-    --risk-bad: #ff9b8e;
-    --surface-raised: #19251e;
+    --blue: #262626;
+    --blush: #262626;
+    --risk-ok: #8fbf9f;
+    --risk-warn: #d3ab68;
+    --risk-bad: #dd8c7e;
+    --surface-raised: #262626;
   }
 
   .panel, .market, .risk, .swap__field, .field__in,
@@ -3552,8 +3555,19 @@ input:focus-visible {
     background: var(--surface-raised);
   }
 
+  /* Day-theme hairlines and offsets are drawn in black, which disappears on
+     a black page. Redraw them in white at the same weight. */
+  .panel { box-shadow: none; }
+  .slider {
+    background-image: linear-gradient(90deg, rgba(238, 238, 238, 0.3) 0 1px, transparent 1px 9px);
+  }
+  .ratiobar__track {
+    background-image: linear-gradient(90deg, rgba(238, 238, 238, 0.3) 0 1px, transparent 1px 7px);
+  }
+  .ratiobar__fill { background: rgba(238, 238, 238, 0.2); }
+
   .field__in:focus {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--sp-biscay) 24%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--sp-biscay) 20%, transparent);
   }
 
   select:focus-visible, textarea:focus-visible, summary:focus-visible {
@@ -3561,7 +3575,7 @@ input:focus-visible {
     outline-offset: 3px;
   }
 
-  .picker__menu { box-shadow: 0 18px 44px rgb(0 0 0 / 40%); }
+  .picker__menu { box-shadow: 0 18px 44px rgb(0 0 0 / 45%); }
   .risks-dialog::backdrop { background: rgb(0 0 0 / 65%); }
   .swap__error .warn { border-color: var(--risk-bad); }
   .tag--danger {
@@ -3570,13 +3584,29 @@ input:focus-visible {
     border-color: var(--risk-bad);
   }
 
-  /* These are permanently reversed regions, not inverted page surfaces. */
+  /* These are permanently reversed regions, not inverted page surfaces. The
+     footer is black in both themes, so at night a hairline marks its edge. */
   .site-footer {
     --paper: #eeeeee;
     --sp-hawkes: #dcebe2;
-    background: #0b110e;
+    background: #1e1e1e;
+    border-top: 1px solid rgba(238, 238, 238, 0.14);
   }
-  .site-footer a:focus-visible { outline-color: #a5dbb8; }
+  .site-footer a:focus-visible { outline-color: #eeeeee; }
   .hero__btn--solid { color: #0f3d2e; }
+  /* The night painting is already dark, so the scrim only has to steady the
+     type and ground the stats row rather than hold back a bright sky. */
+  .hero__scrim {
+    background:
+      radial-gradient(ellipse 78% 56% at 50% 42%,
+        color-mix(in srgb, var(--sp-black) 30%, transparent) 0%,
+        color-mix(in srgb, var(--sp-black) 12%, transparent) 55%,
+        transparent 78%),
+      linear-gradient(to bottom,
+        transparent 0%,
+        transparent 52%,
+        color-mix(in srgb, var(--sp-black) 22%, transparent) 76%,
+        color-mix(in srgb, var(--sp-black) 58%, transparent) 100%);
+  }
   .hero a:focus-visible, .hero button:focus-visible { outline-color: #eeeeee; }
 }

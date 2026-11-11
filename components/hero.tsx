@@ -60,7 +60,11 @@ export function Hero({ markets, initialSpyPrice = null }: { markets: FlorinMarke
   return (
     <section className="hero">
       {/* Decorative: the headline beside it already says what this is. */}
-      <img className="hero__bg" src="/hero.webp" alt="" aria-hidden="true" />
+      <picture>
+        {/* Same field after dark, served when the OS asks for a dark theme. */}
+        <source srcSet="/hero-night.webp" media="(prefers-color-scheme: dark)" />
+        <img className="hero__bg" src="/hero.webp" alt="" aria-hidden="true" />
+      </picture>
       <div className="hero__scrim" aria-hidden="true" />
 
       <div className="hero__inner">
