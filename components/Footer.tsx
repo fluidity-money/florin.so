@@ -1,5 +1,4 @@
 'use client';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSpyPrice } from '../lib/use-spy-price';
 import { money } from '../lib/format';
@@ -70,7 +69,7 @@ export function Footer() {
   const path = usePathname();
   const { price, live } = useSpyPrice();
 
-  // Landing page only. On the app pages the footer nav duplicates the header.
+  // Landing page only.
   if (path !== '/') return null;
 
   return (
@@ -86,36 +85,28 @@ export function Footer() {
           >
             <XLogo />
           </a>
-          <nav className="site-footer__nav" aria-label="Footer">
-            <Link href="/">Home</Link>
-            <Link href="/open">Borrow</Link>
-            <Link href="/multiply">Multiply</Link>
-            <Link href="/stability">Earn</Link>
-            <Link href="/position">Manage</Link>
-            <RisksDialog variant="link" label="Risks" />
-          </nav>
-        </div>
-
-        <div className="site-footer__prices">
-          <span
-            className="site-footer__price"
-            title={live ? 'SPY oracle price · ONCHAIN' : 'SPY oracle price · UNAVAILABLE'}
-          >
-            <TokenIcon symbol="SPY" size={18} />
-            SPY
-            <strong>{live ? `$${money(price)}` : '—'}</strong>
-          </span>
-          {/* FUSD has no market yet, so this is what the protocol redeems it
-              for, not a traded price. */}
-          <span className="site-footer__price" title="FUSD redemption value">
-            <TokenIcon symbol="FUSD" size={18} />
-            FUSD
-            <strong>${money(FUSD_REDEMPTION_USD)}</strong>
-          </span>
-        </div>
-
-        <div className="site-footer__controls">
+          <RisksDialog variant="link" label="Risks" />
           <VersionStamp />
+        </div>
+
+        <div className="site-footer__end">
+          <div className="site-footer__prices">
+            <span
+              className="site-footer__price"
+              title={live ? 'SPY oracle price · ONCHAIN' : 'SPY oracle price · UNAVAILABLE'}
+            >
+              <TokenIcon symbol="SPY" size={18} />
+              SPY
+              <strong>{live ? `$${money(price)}` : '—'}</strong>
+            </span>
+            {/* FUSD has no market yet, so this is what the protocol redeems it
+                for, not a traded price. */}
+            <span className="site-footer__price" title="FUSD redemption value">
+              <TokenIcon symbol="FUSD" size={18} />
+              FUSD
+              <strong>${money(FUSD_REDEMPTION_USD)}</strong>
+            </span>
+          </div>
           <ThemeSwitch />
         </div>
       </div>

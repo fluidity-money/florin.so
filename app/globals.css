@@ -1258,27 +1258,11 @@ input:focus-visible {
   font-family: var(--sans);
 }
 
-/* The social link leads the bar, then the links. */
+/* Left: the social link, the risks link and the build stamp. */
 .site-footer__start {
   display: flex;
   align-items: center;
   gap: 22px;
-}
-
-.site-footer__nav {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 2px 26px;
-}
-
-.site-footer__nav a,
-.site-footer__link {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.13em;
-  line-height: 1.9;
-  text-transform: uppercase;
 }
 
 /* The risks link is a button, because it opens a dialog rather than a page. */
@@ -1288,23 +1272,34 @@ input:focus-visible {
   background: none;
   color: inherit;
   font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  line-height: 1.9;
+  text-transform: uppercase;
   cursor: pointer;
 }
 
-.site-footer__nav a:hover,
 .site-footer__link:hover {
   color: var(--sp-biscay);
   text-decoration: underline;
 }
 
-/* Prices sit to the right with the controls; the auto margin is what pushes
-   the pair away from the links. */
+/* Right: prices, then the theme switch. The auto margin keeps the group on
+   the right, including when the bar wraps onto a second row. */
+.site-footer__end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 24px;
+  margin-left: auto;
+}
+
 .site-footer__prices {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 22px;
-  margin-left: auto;
 }
 
 .site-footer__price {
@@ -1324,18 +1319,8 @@ input:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-/* Auto margins on both right-hand groups share the spare width, and keep
-   each group to the right when the bar has to wrap onto a second row. */
-.site-footer__controls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-left: auto;
-}
-
 /* Version and short commit of this build. */
 .site-footer__version {
-  margin-right: 6px;
   color: var(--gray-2);
   font-family: var(--mono);
   font-size: 11px;
@@ -1584,13 +1569,13 @@ a.site-footer__version:hover {
   }
 
   .site-footer__start,
-  .site-footer__prices,
-  .site-footer__controls {
+  .site-footer__end {
     width: 100%;
   }
 
-  .site-footer__prices {
+  .site-footer__end {
     margin-left: 0;
+    justify-content: space-between;
   }
 
   .panel {
@@ -1688,9 +1673,13 @@ a.site-footer__version:hover {
 
 /* ---- market tables ----------------------------------------------------------- */
 
+/* Each table needs about 540px to keep its figures on one line. Two columns
+   only when both fit; otherwise the panels stack, so neither one is pushed
+   off the side of the page on a small laptop. */
 .markets {
   margin-top: 34px;
   align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 548px), 1fr));
 }
 
 .market {
@@ -2102,11 +2091,6 @@ input:focus-visible {
 /* Reverse blocks: Hawkes Blue is the label tone on black. */
 .home-compact-tvl .tvl__label {
   color: var(--sp-hawkes);
-}
-
-.site-footer__nav a:hover {
-  color: var(--sp-biscay);
-  text-decoration: underline;
 }
 
 /* Inner surfaces step back so the panel outline stays the strongest edge. */
@@ -2618,35 +2602,19 @@ input:focus-visible {
   color: var(--sp-biscay);
 }
 
-/* Redemptions in a nutshell: the short version in the open, the mechanics of
-   opening a position folded underneath. */
-.swap__brief {
-  margin-top: 14px;
-  padding: 16px 18px;
-}
-
-.swap__brief h2 {
-  margin: 0;
-  color: var(--sp-biscay);
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.swap__brief ul {
+.swap__note ul {
   margin: 10px 0 0;
   padding-left: 18px;
   line-height: 1.5;
 }
 
-.swap__brief li + li {
+.swap__note li + li {
   margin-top: 4px;
 }
 
-.swap__brief details {
+/* The notes sit under the submit button, so the first one keeps its distance. */
+.swap__note--first {
   margin-top: 14px;
-  border-top: 1px solid color-mix(in srgb, var(--sp-biscay) 22%, transparent);
-  padding-top: 12px;
 }
 
 /* Risk named in words, not only by the colour of a dot. */
@@ -2654,13 +2622,9 @@ input:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  border: 1px solid var(--line-soft);
-  border-radius: 999px;
-  padding: 3px 10px 3px 9px;
   color: var(--gray-2);
   font-size: 12px;
   font-weight: 600;
-  line-height: 1.4;
   white-space: nowrap;
 }
 
@@ -2674,10 +2638,6 @@ input:focus-visible {
 .risk-tag--high {
   color: var(--ink);
 }
-
-.risk-tag--low { border-color: color-mix(in srgb, var(--risk-ok) 55%, transparent); }
-.risk-tag--medium { border-color: color-mix(in srgb, var(--risk-warn) 60%, transparent); }
-.risk-tag--high { border-color: color-mix(in srgb, var(--risk-bad) 60%, transparent); }
 
 /* The loan field's last line: what you receive on the left, three suggested
    loan sizes on the right, one for each risk band. */

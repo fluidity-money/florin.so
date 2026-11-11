@@ -782,8 +782,8 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         {submitLabel}
       </Button>
 
-      <section className="swap__note swap__brief" aria-labelledby="redemptions-brief">
-        <h2 id="redemptions-brief">Redemptions in a nutshell</h2>
+      <details className="swap__note swap__note--first">
+        <summary>Redemptions in a nutshell</summary>
         <p>
           Redemptions keep FUSD worth a dollar. If your position is redeemed, your collateral and
           your debt fall by the same value, so you lose some exposure to SPY but no money.
@@ -793,12 +793,12 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
           <li>Positions paying the lowest interest rate are redeemed first.</li>
           <li>Raising your interest rate lowers your redemption risk.</li>
         </ul>
-        <details>
-          <summary>What happens when you open a position?</summary>
-          <p>Your wallet wraps up to 0.001 ETH into WETH and approves it for liquidator compensation. It separately approves the exact SPY collateral, then opens the position and mints FUSD.</p>
-          <p>Max includes the upfront fee and the live branch collateral requirement. It is a boundary, not a guarantee, because price and accrued debt can change before execution. If your amount no longer fits, you must review it before submitting.</p>
-        </details>
-      </section>
+      </details>
+      <details className="swap__note">
+        <summary>What happens when you open a position?</summary>
+        <p>Your wallet wraps up to 0.001 ETH into WETH and approves it for liquidator compensation. It separately approves the exact SPY collateral, then opens the position and mints FUSD.</p>
+        <p>Max includes the upfront fee and the live branch collateral requirement. It is a boundary, not a guarantee, because price and accrued debt can change before execution. If your amount no longer fits, you must review it before submitting.</p>
+      </details>
     </div>
   );
 }
