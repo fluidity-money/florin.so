@@ -583,6 +583,20 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
               markFormStarted('collateral');
               setSpyStr(event.target.value);
             }} aria-label="SPY collateral" />
+          <button
+            type="button"
+            className="swap__max"
+            aria-label="Use maximum SPY collateral"
+            disabled={pending || !wallet.connected || !chainState.data || chainState.isError || chainState.data.balance <= 0n}
+            onClick={() => {
+              if (pending || !wallet.connected || !chainState.data || chainState.isError || chainState.data.balance <= 0n) return;
+              markFormStarted('collateral');
+              captureEvent('max_amount_selected', { context: 'open_position', asset: 'SPY' });
+              setSpyStr(formatUnits(chainState.data.balance, 18));
+            }}
+          >
+            Max
+          </button>
           <span className="swap__pill"><Token symbol="SPY" size={18} /></span>
         </div>
         <span className="swap__usd">

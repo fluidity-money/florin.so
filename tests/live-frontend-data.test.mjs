@@ -34,6 +34,16 @@ test('home and stability pages use the existing event-backed market query', () =
   assert.match(stability, /rewards\?\.coverage/);
 });
 
+test('collateral Max uses the exact wallet balance and guards unavailable balances', () => {
+  const source = read('components/open-position-form.tsx');
+  const button = source.match(/<button\s+type="button"\s+className="swap__max"\s+aria-label="Use maximum SPY collateral"[\s\S]*?<\/button>/)?.[0];
+  assert.ok(button);
+  assert.match(button, /disabled=\{pending \|\| !wallet.connected \|\| !chainState.data \|\| chainState.isError \|\| chainState.data.balance <= 0n\}/);
+  assert.match(button, /setSpyStr\(formatUnits\(chainState.data.balance, 18\)\)/);
+  assert.match(button, /markFormStarted\('collateral'\)/);
+  assert.match(source, /Use maximum SPY collateral[\s\S]*?<\/button>\s*<span className="swap__pill"><Token symbol="SPY"/);
+});
+
 test('SPY price and wallet balances come from Robinhood contracts without constants', () => {
   const price = read('lib/use-spy-price.ts');
   const balances = read('lib/use-wallet-balances.ts');
