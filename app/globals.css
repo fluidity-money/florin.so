@@ -2927,6 +2927,72 @@ input:focus-visible {
   color: var(--gray-3);
 }
 
+/* The realised figures sit under the headline APR at the sub line's own size. */
+.pool__apr-sub b {
+  color: var(--gray-1);
+  font-size: inherit;
+  font-weight: 600;
+}
+
+/* Claim and compound: one line per reward, saying what it is and where this
+   action sends it, with the amount on the right. */
+.rewards {
+  display: flex;
+  flex-direction: column;
+}
+
+.rewards__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.rewards__row + .rewards__row {
+  border-top: 1px solid var(--line-soft);
+}
+
+.rewards__what {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.rewards__what b {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.rewards__what em {
+  display: block;
+  color: var(--gray-2);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.rewards__amount {
+  font-family: var(--mono);
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* The four-way action control needs to drop under its label on a phone, and
+   on the narrowest ones its options tighten so it stays inside the card. */
+.swap__row--wrap {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 420px) {
+  .swap__row--wrap .seg__opt {
+    padding: 3px 7px;
+    letter-spacing: 0.02em;
+  }
+}
+
 .pool__foot {
   display: flex;
   justify-content: space-between;

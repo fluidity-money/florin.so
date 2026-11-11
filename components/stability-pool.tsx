@@ -12,11 +12,10 @@ import {
   type Hash,
 } from 'viem';
 import { Button } from './ui';
-import { RisksDialog } from './risks-dialog';
 import { Token, TokenIcon } from './token-icon';
 import { parseDisplayPercent, spyMarket, type FlorinMarkets } from '../lib/florin-markets';
-import { money } from '../lib/format';
-import { MIN_COLLATERAL_RATIO } from '../lib/protocol-constants';
+import { money, pct } from '../lib/format';
+import { usePoolApr } from '../lib/use-pool-apr';
 import { useWallet } from './wallet/wallet';
 import { useFlorinMarkets, useMarketAction } from '../lib/use-florin-markets';
 import { robinhoodPublicClient } from '../lib/robinhood-client';
@@ -30,7 +29,16 @@ import {
   validateStabilityPoolAmount,
 } from '../lib/borrow-contract';
 
-type Mode = 'deposit' | 'withdraw';
+// Deposit and withdraw move an amount. Claim and compound act on rewards
+// already earned, so they take no amount.
+type Mode = 'deposit' | 'withdraw' | 'claim' | 'compound';
+
+const MODE_LABEL: Record<Mode, string> = {
+  deposit: 'Deposit',
+  withdraw: 'Withdraw',
+  claim: 'Claim',
+  compound: 'Compound',
+};
 type TxStage = 'idle' | 'switching' | 'approving' | 'submitting' | 'confirming';
 
 function parseToken(value: string): bigint {
@@ -76,7 +84,7 @@ async function ensureRobinhoodTestnet(provider: NonNullable<ReturnType<typeof us
 function Seg({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => void }) {
   return (
     <span className="seg" role="group" aria-label="Stability Pool action">
-      {(['deposit', 'withdraw'] as const).map((option) => (
+      {(['deposit', 'withdraw', 'claim', 'compound'] as const).map((option) => (
         <button
           key={option}
           type="button"
@@ -84,7 +92,7 @@ function Seg({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => void })
           aria-pressed={mode === option}
           onClick={() => onChange(option)}
         >
-          {option === 'deposit' ? 'Deposit' : 'Withdraw'}
+          {MODE_LABEL[option]}
         </button>
       ))}
     </span>
@@ -150,23 +158,31 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
     },
   });
 
+  const realised = usePoolApr();
   const amount = useMemo(() => parseToken(amountStr), [amountStr]);
-  const available = mode === 'deposit'
+  const rewardsMode = mode === 'claim' || mode === 'compound';
+  const amountMode = mode === 'withdraw' ? 'withdraw' : 'deposit';
+  const available = amountMode === 'deposit'
     ? position.data?.walletBalance ?? 0n
     : position.data?.deposit ?? 0n;
   const totalDeposits = position.data?.totalDeposits ?? 0n;
   const withdrawableFromPool = totalDeposits > MIN_FUSD_IN_STABILITY_POOL
     ? totalDeposits - MIN_FUSD_IN_STABILITY_POOL
     : 0n;
-  const maxAmount = mode === 'deposit'
+  const maxAmount = amountMode === 'deposit'
     ? available
     : available < withdrawableFromPool ? available : withdrawableFromPool;
-  const validationError = validateStabilityPoolAmount(mode, amount, available, totalDeposits);
   const pending = stage !== 'idle';
   const deposit = position.data?.deposit ?? 0n;
   const fusdReward = position.data?.yieldGain ?? 0n;
   const spyReward = (position.data?.collGain ?? 0n) + (position.data?.stashedColl ?? 0n);
   const hasRewards = fusdReward > 0n || spyReward > 0n;
+  // Compounding rolls FUSD rewards into an existing deposit, so it needs both.
+  const canCompound = fusdReward > 0n && deposit > 0n;
+  const validationError = rewardsMode
+    ? null
+    : validateStabilityPoolAmount(amountMode, amount, available, totalDeposits);
+  const rewardsBlocked = mode === 'claim' ? !hasRewards : mode === 'compound' ? !canCompound : false;
   const coverage = parseDisplayPercent(rewards?.coverage);
   const coverageRisk = coverage === null
     ? 'high'
@@ -194,7 +210,7 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
     return receipt;
   }
 
-  async function transact(action: Mode | 'claim') {
+  async function transact(action: Mode) {
     if (!wallet.connected || !account || !wallet.provider) {
       setError(null);
       try {
@@ -311,6 +327,21 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
         const receipt = await waitForReceipt(await walletClient.writeContract(simulation.request));
         updateMarkets(receipt, { poolSize: -Number(formatUnits(amount, 18)) });
         setSuccess(`${money(Number(formatUnits(amount, 18)), 2)} FUSD withdrawn.`);
+      } else if (action === 'compound') {
+        // A zero withdrawal with claiming off: FUSD rewards are added to the
+        // deposit and SPY rewards are set aside in the pool for a later claim.
+        setStage('submitting');
+        const simulation = await robinhoodPublicClient.simulateContract({
+          account,
+          address: CONTRACTS.stabilityPool,
+          abi: stabilityPoolAbi,
+          functionName: 'withdrawFromSP',
+          args: [0n, false],
+        });
+        const updateMarkets = prepareMarketAction();
+        const receipt = await waitForReceipt(await walletClient.writeContract(simulation.request));
+        updateMarkets(receipt, { poolSize: Number(formatUnits(fusdReward, 18)) });
+        setSuccess('FUSD rewards added to your deposit.');
       } else {
         const initialDeposit = await robinhoodPublicClient.readContract({
           address: CONTRACTS.stabilityPool,
@@ -374,7 +405,11 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
             ? 'Waiting for confirmation…'
             : mode === 'deposit'
               ? 'Deposit FUSD →'
-              : 'Withdraw FUSD →';
+              : mode === 'withdraw'
+                ? 'Withdraw FUSD →'
+                : mode === 'claim'
+                  ? 'Claim rewards →'
+                  : 'Compound rewards →';
 
   return (
     <div className="swap">
@@ -403,9 +438,13 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
           </div>
           <div className="pool__aprs">
             <span>APR <b>{rewards?.apr ?? '—'}</b></span>
-            <span className="pool__apr-sub">
-              <i className={`swap__dot swap__dot--${coverageRisk}`} />
-              covers {rewards?.coverage ?? '—'} of FUSD supply
+            <span
+              className="pool__apr-sub"
+              title="What a deposit actually earned over the period, from borrower interest and upfront fees. Shown once the pool has enough history."
+            >
+              24h APR <b>{realised.apr24h === null ? '—' : pct(realised.apr24h * 100, 2)}</b>
+              {' · '}
+              7d APR <b>{realised.apr7d === null ? '—' : pct(realised.apr7d * 100, 2)}</b>
             </span>
           </div>
         </div>
@@ -435,8 +474,8 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
       </div>
 
       <div className="swap__field">
-        <div className="swap__row">
-          <span className="swap__label">Amount</span>
+        <div className="swap__row swap__row--wrap">
+          <span className="swap__label">{rewardsMode ? 'Rewards' : 'Amount'}</span>
           <Seg mode={mode} onChange={(next) => {
             captureEvent('transaction_mode_changed', { context: 'stability_pool', mode: next });
             setMode(next);
@@ -445,49 +484,90 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
             setSuccess(null);
           }} />
         </div>
-        <div className="swap__row">
-          <input
-            className="swap__amount"
-            inputMode="decimal"
-            placeholder="0.00"
-            value={amountStr}
-            onChange={(event) => setAmountStr(event.target.value)}
-            aria-label={`FUSD to ${mode}`}
-          />
-          <button
-            type="button"
-            className="swap__max"
-            disabled={maxAmount <= 0n}
-            onClick={() => {
-              captureEvent('max_amount_selected', { context: 'stability_pool', action: mode, asset: 'FUSD' });
-              setAmountStr(formatUnits(maxAmount, 18));
-            }}
-          >
-            Max
-          </button>
-          <span className="swap__pill"><Token symbol="FUSD" size={18} /></span>
-        </div>
-        <span className="swap__usd">
-          {wallet.connected
-            ? mode === 'deposit'
-              ? `${money(availableDisplay, 2)} FUSD in wallet`
-              : `${money(availableDisplay, 4)} FUSD deposited`
-            : 'Connect a wallet to view your balance'}
-        </span>
+        {rewardsMode ? (
+          <>
+            {/* What each reward is, and where this action sends it. */}
+            <div className="rewards">
+              <div className="rewards__row">
+                <span className="rewards__what">
+                  <TokenIcon symbol="FUSD" size={22} />
+                  <span>
+                    <b>FUSD rewards</b>
+                    <em>{mode === 'claim' ? 'Sent to your wallet' : 'Added to your deposit'}</em>
+                  </span>
+                </span>
+                <span className="rewards__amount">
+                  {wallet.connected ? money(Number(formatUnits(fusdReward, 18)), 4) : '—'}
+                </span>
+              </div>
+              <div className="rewards__row">
+                <span className="rewards__what">
+                  <TokenIcon symbol="SPY" size={22} />
+                  <span>
+                    <b>SPY rewards</b>
+                    <em>{mode === 'claim' ? 'Sent to your wallet' : 'Kept in the pool until you claim'}</em>
+                  </span>
+                </span>
+                <span className="rewards__amount">
+                  {wallet.connected ? money(Number(formatUnits(spyReward, 18)), 6) : '—'}
+                </span>
+              </div>
+            </div>
+            <span className="swap__usd">
+              {!wallet.connected
+                ? 'Connect a wallet to view your rewards'
+                : rewardsBlocked
+                  ? mode === 'claim'
+                    ? 'No rewards to claim yet'
+                    : 'No FUSD rewards to compound yet'
+                  : mode === 'claim'
+                    ? 'Your deposit stays in the pool'
+                    : 'Compounded FUSD starts earning straight away'}
+            </span>
+          </>
+        ) : (
+          <>
+            <div className="swap__row">
+              <input
+                className="swap__amount"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={amountStr}
+                onChange={(event) => setAmountStr(event.target.value)}
+                aria-label={`FUSD to ${amountMode}`}
+              />
+              <button
+                type="button"
+                className="swap__max"
+                disabled={maxAmount <= 0n}
+                onClick={() => {
+                  captureEvent('max_amount_selected', { context: 'stability_pool', action: amountMode, asset: 'FUSD' });
+                  setAmountStr(formatUnits(maxAmount, 18));
+                }}
+              >
+                Max
+              </button>
+              <span className="swap__pill"><Token symbol="FUSD" size={18} /></span>
+            </div>
+            <span className="swap__usd">
+              {wallet.connected
+                ? amountMode === 'deposit'
+                  ? `${money(availableDisplay, 2)} FUSD in wallet`
+                  : `${money(availableDisplay, 4)} FUSD deposited`
+                : 'Connect a wallet to view your balance'}
+            </span>
+          </>
+        )}
       </div>
 
       {amountStr.trim() && validationError && <p className="swap__over">{validationError}</p>}
       <details className="swap__note">
         <summary>What the pool actually does</summary>
-        <p>
-          It clears positions that fall below {Math.round(MIN_COLLATERAL_RATIO * 100)}%. The
-          pool burns the trove&apos;s debt and receives its collateral, and the
-          difference is your compensation for absorbing it.
-        </p>
-        <p>
-          FUSD rewards compound in the pool until you claim them. SPY earned from liquidations
-          is held for you until you claim rewards.
-        </p>
+        <p>The pool earns from two sources.</p>
+        <ul>
+          <li><b>Borrower interest.</b> A share of the interest borrowers pay goes to depositors as FUSD.</li>
+          <li><b>Liquidations.</b> When a position is liquidated, the pool repays its debt and receives its SPY at a discount.</li>
+        </ul>
       </details>
 
       {error && (
@@ -507,18 +587,12 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
 
       <Button
         variant="primary"
-        disabled={wallet.connected && (pending || position.isLoading || position.isError || Boolean(validationError))}
+        disabled={wallet.connected && (pending || position.isLoading || position.isError || Boolean(validationError) || rewardsBlocked)}
         onClick={() => void transact(mode)}
       >
         {buttonLabel}
       </Button>
-      {wallet.connected && hasRewards && (
-        <Button variant="ghost" disabled={pending} onClick={() => void transact('claim')}>
-          Claim rewards · {money(Number(formatUnits(fusdReward, 18)), 4)} FUSD + {money(Number(formatUnits(spyReward, 18)), 6)} SPY
-        </Button>
-      )}
 
-      <RisksDialog label="A deposit can be converted to SPY" />
     </div>
   );
 }
