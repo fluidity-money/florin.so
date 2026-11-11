@@ -15,7 +15,9 @@ test('night palette covers semantic colors and native controls', () => {
   assert.match(dark, /--paper: #1e1e1e/);
   assert.match(dark, /--ink: #eeeeee/);
   assert.match(dark, /\.hero__btn--solid\s*\{ color: #0f3d2e/);
-  assert.match(dark, /\.site-footer\s*\{\s*--paper: #eeeeee/);
+  // The footer is a page surface: white by day, black at night, no override.
+  assert.match(css, /\.site-footer \{[^}]*background: var\(--paper\);\s*color: var\(--ink\);/);
+  assert.doesNotMatch(dark, /\.site-footer/);
   assert.match(dark, /\.hero__bg \{ background-image: url\('\/hero-night\.webp'\)/);
   // One theme mechanism: nothing is keyed on the media query directly.
   assert.doesNotMatch(css, /@media \(prefers-color-scheme/);

@@ -1236,11 +1236,14 @@ input:focus-visible {
 }
 
 /* Footer */
+/* The footer is the same surface as the page in both themes, so a hairline
+   marks where it starts. */
 .site-footer {
   margin-top: 0;
   border: 0;
-  background: var(--charcoal);
-  color: var(--paper);
+  border-top: 1px solid var(--line-soft);
+  background: var(--paper);
+  color: var(--ink);
 }
 
 .site-footer__inner {
@@ -1253,7 +1256,7 @@ input:focus-visible {
   grid-template-columns: 1fr 1fr 1fr;
   align-items: center;
   gap: 50px;
-  color: var(--paper);
+  color: var(--ink);
   font-family: var(--sans);
 }
 
@@ -1274,7 +1277,7 @@ input:focus-visible {
 }
 
 .site-footer__nav a:hover {
-  color: var(--paper);
+  color: var(--ink);
   text-decoration: underline;
 }
 
@@ -1297,16 +1300,16 @@ input:focus-visible {
   place-items: center;
   width: 38px;
   height: 38px;
-  border: 1px solid color-mix(in srgb, var(--paper) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
   border-radius: 999px;
-  color: var(--paper);
+  color: var(--ink);
   transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .site-footer__social:hover {
-  background: var(--paper);
-  border-color: var(--paper);
-  color: var(--charcoal);
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
 }
 
 .site-footer__controls {
@@ -1326,20 +1329,16 @@ input:focus-visible {
   width: 68px;
   height: 38px;
   padding: 3px;
-  border: 1px solid color-mix(in srgb, var(--paper) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
   border-radius: 999px;
   background: transparent;
-  color: var(--paper);
+  color: var(--ink);
   cursor: pointer;
   transition: border-color 0.15s ease;
 }
 
 .theme-switch:hover {
-  border-color: var(--paper);
-}
-
-.theme-switch:focus-visible {
-  outline-color: var(--paper);
+  border-color: var(--ink);
 }
 
 .theme-switch__thumb {
@@ -1349,7 +1348,7 @@ input:focus-visible {
   width: 30px;
   height: 30px;
   border-radius: 999px;
-  background: var(--paper);
+  background: var(--ink);
   transition: transform 0.2s ease;
 }
 
@@ -1360,7 +1359,7 @@ input:focus-visible {
 }
 
 .theme-switch__icon--sun {
-  color: var(--charcoal);
+  color: var(--paper);
   opacity: 1;
 }
 
@@ -1385,8 +1384,7 @@ input:focus-visible {
 .site-footer__mark {
   width: 26px;
   height: 30px;
-  /* the footer block is black, so the mark reverses out of it */
-  color: var(--paper);
+  color: var(--ink);
 }
 
 @media (max-width: 1050px) {
@@ -2088,7 +2086,7 @@ input:focus-visible {
 }
 
 .site-footer__nav a:hover {
-  color: var(--sp-hawkes);
+  color: var(--sp-biscay);
   text-decoration: underline;
 }
 
@@ -3647,15 +3645,7 @@ input:focus-visible {
   border-color: var(--risk-bad);
 }
 
-/* These are permanently reversed regions, not inverted page surfaces. The
-   footer is black in both themes, so at night a hairline marks its edge. */
-:where([data-theme="dark"]) .site-footer {
-  --paper: #eeeeee;
-  --sp-hawkes: #dcebe2;
-  background: #1e1e1e;
-  border-top: 1px solid rgba(238, 238, 238, 0.14);
-}
-:where([data-theme="dark"]) .site-footer a:focus-visible { outline-color: #eeeeee; }
+/* The hero is a permanently reversed region, not an inverted page surface. */
 :where([data-theme="dark"]) .hero__btn--solid { color: #0f3d2e; }
 :where([data-theme="dark"]) .hero :is(a, button):focus-visible { outline-color: #eeeeee; }
 
@@ -3679,4 +3669,4 @@ input:focus-visible {
 /* The switch thumb slides over the moon, and the icons trade emphasis. */
 :where([data-theme="dark"]) .theme-switch__thumb { transform: translateX(30px); }
 :where([data-theme="dark"]) .theme-switch__icon--sun { color: inherit; opacity: 0.72; }
-:where([data-theme="dark"]) .theme-switch__icon--moon { color: var(--charcoal); opacity: 1; }
+:where([data-theme="dark"]) .theme-switch__icon--moon { color: var(--paper); opacity: 1; }
