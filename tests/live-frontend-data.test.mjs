@@ -30,7 +30,10 @@ test('home and stability pages use the existing event-backed market query', () =
   assert.match(stabilityPage, /<StabilityPool initialMarkets=\{/);
   assert.doesNotMatch(stability, /mockData|PROTOCOL_STATS|stabilityPoolApr|ANNUAL_INTEREST_FUSD/);
   assert.match(stability, /rewards\?\.poolSize/);
-  assert.match(stability, /rewards\?\.apr/);
+  // The Earn page shows realised APRs read from the pool's yield events.
+  assert.match(stability, /usePoolApr\(\)/);
+  assert.match(stability, /realised\.apr24h/);
+  assert.match(stability, /realised\.apr7d/);
   assert.match(stability, /rewards\?\.coverage/);
 });
 

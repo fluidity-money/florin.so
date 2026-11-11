@@ -2980,17 +2980,38 @@ input:focus-visible {
   white-space: nowrap;
 }
 
-/* The four-way action control needs to drop under its label on a phone, and
-   on the narrowest ones its options tighten so it stays inside the card. */
-.swap__row--wrap {
-  flex-wrap: wrap;
+/* Earn tabs above the field: Update, Claim rewards, Compound. Same pill
+   language as the segmented control, at the width of the form. */
+.pool-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  margin: 6px 0 2px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  padding: 3px;
 }
 
-@media (max-width: 420px) {
-  .swap__row--wrap .seg__opt {
-    padding: 3px 7px;
-    letter-spacing: 0.02em;
-  }
+.pool-tabs__tab {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 6px;
+  background: transparent;
+  color: var(--gray-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pool-tabs__tab:not(.pool-tabs__tab--on):hover {
+  color: var(--ink);
+}
+
+.pool-tabs__tab--on {
+  background: var(--sp-biscay);
+  color: var(--sp-hawkes);
 }
 
 .pool__foot {

@@ -81,10 +81,40 @@ async function ensureRobinhoodTestnet(provider: NonNullable<ReturnType<typeof us
   }
 }
 
+// Three jobs, as tabs above the field: change the deposit, claim rewards, or
+// roll them back in. Only the first takes an amount.
+type Tab = 'update' | 'claim' | 'compound';
+
+const TAB_LABEL: Record<Tab, string> = {
+  update: 'Update',
+  claim: 'Claim rewards',
+  compound: 'Compound',
+};
+
+function Tabs({ tab, onChange }: { tab: Tab; onChange: (tab: Tab) => void }) {
+  return (
+    <div className="pool-tabs" role="tablist" aria-label="Stability Pool action">
+      {(['update', 'claim', 'compound'] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          role="tab"
+          className={tab === option ? 'pool-tabs__tab pool-tabs__tab--on' : 'pool-tabs__tab'}
+          aria-selected={tab === option}
+          onClick={() => onChange(option)}
+        >
+          {TAB_LABEL[option]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// Inside Update: which way the amount goes.
 function Seg({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => void }) {
   return (
-    <span className="seg" role="group" aria-label="Stability Pool action">
-      {(['deposit', 'withdraw', 'claim', 'compound'] as const).map((option) => (
+    <span className="seg" role="group" aria-label="Deposit or withdraw">
+      {(['deposit', 'withdraw'] as const).map((option) => (
         <button
           key={option}
           type="button"
@@ -424,7 +454,7 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
       <p className="swap__sub">
         A FUSD deposit earns a share of the interest every borrower pays. It
         also settles liquidations: when a position goes under, your FUSD is
-        burned and you are handed the seized SPY at a discount.
+        swapped and you are handed the SPY at a discount.
       </p>
 
       <div className="pool">
@@ -437,13 +467,12 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
             </span>
           </div>
           <div className="pool__aprs">
-            <span>APR <b>{rewards?.apr ?? '—'}</b></span>
-            <span
-              className="pool__apr-sub"
-              title="What a deposit actually earned over the period, from borrower interest and upfront fees. Shown once the pool has enough history."
-            >
-              24h APR <b>{realised.apr24h === null ? '—' : pct(realised.apr24h * 100, 2)}</b>
-              {' · '}
+            {/* What a deposit actually earned over the last day and the last
+                week, from borrower interest and upfront fees. */}
+            <span title="What a deposit earned over the last 24 hours, annualised">
+              APR <b>{realised.apr24h === null ? '—' : pct(realised.apr24h * 100, 2)}</b>
+            </span>
+            <span className="pool__apr-sub" title="What a deposit earned over the last 7 days, annualised. Shown once the pool has enough history.">
               7d APR <b>{realised.apr7d === null ? '—' : pct(realised.apr7d * 100, 2)}</b>
             </span>
           </div>
@@ -473,16 +502,33 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
         {wallet.connected && position.isError && <p className="warn">Could not load your onchain pool position.</p>}
       </div>
 
+      <Tabs
+        tab={rewardsMode ? (mode as Tab) : 'update'}
+        onChange={(next) => {
+          const nextMode: Mode = next === 'update' ? 'deposit' : next;
+          if (nextMode === mode || (next === 'update' && !rewardsMode)) return;
+          captureEvent('transaction_mode_changed', { context: 'stability_pool', mode: nextMode });
+          setMode(nextMode);
+          setAmountStr('');
+          setError(null);
+          setSuccess(null);
+        }}
+      />
+
       <div className="swap__field">
-        <div className="swap__row swap__row--wrap">
-          <span className="swap__label">{rewardsMode ? 'Rewards' : 'Amount'}</span>
-          <Seg mode={mode} onChange={(next) => {
-            captureEvent('transaction_mode_changed', { context: 'stability_pool', mode: next });
-            setMode(next);
-            setAmountStr('');
-            setError(null);
-            setSuccess(null);
-          }} />
+        <div className="swap__row">
+          <span className="swap__label">
+            {rewardsMode ? 'Rewards' : mode === 'deposit' ? 'Increase deposit' : 'Decrease deposit'}
+          </span>
+          {!rewardsMode && (
+            <Seg mode={mode} onChange={(next) => {
+              captureEvent('transaction_mode_changed', { context: 'stability_pool', mode: next });
+              setMode(next);
+              setAmountStr('');
+              setError(null);
+              setSuccess(null);
+            }} />
+          )}
         </div>
         {rewardsMode ? (
           <>
