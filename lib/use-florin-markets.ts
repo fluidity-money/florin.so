@@ -35,6 +35,8 @@ export function useFlorinMarkets(initialData: FlorinMarkets): FlorinMarkets {
     queryFn: fetchMarkets,
     initialData,
     staleTime: 60_000,
+    // Render SSR data immediately, but always request the browser's own copy.
+    refetchOnMount: 'always',
     refetchInterval: 60_000,
     retry: false,
   });

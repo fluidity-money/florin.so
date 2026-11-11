@@ -15,7 +15,8 @@ type FlorinFetchOptions = RequestInit & {
 async function queryFlorinMarkets(options: FlorinFetchOptions): Promise<FlorinMarkets> {
   const response = await fetch(FLORIN_GRAPH_URL, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-graphql-cache': 'BYPASS' },
+    // Bypass the GraphQL edge cache, independently of Next's data cache below.
+    headers: { 'content-type': 'application/json', 'cache-control': 'no-cache' },
     body: JSON.stringify({ query: MARKET_QUERY }),
     ...options,
   });

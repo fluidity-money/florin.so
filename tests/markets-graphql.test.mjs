@@ -5,8 +5,8 @@ import test from 'node:test';
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 test('server GraphQL requests bypass the upstream cache', () => {
-  assert.match(read('lib/florin-graph.ts'), /'x-graphql-cache': 'BYPASS'/);
-  assert.doesNotMatch(read('lib/use-florin-markets.ts'), /x-graphql-cache/);
+  assert.match(read('lib/florin-graph.ts'), /'cache-control': 'no-cache'/);
+  assert.doesNotMatch(read('lib/use-florin-markets.ts'), /x-graphql-cache|cache-control/);
 });
 
 test('server-rendered market data uses the Next data cache', () => {
@@ -45,7 +45,8 @@ test('browser refreshes directly from Florin GraphQL and persists the latest dat
   assert.match(hook, /fetch\(FLORIN_GRAPH_URL/);
   assert.match(hook, /method:\s*'POST'/);
   assert.match(hook, /body:\s*JSON\.stringify\(\{\s*query:\s*MARKET_QUERY\s*\}\)/);
-  assert.match(hook, /cache:\s*'no-store'/);
+  assert.doesNotMatch(hook, /cache:\s*'no-store'/);
+  assert.match(hook, /refetchOnMount:\s*'always'/);
   assert.match(query, /https:\/\/graph\.superposition\.so\/florin/);
   assert.doesNotMatch(hook, /\/api\/florin-markets/);
   assert.equal(
