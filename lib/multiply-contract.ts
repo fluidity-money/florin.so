@@ -45,6 +45,38 @@ export function multiplierForLiquidationPrice(liquidationPrice: number, price: n
   return 1 / (1 - share);
 }
 
+// Closing a Multiply position without FUSD in the wallet: the zapper
+// flash-borrows SPY, sells it for the debt, closes the position and repays the
+// loan from the freed collateral, then sends the rest to the owner.
+export const zapperCloseAbi = parseAbi([
+  'function closeTroveFromCollateral(uint256 troveId, uint256 flashLoanAmount, uint256 minExpectedCollateral)',
+]);
+
+// Who may withdraw from a position and where it goes. Positions opened through
+// Multiply name the leverage zapper here, which is how they are told apart.
+export const removeManagerAbi = parseAbi([
+  'function removeManagerReceiverOf(uint256 troveId) view returns (address manager, address receiver)',
+]);
+
+const WAD = 10n ** 18n;
+
+// SPY to sell for the debt at the oracle price, with the same swap margin as
+// opening, and the SPY that should come back. Null when selling for the debt
+// would take all the collateral.
+export function closeFromCollateralAmounts(collateral: bigint, debt: bigint, price: bigint): {
+  flashLoanAmount: bigint;
+  minExpectedCollateral: bigint;
+  expectedReturn: bigint;
+} | null {
+  if (collateral <= 0n || debt <= 0n || price <= 0n) return null;
+  const needed = (debt * WAD + price - 1n) / price;
+  const flashLoanAmount = addMultiplySlippage(needed);
+  if (flashLoanAmount >= collateral) return null;
+  const expectedReturn = collateral - flashLoanAmount;
+  const minExpectedCollateral = (expectedReturn * (BPS - MULTIPLY_SLIPPAGE_BPS)) / BPS;
+  return { flashLoanAmount, minExpectedCollateral, expectedReturn };
+}
+
 export function addMultiplySlippage(quotedInput: bigint): bigint {
   return (quotedInput * (BPS + MULTIPLY_SLIPPAGE_BPS) + BPS - 1n) / BPS;
 }

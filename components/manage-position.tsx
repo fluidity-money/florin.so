@@ -12,7 +12,6 @@ import {
 } from 'viem';
 import { robinhoodTestnet } from '@reown/appkit/networks';
 import { Button, RatioBar } from './ui';
-import { RisksDialog } from './risks-dialog';
 import { Token, TokenIcon } from './token-icon';
 import { money, pct, xnum } from '../lib/format';
 import { useWallet } from './wallet/wallet';
@@ -43,6 +42,12 @@ import {
   validatePositionAmount,
   validatedOraclePrice,
 } from '../lib/borrow-contract';
+import {
+  CONTRACTS as MULTIPLY_CONTRACTS,
+  closeFromCollateralAmounts,
+  removeManagerAbi,
+  zapperCloseAbi,
+} from '../lib/multiply-contract';
 import { robinhoodPublicClient } from '../lib/robinhood-client';
 import { captureEvent } from '../lib/analytics';
 import {
@@ -53,7 +58,107 @@ import {
 
 type CollMode = 'deposit' | 'withdraw';
 type DebtMode = 'borrow' | 'repay';
-type TxAction = CollMode | DebtMode | 'rate' | 'close';
+type TxAction = CollMode | DebtMode | 'rate' | 'close' | 'closeFromCollateral';
+type CloseKind = 'close' | 'closeFromCollateral';
+
+// Positions opened through Multiply, by trove id. The leverage zapper is set
+// as their remove manager and receiver when they open, and only it can close
+// them from collateral, so that is also what marks them.
+function useMultiplyTroves(positions: FlorinPosition[]): Set<string> {
+  const zapper = MULTIPLY_CONTRACTS.leverageZapper.toLowerCase();
+  const ids = positions.map((position) => position.troveId);
+  const query = useQuery({
+    queryKey: ['multiply-troves', zapper, ids.join(',')],
+    enabled: ids.length > 0,
+    staleTime: 60_000,
+    retry: 1,
+    queryFn: async () => {
+      const receivers = await Promise.all(ids.map((id) => robinhoodPublicClient.readContract({
+        address: CONTRACTS.borrowerOperations,
+        abi: removeManagerAbi,
+        functionName: 'removeManagerReceiverOf',
+        args: [BigInt(id)],
+      })));
+      return ids.filter((_, index) => receivers[index][1].toLowerCase() === zapper);
+    },
+  });
+  return useMemo(() => new Set(query.data ?? []), [query.data]);
+}
+
+// The close confirmation, in the page rather than the browser's own prompt.
+// It says exactly what leaves the wallet and what comes back.
+function CloseDialog({
+  kind,
+  debt,
+  collateral,
+  sold,
+  returned,
+  onCancel,
+  onConfirm,
+}: {
+  kind: CloseKind | null;
+  debt: number;
+  collateral: number;
+  sold: number;
+  returned: number;
+  onCancel: () => void;
+  onConfirm: (kind: CloseKind) => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (kind && !el.open) el.showModal();
+    if (!kind && el.open) el.close();
+  }, [kind]);
+
+  return (
+    <dialog
+      ref={ref}
+      className="risks-dialog confirm-dialog"
+      aria-labelledby="close-dialog-title"
+      onClose={onCancel}
+      onClick={(event) => {
+        if (event.target === ref.current) onCancel();
+      }}
+    >
+      <div className="risks-dialog__head">
+        <h2 id="close-dialog-title">Close position</h2>
+        <button type="button" className="risks-dialog__close" onClick={onCancel} aria-label="Cancel">
+          ×
+        </button>
+      </div>
+      <div className="risks-dialog__body">
+        {kind === 'closeFromCollateral' ? (
+          <p className="lead">
+            About {money(sold, 4)} SPY from the position is sold to repay its {money(debt)} FUSD debt.
+            You do not need any FUSD in your wallet.
+          </p>
+        ) : (
+          <p className="lead">Your wallet repays the full {money(debt)} FUSD debt.</p>
+        )}
+        <dl className="confirm-dialog__facts">
+          <div>
+            <dt>You get back</dt>
+            <dd>
+              {kind === 'closeFromCollateral' ? `About ${money(returned, 4)}` : money(collateral, 4)} SPY
+              <em>plus the 0.001 ETH gas deposit</em>
+            </dd>
+          </div>
+          <div>
+            <dt>{kind === 'closeFromCollateral' ? 'Paid from the position' : 'Paid from your wallet'}</dt>
+            <dd>{money(debt)} FUSD</dd>
+          </div>
+        </dl>
+        <div className="confirm-dialog__actions">
+          <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+          <Button variant="primary" onClick={() => kind && onConfirm(kind)}>Close position</Button>
+        </div>
+      </div>
+    </dialog>
+  );
+}
 type TxStage = 'idle' | 'switching' | 'approving' | 'submitting' | 'confirming';
 
 function parseToken(value: string): bigint {
@@ -211,10 +316,12 @@ function PositionLine({
   position,
   spyPrice,
   priceReady,
+  multiply,
 }: {
   position: FlorinPosition;
   spyPrice: number;
   priceReady: boolean;
+  multiply: boolean;
 }) {
   const metrics = positionMetrics(position.collateralSPY, position.debtFUSD, spyPrice);
   const ltv = metrics.collateralUsd > 0 ? position.debtFUSD / metrics.collateralUsd : 0;
@@ -226,6 +333,7 @@ function PositionLine({
         <span className="picker__main">
           {money(position.collateralSPY, 2)} SPY
           <em>${money(position.debtFUSD)} debt</em>
+          {multiply && <span className="pos-tag">Multiply</span>}
         </span>
         <span className="picker__sub">
           {priceReady ? (
@@ -250,12 +358,14 @@ function PositionPicker({
   selected,
   spyPrice,
   priceReady,
+  multiplyTroves,
   onSelect,
 }: {
   positions: FlorinPosition[];
   selected: FlorinPosition;
   spyPrice: number;
   priceReady: boolean;
+  multiplyTroves: Set<string>;
   onSelect: (troveId: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -305,7 +415,7 @@ function PositionPicker({
           step(event.key === 'ArrowDown' ? 1 : -1);
         }}
       >
-        <PositionLine position={selected} spyPrice={spyPrice} priceReady={priceReady} />
+        <PositionLine position={selected} spyPrice={spyPrice} priceReady={priceReady} multiply={multiplyTroves.has(selected.troveId)} />
         <span className="picker__chev" aria-hidden="true" />
       </button>
 
@@ -325,7 +435,7 @@ function PositionPicker({
                     setOpen(false);
                   }}
                 >
-                  <PositionLine position={candidate} spyPrice={spyPrice} priceReady={priceReady} />
+                  <PositionLine position={candidate} spyPrice={spyPrice} priceReady={priceReady} multiply={multiplyTroves.has(candidate.troveId)} />
                   {current && <span className="picker__tick" aria-hidden="true" />}
                 </button>
               </li>
@@ -366,6 +476,9 @@ function PositionEditor({
   const [txHash, setTxHash] = useState<Hash | null>(null);
   const [txComplete, setTxComplete] = useState(false);
   const [txError, setTxError] = useState<TransactionErrorDescription | null>(null);
+  const [closing, setClosing] = useState<CloseKind | null>(null);
+  const multiplyTroves = useMultiplyTroves(positions);
+  const isMultiply = multiplyTroves.has(position.troveId);
 
   const collateralWei = useMemo(() => parseToken(collStr), [collStr]);
   const debtWei = useMemo(() => parseToken(debtStr), [debtStr]);
@@ -460,6 +573,10 @@ function PositionEditor({
   const maxBorrowWei = !priceReady || !maxBorrowFee.isSuccess
     ? 0n
     : maxBorrowPrincipal(debtCapacityWei, currentDebtWei, maxBorrowFee.data);
+
+  const closeSizing = priceReady && chainState.data
+    ? closeFromCollateralAmounts(currentCollateralWei, currentDebtWei, chainState.data.price)
+    : null;
 
   const m = positionMetrics(collateral, debt, spyPrice);
   const freeUsd = priceReady ? Number(formatUnits(maxBorrowWei, 18)) : 0;
@@ -734,6 +851,23 @@ function PositionEditor({
           args: [troveId, rateWei, upperHint, lowerHint, feeLimit],
         });
         await writeAndConfirm(adjustment.request, 'The interest-rate transaction reverted.');
+      } else if (action === 'closeFromCollateral') {
+        // Sized from fresh position and oracle reads, never from what the
+        // dialog showed, since debt accrues and the price moves.
+        const state = requireFreshRead(await chainState.refetch());
+        const sizing = closeFromCollateralAmounts(currentCollateralWei, currentDebtWei, state.price);
+        if (!sizing) throw new Error('The position’s debt is worth too much of its collateral to close from collateral.');
+        const adjustment = await robinhoodPublicClient.simulateContract({
+          account,
+          address: MULTIPLY_CONTRACTS.leverageZapper,
+          abi: zapperCloseAbi,
+          functionName: 'closeTroveFromCollateral',
+          args: [troveId, sizing.flashLoanAmount, sizing.minExpectedCollateral],
+        });
+        await writeAndConfirm(adjustment.request, 'The position-close transaction reverted.', {
+          deposited: -Number(formatUnits(currentCollateralWei, 18)),
+          debtIssued: -Number(formatUnits(currentDebtWei, 18)),
+        });
       } else {
         const adjustment = await robinhoodPublicClient.simulateContract({
           account,
@@ -783,6 +917,10 @@ function PositionEditor({
         </span>
         <span>position</span>
       </h1>
+      {/* With one position there is no picker to carry the flag. */}
+      {isMultiply && positions.length <= 1 && (
+        <p className="pos-tag-line"><span className="pos-tag">Multiply</span></p>
+      )}
 
       {positions.length > 1 && (
         <div className="picker__field">
@@ -794,6 +932,7 @@ function PositionEditor({
             selected={position}
             spyPrice={spyPrice}
             priceReady={priceReady}
+            multiplyTroves={multiplyTroves}
             onSelect={onSelect}
           />
         </div>
@@ -1117,12 +1256,16 @@ function PositionEditor({
         </Button>
 
         <details className="swap__note">
-          <summary>Interest rate and redemption order</summary>
+          <summary>Redemptions in a nutshell</summary>
           <p>
-            Redemptions are filled from the cheapest troves first. Raising your
-            rate costs more but moves troves cheaper than yours in front of you.
-            Exact queue depth is not available from the current market API.
+            Redemptions keep FUSD worth a dollar. If your position is redeemed, your collateral and
+            your debt fall by the same value, so you lose some exposure to SPY but no money.
           </p>
+          <ul>
+            <li>Redemptions happen when FUSD trades below $1.</li>
+            <li>Positions paying the lowest interest rate are redeemed first.</li>
+            <li>Raising your interest rate lowers your redemption risk.</li>
+          </ul>
         </details>
       </section>
 
@@ -1149,19 +1292,43 @@ function PositionEditor({
         </p>
       )}
 
+      {/* A Multiply position can be closed from its own collateral, so a
+          holder who spent the FUSD can still unwind it. Closing by repaying
+          from the wallet stays available for every position. */}
+      {isMultiply && (
+        <Button
+          variant="danger"
+          disabled={pendingTx || !priceReady || !closeSizing}
+          onClick={() => setClosing('closeFromCollateral')}
+        >
+          {pendingTx && txAction === 'closeFromCollateral' ? 'Closing position…' : 'Close with collateral'}
+        </Button>
+      )}
+      {isMultiply && priceReady && !closeSizing && (
+        <p className="swap__over">This position’s debt is too large to close from its collateral.</p>
+      )}
       <Button
         variant="danger"
         disabled={pendingTx || !positionReady}
-        onClick={() => {
-          if (window.confirm(`Close this position? Your wallet must repay the full ${money(debt)} FUSD debt.`)) {
-            void runTransaction('close');
-          }
-        }}
+        onClick={() => setClosing('close')}
       >
-        {pendingTx && txAction === 'close' ? 'Closing position…' : 'Close position'}
+        {pendingTx && txAction === 'close'
+          ? 'Closing position…'
+          : isMultiply ? 'Close by repaying from wallet' : 'Close position'}
       </Button>
 
-      <RisksDialog label="What can take this position" />
+      <CloseDialog
+        kind={closing}
+        debt={debt}
+        collateral={collateral}
+        sold={closeSizing ? Number(formatUnits(closeSizing.flashLoanAmount, 18)) : 0}
+        returned={closeSizing ? Number(formatUnits(closeSizing.expectedReturn, 18)) : 0}
+        onCancel={() => setClosing(null)}
+        onConfirm={(kind) => {
+          setClosing(null);
+          void runTransaction(kind);
+        }}
+      />
     </div>
   );
 }

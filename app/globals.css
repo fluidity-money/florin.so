@@ -2980,6 +2980,77 @@ input:focus-visible {
   white-space: nowrap;
 }
 
+/* Marks a position opened through Multiply, in the picker and under the title. */
+.pos-tag {
+  display: inline-block;
+  margin-left: 8px;
+  border-radius: 999px;
+  padding: 1px 8px;
+  background: var(--sp-biscay);
+  color: var(--sp-hawkes);
+  font-family: var(--sans);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.7;
+  text-transform: uppercase;
+  vertical-align: 2px;
+}
+
+.pos-tag-line {
+  margin: -12px 0 6px;
+  text-align: center;
+}
+
+.pos-tag-line .pos-tag {
+  margin-left: 0;
+}
+
+/* Close confirmation: the risks dialog's frame at a smaller size, with the
+   facts as a two-line list and the actions at the foot. */
+.confirm-dialog {
+  width: min(92vw, 460px);
+}
+
+.confirm-dialog__facts {
+  margin: 16px 0 0;
+}
+
+.confirm-dialog__facts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line-soft);
+}
+
+.confirm-dialog__facts dt {
+  color: var(--gray-2);
+  font-size: 13px;
+}
+
+.confirm-dialog__facts dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.confirm-dialog__facts dd em {
+  display: block;
+  color: var(--gray-2);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 400;
+}
+
+.confirm-dialog__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 18px;
+}
+
 /* Multiply sizing: one slider for the multiple, typed into either as a
    liquidation price or as the multiple itself. The track is coloured by the
    same risk bands as the tag beneath it. */
