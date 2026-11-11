@@ -77,6 +77,60 @@ export function closeFromCollateralAmounts(collateral: bigint, debt: bigint, pri
   return { flashLoanAmount, minExpectedCollateral, expectedReturn };
 }
 
+// Changing the leverage of a Multiply position in place.
+export const zapperLeverAbi = parseAbi([
+  'struct LeverUpTroveParams { uint256 troveId; uint256 flashLoanAmount; uint256 boldAmount; uint256 maxUpfrontFee; }',
+  'struct LeverDownTroveParams { uint256 troveId; uint256 flashLoanAmount; uint256 minBoldAmount; }',
+  'function leverUpTrove(LeverUpTroveParams params)',
+  'function leverDownTrove(LeverDownTroveParams params)',
+]);
+
+// Exposure over equity, in basis points of a multiple. Null when the debt is
+// worth the whole position or more.
+export function currentMultiplierBps(collateral: bigint, debt: bigint, price: bigint): number | null {
+  if (collateral <= 0n || price <= 0n) return null;
+  const value = (collateral * price) / WAD;
+  if (value <= debt) return null;
+  return Number((value * BPS) / (value - debt));
+}
+
+export type LeverPlan =
+  | { kind: 'up'; collateralAfter: bigint; flashLoanAmount: bigint; boldAmount: bigint }
+  | { kind: 'down'; collateralAfter: bigint; flashLoanAmount: bigint; minBoldAmount: bigint; debtAfter: bigint };
+
+// What it takes to move a position to `targetBps`, keeping its equity. The
+// collateral goes to target times equity; going up, the zapper borrows FUSD to
+// buy the extra SPY, and going down it sells SPY to repay debt. Both use the
+// same swap margin as opening. Null when the target is where it already is.
+export function leverPlan(collateral: bigint, debt: bigint, price: bigint, targetBps: number): LeverPlan | null {
+  if (collateral <= 0n || price <= 0n || !Number.isInteger(targetBps) || targetBps < 10_000) return null;
+  const equity = (collateral * price) / WAD - debt;
+  if (equity <= 0n) return null;
+  const collateralAfter = (BigInt(targetBps) * equity * WAD) / (BPS * price);
+  if (collateralAfter > collateral) {
+    const flashLoanAmount = collateralAfter - collateral;
+    const boldAmount = addMultiplySlippage((flashLoanAmount * price + WAD - 1n) / WAD);
+    return { kind: 'up', collateralAfter, flashLoanAmount, boldAmount };
+  }
+  if (collateralAfter < collateral) {
+    const flashLoanAmount = collateral - collateralAfter;
+    const proceeds = (flashLoanAmount * price) / WAD;
+    const minBoldAmount = (proceeds * (BPS - MULTIPLY_SLIPPAGE_BPS)) / BPS;
+    const debtAfter = debt > proceeds ? debt - proceeds : 0n;
+    return { kind: 'down', collateralAfter, flashLoanAmount, minBoldAmount, debtAfter };
+  }
+  return null;
+}
+
+// The lowest multiple a position can be levered down to while keeping the
+// protocol's minimum debt: the debt left is (m - 1) times the equity.
+export function minimumMultiplierBps(collateral: bigint, debt: bigint, price: bigint, minDebt: bigint): number | null {
+  if (collateral <= 0n || price <= 0n) return null;
+  const equity = (collateral * price) / WAD - debt;
+  if (equity <= 0n) return null;
+  return Number(BPS + (minDebt * BPS + equity - 1n) / equity);
+}
+
 export function addMultiplySlippage(quotedInput: bigint): bigint {
   return (quotedInput * (BPS + MULTIPLY_SLIPPAGE_BPS) + BPS - 1n) / BPS;
 }

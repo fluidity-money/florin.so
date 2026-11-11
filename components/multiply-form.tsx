@@ -17,6 +17,7 @@ import {
 import { robinhoodTestnet } from '@reown/appkit/networks';
 import { Button } from './ui';
 import { Token, TokenIcon } from './token-icon';
+import { LeverageField, MAX_LTV } from './leverage-field';
 import { useWallet } from './wallet/wallet';
 import Link from 'next/link';
 import { pendingPositions, positionsFromReceipt } from '../lib/pending-positions';
@@ -44,42 +45,14 @@ import {
   isMultiplyCollateralSafe,
   CONTRACTS,
   leverageZapperAbi,
-  multiplierForLiquidationPrice,
   multiplyAmountsBps,
 } from '../lib/multiply-contract';
-import { LTV_RISK, liquidationRisk, redemptionRisk as redemptionRiskFor, type RiskLevel } from '../lib/protocol-math';
+import { liquidationRisk, redemptionRisk as redemptionRiskFor, type RiskLevel } from '../lib/protocol-math';
 import { parseDisplayPercent, spyMarket, type FlorinMarkets } from '../lib/florin-markets';
 import { useFlorinMarkets } from '../lib/use-florin-markets';
 
 const publicClient = createPublicClient({ chain: robinhoodTestnet, transport: http() });
-// Multiples in basis points: 10,000 is 1x. The slider moves in 0.1x steps.
-const MIN_MULTIPLIER_BPS = 11_000;
-const MAX_MULTIPLIER_BPS = 60_000;
-const MULTIPLIER_STEP_BPS = 1_000;
-const MULTIPLIER_TICKS = [11_000, 20_000, 30_000, 40_000, 50_000, 60_000];
-const MAX_LTV = 1 / MIN_COLLATERAL_RATIO;
-
 const RISK_LABEL: Record<RiskLevel, string> = { low: 'Low', medium: 'Medium', high: 'High' };
-
-// Where a multiple sits along the slider, as a percentage of its width.
-function sliderPosition(bps: number): number {
-  return ((bps - MIN_MULTIPLIER_BPS) / (MAX_MULTIPLIER_BPS - MIN_MULTIPLIER_BPS)) * 100;
-}
-
-// The multiple at which a given LTV is reached: LTV = (m - 1) / m.
-function multipleAtLtv(ltv: number): number {
-  return Math.round(10_000 / (1 - ltv));
-}
-
-// Green, then amber, then red along the track, changing colour where the
-// liquidation risk bands change, so the slider says what the tag will say.
-const TRACK_STOPS = (() => {
-  const medium = Math.min(100, Math.max(0, sliderPosition(multipleAtLtv(LTV_RISK.medium * MAX_LTV))));
-  const high = Math.min(100, Math.max(0, sliderPosition(multipleAtLtv(LTV_RISK.high * MAX_LTV))));
-  return `linear-gradient(90deg, var(--risk-ok) 0%, var(--risk-ok) ${medium}%, var(--risk-warn) ${medium}%, var(--risk-warn) ${high}%, var(--risk-bad) ${high}%, var(--risk-bad) 100%)`;
-})();
-
-type SizeBy = 'multiplier' | 'liquidation';
 
 type Stage = 'idle' | 'switching' | 'approving' | 'opening' | 'confirming';
 
@@ -137,12 +110,6 @@ export function MultiplyForm({ initialMarkets }: { initialMarkets: FlorinMarkets
   );
   const [depositStr, setDepositStr] = useState('');
   const [multiplierBps, setMultiplierBps] = useState(20_000);
-  // Size the position by its multiple or by where it liquidates. Both drive
-  // the same slider; only the number you type into changes.
-  const [sizeBy, setSizeBy] = useState<SizeBy>('multiplier');
-  // What the holder is typing into the liquidation price box. Null shows the
-  // price that the current multiple actually produces.
-  const [liquidationDraft, setLiquidationDraft] = useState<string | null>(null);
   const [rate, setRate] = useState(DEFAULT_RATE);
   const [stage, setStage] = useState<Stage>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -236,17 +203,6 @@ export function MultiplyForm({ initialMarkets }: { initialMarkets: FlorinMarkets
   const riskLevel = liquidationRisk(shownLtv, MAX_LTV);
   const redemptionRisk = redemptionRiskFor(rate, marketAverageRate);
 
-  function setMultiple(bps: number) {
-    const clamped = Math.min(MAX_MULTIPLIER_BPS, Math.max(MIN_MULTIPLIER_BPS, Math.round(bps)));
-    setMultiplierBps(clamped);
-  }
-
-  function setLiquidationPrice(value: string) {
-    setLiquidationDraft(value);
-    const target = xnum(value);
-    const multiple = multiplierForLiquidationPrice(target, spyPrice, MIN_COLLATERAL_RATIO);
-    if (multiple !== null) setMultiple(multiple * 10_000);
-  }
 
   async function openMultiplyPosition() {
     if (!wallet.connected || !account || !wallet.provider) {
@@ -451,77 +407,13 @@ export function MultiplyForm({ initialMarkets }: { initialMarkets: FlorinMarkets
         <span>Max LTV <b>{pct(MAX_LTV * 100, 1)}</b></span>
       </div>
 
-      <div className="swap__field lev">
-        <div className="swap__row">
-          <span className="swap__label">{sizeBy === 'liquidation' ? 'Liquidation price' : 'Multiplier'}</span>
-          <span className="seg" role="group" aria-label="Size the position by">
-            {(['multiplier', 'liquidation'] as const).map((option) => (
-              <button
-                key={option}
-                type="button"
-                className={sizeBy === option ? 'seg__opt seg__opt--on' : 'seg__opt'}
-                aria-pressed={sizeBy === option}
-                onClick={() => {
-                  setSizeBy(option);
-                  setLiquidationDraft(null);
-                }}
-              >
-                {option === 'liquidation' ? 'Liq. price' : 'Multiplier'}
-              </button>
-            ))}
-          </span>
-        </div>
-        <div className="swap__row">
-          {sizeBy === 'liquidation' ? (
-            <span className="lev__price">
-              <span aria-hidden="true">$</span>
-              <input
-                className="swap__amount"
-                inputMode="decimal"
-                placeholder="0.00"
-                value={liquidationDraft ?? (shownLiquidationPrice > 0 ? shownLiquidationPrice.toFixed(2) : '')}
-                onChange={(event) => setLiquidationPrice(event.target.value.replaceAll(',', ''))}
-                onBlur={() => setLiquidationDraft(null)}
-                disabled={pending || !(spyPrice > 0)}
-                aria-label="Liquidation price"
-              />
-            </span>
-          ) : (
-            <span className="swap__amount swap__amount--rate">{multiplier.toFixed(1)}x</span>
-          )}
-        </div>
-        <div className="lev__slider">
-          <input
-            className="lev__range"
-            type="range"
-            min={MIN_MULTIPLIER_BPS}
-            max={MAX_MULTIPLIER_BPS}
-            step={MULTIPLIER_STEP_BPS}
-            value={Math.round(multiplierBps / MULTIPLIER_STEP_BPS) * MULTIPLIER_STEP_BPS}
-            onChange={(event) => {
-              setLiquidationDraft(null);
-              setMultiple(Number(event.target.value));
-            }}
-            disabled={pending}
-            style={{ '--lev-track': TRACK_STOPS } as React.CSSProperties}
-            aria-label="Multiplier"
-            aria-valuetext={`${multiplier.toFixed(2)}x`}
-          />
-          <div className="lev__ticks" aria-hidden="true">
-            {MULTIPLIER_TICKS.map((tick) => (
-              <span key={tick} style={{ left: `${sliderPosition(tick)}%` }}>{(tick / 10_000).toString()}x</span>
-            ))}
-          </div>
-        </div>
-        <div className="swap__row lev__foot">
-          <span className="swap__usd">
-            {sizeBy === 'liquidation'
-              ? `Multiplier ${multiplier.toFixed(2)}x`
-              : `Liquidation price ${shownLiquidationPrice > 0 ? `$${money(shownLiquidationPrice)}` : '−'}`}
-          </span>
-          <span className="swap__usd">SPY price {spyPrice > 0 ? `$${money(spyPrice)}` : '−'}</span>
-        </div>
-      </div>
+      <LeverageField
+        multiplierBps={multiplierBps}
+        onChange={setMultiplierBps}
+        spyPrice={spyPrice}
+        liquidationPrice={shownLiquidationPrice}
+        disabled={pending}
+      />
       <div className="swap__meta">
         <span className={`risk-tag risk-tag--${unsafe ? 'high' : riskLevel}`}>
           <i className={`swap__dot swap__dot--${unsafe ? 'high' : riskLevel}`} />

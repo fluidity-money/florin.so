@@ -36,6 +36,7 @@ import {
   maxBorrowPrincipal,
   maxRepayableDebt,
   maxUpfrontFee,
+  MIN_DEBT,
   priceFeedAbi,
   ROBINHOOD_TESTNET_CHAIN_ID,
   sortedTrovesAbi,
@@ -45,9 +46,15 @@ import {
 import {
   CONTRACTS as MULTIPLY_CONTRACTS,
   closeFromCollateralAmounts,
+  currentMultiplierBps,
+  leverPlan,
+  minimumMultiplierBps,
   removeManagerAbi,
   zapperCloseAbi,
+  zapperLeverAbi,
 } from '../lib/multiply-contract';
+import { LeverageField, MAX_LTV } from './leverage-field';
+import { liquidationRisk, type RiskLevel } from '../lib/protocol-math';
 import { robinhoodPublicClient } from '../lib/robinhood-client';
 import { captureEvent } from '../lib/analytics';
 import {
@@ -58,7 +65,9 @@ import {
 
 type CollMode = 'deposit' | 'withdraw';
 type DebtMode = 'borrow' | 'repay';
-type TxAction = CollMode | DebtMode | 'rate' | 'close' | 'closeFromCollateral';
+type TxAction = CollMode | DebtMode | 'rate' | 'close' | 'closeFromCollateral' | 'leverage';
+
+const RISK_LABEL: Record<RiskLevel, string> = { low: 'Low', medium: 'Medium', high: 'High' };
 type CloseKind = 'close' | 'closeFromCollateral';
 
 // Positions opened through Multiply, by trove id. The leverage zapper is set
@@ -578,6 +587,42 @@ function PositionEditor({
     ? closeFromCollateralAmounts(currentCollateralWei, currentDebtWei, chainState.data.price)
     : null;
 
+  // Leverage, for Multiply positions. The slider starts where the position
+  // stands and only moves when the holder moves it.
+  const livePrice = priceReady && chainState.data ? chainState.data.price : 0n;
+  const currentLeverBps = livePrice > 0n ? currentMultiplierBps(currentCollateralWei, currentDebtWei, livePrice) : null;
+  const lowestLeverBps = livePrice > 0n ? minimumMultiplierBps(currentCollateralWei, currentDebtWei, livePrice, MIN_DEBT) : null;
+  const [leverBps, setLeverBps] = useState<number | null>(null);
+  const targetLeverBps = leverBps ?? (currentLeverBps === null ? null : Math.round(currentLeverBps / 1_000) * 1_000);
+  const lever = isMultiply && targetLeverBps !== null && leverBps !== null && livePrice > 0n
+    ? leverPlan(currentCollateralWei, currentDebtWei, livePrice, targetLeverBps)
+    : null;
+  const leverFee = useQuery({
+    queryKey: ['lever-up-fee', position.troveId, lever?.kind === 'up' ? lever.boldAmount.toString() : '0'],
+    enabled: lever?.kind === 'up',
+    retry: false,
+    refetchInterval: 15_000,
+    queryFn: () => robinhoodPublicClient.readContract({
+      address: CONTRACTS.hintHelpers,
+      abi: hintHelpersAbi,
+      functionName: 'predictAdjustTroveUpfrontFee',
+      args: [0n, troveId, lever?.kind === 'up' ? lever.boldAmount : 0n],
+    }),
+  });
+  const leverCollateralAfter = lever ? Number(formatUnits(lever.collateralAfter, 18)) : collateral;
+  const leverDebtAfter = !lever
+    ? debt
+    : lever.kind === 'up'
+      ? debt + Number(formatUnits(lever.boldAmount + (leverFee.data ?? 0n), 18))
+      : Number(formatUnits(lever.debtAfter, 18));
+  const leverValueAfter = leverCollateralAfter * spyPrice;
+  const leverLtvAfter = leverValueAfter > 0 ? leverDebtAfter / leverValueAfter : 0;
+  const leverLiquidationAfter = leverCollateralAfter > 0 ? MIN_COLLATERAL_RATIO * leverDebtAfter / leverCollateralAfter : 0;
+  const leverRisk = liquidationRisk(leverLtvAfter, MAX_LTV);
+  const leverTooLow = lever?.kind === 'down' && lever.debtAfter < MIN_DEBT;
+  const leverUnsafe = leverLtvAfter >= MAX_LTV;
+  const leverReady = Boolean(lever) && (lever?.kind !== 'up' || leverFee.isSuccess) && !leverTooLow && !leverUnsafe;
+
   const m = positionMetrics(collateral, debt, spyPrice);
   const freeUsd = priceReady ? Number(formatUnits(maxBorrowWei, 18)) : 0;
   const ltv = m.collateralUsd > 0 ? debt / m.collateralUsd : 0;
@@ -851,6 +896,47 @@ function PositionEditor({
           args: [troveId, rateWei, upperHint, lowerHint, feeLimit],
         });
         await writeAndConfirm(adjustment.request, 'The interest-rate transaction reverted.');
+      } else if (action === 'leverage') {
+        // Planned again from fresh reads, never from what the preview showed.
+        const state = requireFreshRead(await chainState.refetch());
+        if (targetLeverBps === null) throw new Error('Choose a multiplier first.');
+        const plan = leverPlan(currentCollateralWei, currentDebtWei, state.price, targetLeverBps);
+        if (!plan) throw new Error('The position is already at that multiplier.');
+        if (plan.kind === 'up') {
+          const fee = await robinhoodPublicClient.readContract({
+            address: CONTRACTS.hintHelpers,
+            abi: hintHelpersAbi,
+            functionName: 'predictAdjustTroveUpfrontFee',
+            args: [0n, troveId, plan.boldAmount],
+          });
+          const adjustment = await robinhoodPublicClient.simulateContract({
+            account,
+            address: MULTIPLY_CONTRACTS.leverageZapper,
+            abi: zapperLeverAbi,
+            functionName: 'leverUpTrove',
+            args: [{ troveId, flashLoanAmount: plan.flashLoanAmount, boldAmount: plan.boldAmount, maxUpfrontFee: maxUpfrontFee(fee) }],
+          });
+          await writeAndConfirm(adjustment.request, 'The leverage transaction reverted.', {
+            deposited: Number(formatUnits(plan.flashLoanAmount, 18)),
+            debtIssued: Number(formatUnits(plan.boldAmount + fee, 18)),
+          });
+        } else {
+          if (plan.debtAfter < MIN_DEBT) {
+            throw new Error(`That would leave less than ${formatUnits(MIN_DEBT, 18)} FUSD of debt. Choose a higher multiplier, or close the position.`);
+          }
+          const adjustment = await robinhoodPublicClient.simulateContract({
+            account,
+            address: MULTIPLY_CONTRACTS.leverageZapper,
+            abi: zapperLeverAbi,
+            functionName: 'leverDownTrove',
+            args: [{ troveId, flashLoanAmount: plan.flashLoanAmount, minBoldAmount: plan.minBoldAmount }],
+          });
+          await writeAndConfirm(adjustment.request, 'The leverage transaction reverted.', {
+            deposited: -Number(formatUnits(plan.flashLoanAmount, 18)),
+            debtIssued: -Number(formatUnits(currentDebtWei - plan.debtAfter, 18)),
+          });
+        }
+        setLeverBps(null);
       } else if (action === 'closeFromCollateral') {
         // Sized from fresh position and oracle reads, never from what the
         // dialog showed, since debt accrues and the price moves.
@@ -1090,7 +1176,71 @@ function PositionEditor({
         </Button>
       </section>
 
+      {/* Leverage, in place of Debt for a Multiply position. Its holder thinks
+          in exposure, not FUSD: the zapper borrows to buy SPY or sells SPY to
+          repay, so the multiple moves and the equity stays the same. */}
+      {isMultiply && (
+        <section className="mgmt">
+          <div className="mgmt__head">
+            <div className="mgmt__headline">
+              <h2 className="mgmt__title">Leverage</h2>
+              <span className="mgmt__now">
+                Now <b>{currentLeverBps === null ? '—' : `${(currentLeverBps / 10_000).toFixed(2)}x`}</b>
+              </span>
+            </div>
+            <p className="mgmt__hint">
+              Raising the multiplier buys more SPY with FUSD. Lowering it sells SPY to repay FUSD.
+            </p>
+          </div>
+          <LeverageField
+            multiplierBps={targetLeverBps ?? 20_000}
+            onChange={setLeverBps}
+            spyPrice={spyPrice}
+            liquidationPrice={lever ? leverLiquidationAfter : m.liquidationPriceUsd}
+            disabled={pendingTx || !priceReady || currentLeverBps === null}
+            minBps={lowestLeverBps ?? undefined}
+            currentBps={currentLeverBps}
+          />
+          {lever && (
+            <>
+              <div className="swap__meta">
+                <span className={`risk-tag risk-tag--${leverRisk}`}>
+                  <i className={`swap__dot swap__dot--${leverRisk}`} />
+                  {RISK_LABEL[leverRisk]} liquidation risk
+                </span>
+                <span>LTV <b>{pct(ltv * 100, 1)}</b> → <b>{pct(leverLtvAfter * 100, 1)}</b></span>
+              </div>
+              <div className="swap__meta swap__meta--right">
+                <span>Exposure <b>{money(collateral, 4)}</b> → <b>{money(leverCollateralAfter, 4)} SPY</b></span>
+              </div>
+            </>
+          )}
+          {lowestLeverBps !== null && currentLeverBps !== null && lowestLeverBps > currentLeverBps && (
+            <p className="mgmt__hint">
+              This position is at the 1,000 FUSD minimum debt, so it can only be levered up. To exit,
+              close it.
+            </p>
+          )}
+          {leverTooLow && (
+            <p className="swap__over">That would leave less than 1,000 FUSD of debt. Choose a higher multiplier, or close the position.</p>
+          )}
+          {lever?.kind === 'up' && leverFee.isError && (
+            <p className="swap__over">Could not quote the onchain upfront fee. Try again before submitting.</p>
+          )}
+          <Button
+            variant="primary"
+            disabled={pendingTx || !priceReady || !leverReady}
+            onClick={() => void runTransaction('leverage')}
+          >
+            {pendingTx && txAction === 'leverage'
+              ? 'Confirming…'
+              : lever?.kind === 'down' ? 'Lower leverage' : lever?.kind === 'up' ? 'Raise leverage' : 'Update leverage'}
+          </Button>
+        </section>
+      )}
+
       {/* Debt */}
+      {!isMultiply && (
       <section className="mgmt">
         <div className="mgmt__head">
           <div className="mgmt__headline">
@@ -1172,6 +1322,7 @@ function PositionEditor({
           <p className="swap__over">Could not quote the onchain upfront fee. Try again before submitting.</p>
         )}
       </section>
+      )}
 
       {/* What the pending change does, before it is applied. Outside both
           sections above, because either one can be what is pending. */}

@@ -18,9 +18,11 @@ test('multiply page exposes SPY looping controls and risk information', () => {
 
   assert.match(page, /MultiplyForm/);
   assert.match(form, /aria-label="SPY deposit"/);
-  assert.match(form, /aria-label="Multiplier"/);
+  // The sizing slider is shared with the Manage page's leverage control.
+  assert.match(form, /<LeverageField/);
+  assert.match(read('components/leverage-field.tsx'), /aria-label="Multiplier"/);
   assert.match(form, /Exposure/);
-  assert.match(form, /Liquidation price/);
+  assert.match(read('components/leverage-field.tsx'), /Liquidation price/);
   assert.match(form, /redemption risk/);
   assert.match(form, /liquidation/i);
 });

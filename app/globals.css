@@ -3151,6 +3151,29 @@ input:focus-visible {
   flex-wrap: wrap;
 }
 
+/* Where an existing position stands, as a hairline on the track. */
+.lev__current {
+  position: absolute;
+  top: 6px;
+  width: 2px;
+  height: 14px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--ink);
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.mgmt__now {
+  color: var(--gray-2);
+  font-size: 13px;
+}
+
+.mgmt__now b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 /* Earn tabs above the field: Update, Claim rewards, Compound. Same pill
    language as the segmented control, at the width of the form. */
 .pool-tabs {
