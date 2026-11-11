@@ -51,6 +51,15 @@ export default function RootLayout({
     <html lang="en">
       <body style={style}>
         <Providers>
+          <a
+            className="testnet-banner"
+            href="https://x.com/FlorinProtocol/status/2119747363401015747"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Florin Testnet V2 has started! All positions have been reset.{' '}
+            <span className="testnet-banner__link">Click here to learn more</span>
+          </a>
           <Header />
           <main className="main">{children}</main>
           <Footer />
