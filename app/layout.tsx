@@ -39,7 +39,7 @@ export const metadata: Metadata = {
   },
 };
 
-// Theme tokens (colors + fonts) from lib/theme.ts, applied as CSS variables on <body>.
+// Light defaults and fonts on <html>; CSS owns the adaptive semantic tokens.
 const style = themeVars() as React.CSSProperties;
 
 export default function RootLayout({
@@ -48,8 +48,8 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body style={style}>
+    <html lang="en" style={style}>
+      <body>
         <Providers>
           <a
             className="testnet-banner"

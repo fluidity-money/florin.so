@@ -1,10 +1,9 @@
 // -----------------------------------------------------------------------------
 // Florin — theme config.
 //
-// THIS IS THE SINGLE SOURCE OF TRUTH FOR the visual theme (colors + fonts).
-// Edit values here, rebuild, and the whole app re-skins. Used to A/B palettes
-// quickly — the tokens below are emitted as CSS custom properties on <body>
-// from app/layout.tsx, and the stylesheet references them by name.
+// Light palette and fonts. Adaptive dark semantic tokens live in app/globals.css.
+// Light defaults are emitted on <html> under --light-* names so they cannot
+// override the stylesheet's prefers-color-scheme rules.
 //
 // Palette — Superposition brand. These four are the ONLY colours in the app;
 // every token below is one of them, or one of them at reduced alpha for
@@ -81,9 +80,9 @@ export const THEME: Theme = {
   strongFg: '#eeeeee',
 };
 
-// Emit as CSS custom properties for inline application on <body>.
+// Emit light defaults and fonts for inline application on <html>.
 export function themeVars(t: Theme = THEME): Record<string, string> {
-  return {
+  const vars = {
     '--paradiso': t.paradiso,
     '--shamrock': t.shamrock,
     '--flax': t.flax,
@@ -105,4 +104,8 @@ export function themeVars(t: Theme = THEME): Record<string, string> {
     '--sans': t.sans,
     '--mono': t.mono,
   };
+  // Light defaults must not inline-override the adaptive semantic CSS tokens.
+  return Object.fromEntries(Object.entries(vars).map(([key, value]) => [
+    key === '--sans' || key === '--mono' ? key : key.replace('--', '--light-'), value,
+  ]));
 }

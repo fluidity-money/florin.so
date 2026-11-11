@@ -6,6 +6,7 @@ import {
   useAppKitAccount,
   useAppKit,
   useAppKitProvider,
+  useAppKitTheme,
   useDisconnect,
 } from '@reown/appkit/react';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
@@ -80,6 +81,14 @@ function InjectedWalletProvider({ children }: { children: ReactNode }) {
 }
 
 function RealWalletBridge({ children }: { children: ReactNode }) {
+  const { setThemeMode } = useAppKitTheme();
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-color-scheme: dark)');
+    const syncTheme = () => setThemeMode(preference.matches ? 'dark' : 'light');
+    syncTheme();
+    preference.addEventListener('change', syncTheme);
+    return () => preference.removeEventListener('change', syncTheme);
+  }, [setThemeMode]);
   const account = useAppKitAccount();
   const { open } = useAppKit();
   const { disconnect } = useDisconnect();
@@ -118,7 +127,6 @@ function RealWalletProvider({ children }: { children: ReactNode }) {
       // turns red and opens the network sheet on click, which is the prompt a
       // reader can actually dismiss.
       allowUnsupportedChain
-      themeMode="light"
       metadata={{
         name: 'Florin',
         description: 'Mint FUSD by borrowing against SPY',
