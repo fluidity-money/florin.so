@@ -32,6 +32,7 @@ import {
   type TransactionFailureStage,
 } from '../lib/transaction-error';
 import { useWallet } from './wallet/wallet';
+import { pendingPositions } from '../lib/pending-positions';
 import { requireAuthorizedAccount } from '../lib/wallet-authorization';
 import useAccount from '../hooks/useAccount';
 import useFeature from '../hooks/useFeature';
@@ -342,6 +343,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         });
         if (replacementInvalid) throw new Error('The transaction was cancelled or replaced.');
         if (receipt.status !== 'success') throw new Error('The account open-position transaction reverted.');
+        pendingPositions.confirm(account, CONTRACTS.troveManager, receipt);
         updateMarkets(receipt, {
           deposited: Number(formatUnits(collateralWei, 18)),
           debtIssued: Number(formatUnits(borrowedWei, 18)),
@@ -496,6 +498,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       });
       if (replacementInvalid) throw new Error('The transaction was cancelled or replaced.');
       if (receipt.status !== 'success') throw new Error('The open-trove transaction reverted.');
+      pendingPositions.confirm(account, CONTRACTS.troveManager, receipt);
       updateMarkets(receipt, {
         deposited: Number(formatUnits(collateralWei, 18)),
         debtIssued: Number(formatUnits(borrowedWei, 18)),

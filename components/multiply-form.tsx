@@ -19,6 +19,7 @@ import { Button } from './ui';
 import { RisksDialog } from './risks-dialog';
 import { Token, TokenIcon } from './token-icon';
 import { useWallet } from './wallet/wallet';
+import { pendingPositions } from '../lib/pending-positions';
 import { money, pct, xnum } from '../lib/format';
 import { DEFAULT_RATE, MAX_RATE, MIN_COLLATERAL_RATIO, MIN_RATE } from '../lib/protocol-constants';
 import {
@@ -303,8 +304,17 @@ export function MultiplyForm() {
       const hash = await walletClient.writeContract(simulation.request);
       setTxHash(hash);
       setStage('confirming');
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
+      let replacementInvalid = false;
+      const receipt = await publicClient.waitForTransactionReceipt({
+        hash,
+        onReplaced: replacement => {
+          if (replacement.reason !== 'repriced') replacementInvalid = true;
+          setTxHash(replacement.transaction.hash);
+        },
+      });
+      if (replacementInvalid) throw new Error('The transaction was cancelled or replaced.');
       if (receipt.status !== 'success') throw new Error('The multiply transaction reverted.');
+      pendingPositions.confirm(account, BORROW_CONTRACTS.troveManager, receipt);
       await chainState.refetch();
       setComplete(true);
     } catch (cause) {

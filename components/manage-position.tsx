@@ -153,10 +153,10 @@ export function ManagePosition({ initialMarkets }: { initialMarkets: FlorinMarke
       </PositionNotice>
     );
   }
-  if (status === 'idle' || status === 'loading') {
+  if (positions.length === 0 && (status === 'idle' || status === 'loading')) {
     return <PositionNotice title="Loading position">Looking up this wallet’s open positions…</PositionNotice>;
   }
-  if (status === 'error') {
+  if (positions.length === 0 && status === 'error') {
     return (
       <PositionNotice title="Unable to load position" retry={refresh}>
         Florin GraphQL could not load this wallet’s positions{error ? `: ${error}` : '.'}
