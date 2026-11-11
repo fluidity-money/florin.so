@@ -13,6 +13,7 @@ import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import { robinhoodTestnet } from '@reown/appkit/networks';
 import type { EIP1193Provider } from 'viem';
 import { Wallet, WalletContext } from './wallet';
+import { useThemeMode } from '../../lib/theme-mode';
 
 const PROJECT_ID = (process.env.NEXT_PUBLIC_REOWN_PROJECT_ID ?? '').trim();
 const HAS_REOWN =
@@ -81,14 +82,12 @@ function InjectedWalletProvider({ children }: { children: ReactNode }) {
 }
 
 function RealWalletBridge({ children }: { children: ReactNode }) {
+  // The wallet modal follows the site theme, including a manual switch.
   const { setThemeMode } = useAppKitTheme();
+  const themeMode = useThemeMode();
   useEffect(() => {
-    const preference = window.matchMedia('(prefers-color-scheme: dark)');
-    const syncTheme = () => setThemeMode(preference.matches ? 'dark' : 'light');
-    syncTheme();
-    preference.addEventListener('change', syncTheme);
-    return () => preference.removeEventListener('change', syncTheme);
-  }, [setThemeMode]);
+    setThemeMode(themeMode);
+  }, [themeMode, setThemeMode]);
   const account = useAppKitAccount();
   const { open } = useAppKit();
   const { disconnect } = useDisconnect();

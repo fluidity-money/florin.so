@@ -6,6 +6,7 @@ import { Header } from '../components/Header';
 import { Footer } from '../components/Footer';
 import { CookieConsent } from '../components/CookieConsent';
 import { themeVars } from '../lib/theme';
+import { THEME_INIT_SCRIPT } from '../lib/theme-init';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://florin.so'),
@@ -48,7 +49,11 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="en" style={style}>
+    <html lang="en" style={style} suppressHydrationWarning>
+      <head>
+        {/* Sets data-theme before first paint: saved choice, else the device. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body>
         <Providers>
           <a

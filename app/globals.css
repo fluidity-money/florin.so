@@ -1309,6 +1309,68 @@ input:focus-visible {
   color: var(--charcoal);
 }
 
+.site-footer__controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Day and night switch. Same height and hairline as the social link beside
+   it. The thumb sits over the sun by day and slides over the moon at night,
+   reading its side from <html data-theme> so it is right before hydration. */
+.theme-switch {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: 30px 30px;
+  place-items: center;
+  width: 68px;
+  height: 38px;
+  padding: 3px;
+  border: 1px solid color-mix(in srgb, var(--paper) 30%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--paper);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.theme-switch:hover {
+  border-color: var(--paper);
+}
+
+.theme-switch:focus-visible {
+  outline-color: var(--paper);
+}
+
+.theme-switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--paper);
+  transition: transform 0.2s ease;
+}
+
+.theme-switch__icon {
+  position: relative;
+  opacity: 0.72;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.theme-switch__icon--sun {
+  color: var(--charcoal);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-switch__thumb,
+  .theme-switch__icon {
+    transition: none;
+  }
+}
+
 /* Same lockup as the header brand: mark left, wordmark right. */
 .site-footer__brand {
   display: inline-flex;
@@ -3118,10 +3180,7 @@ input:focus-visible {
   position: absolute;
   inset: 0;
   z-index: -2;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 62%;
+  background: url('/hero.webp') center 62% / cover no-repeat;
 }
 
 /* The painting is bright at the top and busy at the bottom, so the scrim is
@@ -3521,92 +3580,103 @@ input:focus-visible {
    places so pale reads on phthalo. Greys are white at reduced alpha, raised
    surfaces are white at 4% over black. Literal artwork (the hero scrim, token
    logos) is not a page surface and stays as it is. The token names `biscay`
-   and `hawkes` are historical: foreground and surface of the brand pair. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --ink: #eeeeee;
-    --paper: #1e1e1e;
-    --gray-1: rgba(238, 238, 238, 0.86);
-    --gray-2: rgba(238, 238, 238, 0.66);
-    --gray-3: rgba(238, 238, 238, 0.52);
-    --gray-4: rgba(30, 30, 30, 0.62);
-    --line: rgba(238, 238, 238, 0.34);
-    --line-soft: rgba(238, 238, 238, 0.14);
-    --accent: #eeeeee;
-    --tint-soft: #262626;
-    --tint-warm: #262626;
-    --strong: #eeeeee;
-    --strong-fg: #1e1e1e;
-    --sp-biscay: #dcebe2;
-    --sp-hawkes: #0f3d2e;
-    --gold: var(--ink);
-    --blue: #262626;
-    --blush: #262626;
-    --risk-ok: #8fbf9f;
-    --risk-warn: #d3ab68;
-    --risk-bad: #dd8c7e;
-    --surface-raised: #262626;
-  }
+   and `hawkes` are historical: foreground and surface of the brand pair.
 
-  .panel, .market, .risk, .swap__field, .field__in,
-  .picker__trigger, .picker__menu, .risks-dialog, .faucet-intro,
-  .cookie-consent {
-    background: var(--surface-raised);
-  }
-
-  /* Day-theme hairlines and offsets are drawn in black, which disappears on
-     a black page. Redraw them in white at the same weight. */
-  .panel { box-shadow: none; }
-  .slider {
-    background-image: linear-gradient(90deg, rgba(238, 238, 238, 0.3) 0 1px, transparent 1px 9px);
-  }
-  .ratiobar__track {
-    background-image: linear-gradient(90deg, rgba(238, 238, 238, 0.3) 0 1px, transparent 1px 7px);
-  }
-  .ratiobar__fill { background: rgba(238, 238, 238, 0.2); }
-
-  .field__in:focus {
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--sp-biscay) 20%, transparent);
-  }
-
-  select:focus-visible, textarea:focus-visible, summary:focus-visible {
-    outline: 2px solid var(--sp-biscay);
-    outline-offset: 3px;
-  }
-
-  .picker__menu { box-shadow: 0 18px 44px rgb(0 0 0 / 45%); }
-  .risks-dialog::backdrop { background: rgb(0 0 0 / 65%); }
-  .swap__error .warn { border-color: var(--risk-bad); }
-  .tag--danger {
-    background: var(--tint-warm);
-    color: var(--risk-bad);
-    border-color: var(--risk-bad);
-  }
-
-  /* These are permanently reversed regions, not inverted page surfaces. The
-     footer is black in both themes, so at night a hairline marks its edge. */
-  .site-footer {
-    --paper: #eeeeee;
-    --sp-hawkes: #dcebe2;
-    background: #1e1e1e;
-    border-top: 1px solid rgba(238, 238, 238, 0.14);
-  }
-  .site-footer a:focus-visible { outline-color: #eeeeee; }
-  .hero__btn--solid { color: #0f3d2e; }
-  /* The night painting is already dark, so the scrim only has to steady the
-     type and ground the stats row rather than hold back a bright sky. */
-  .hero__scrim {
-    background:
-      radial-gradient(ellipse 78% 56% at 50% 42%,
-        color-mix(in srgb, var(--sp-black) 30%, transparent) 0%,
-        color-mix(in srgb, var(--sp-black) 12%, transparent) 55%,
-        transparent 78%),
-      linear-gradient(to bottom,
-        transparent 0%,
-        transparent 52%,
-        color-mix(in srgb, var(--sp-black) 22%, transparent) 76%,
-        color-mix(in srgb, var(--sp-black) 58%, transparent) 100%);
-  }
-  .hero a:focus-visible, .hero button:focus-visible { outline-color: #eeeeee; }
+   Keyed on <html data-theme>, which the script in app/layout.tsx sets before
+   first paint from the saved choice, or from the device setting when there
+   is none. The :where() prefix adds no specificity, so these rules weigh the
+   same as the day rules they replace. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ink: #eeeeee;
+  --paper: #1e1e1e;
+  --gray-1: rgba(238, 238, 238, 0.86);
+  --gray-2: rgba(238, 238, 238, 0.66);
+  --gray-3: rgba(238, 238, 238, 0.52);
+  --gray-4: rgba(30, 30, 30, 0.62);
+  --line: rgba(238, 238, 238, 0.34);
+  --line-soft: rgba(238, 238, 238, 0.14);
+  --accent: #eeeeee;
+  --tint-soft: #262626;
+  --tint-warm: #262626;
+  --strong: #eeeeee;
+  --strong-fg: #1e1e1e;
+  --sp-biscay: #dcebe2;
+  --sp-hawkes: #0f3d2e;
+  --gold: var(--ink);
+  --blue: #262626;
+  --blush: #262626;
+  --risk-ok: #8fbf9f;
+  --risk-warn: #d3ab68;
+  --risk-bad: #dd8c7e;
+  --surface-raised: #262626;
 }
+
+:where([data-theme="dark"]) :is(.panel, .market, .risk, .swap__field, .field__in,
+  .picker__trigger, .picker__menu, .risks-dialog, .faucet-intro,
+  .cookie-consent) {
+  background: var(--surface-raised);
+}
+
+/* Day-theme hairlines and offsets are drawn in black, which disappears on
+   a black page. Redraw them in white at the same weight. */
+:where([data-theme="dark"]) .panel { box-shadow: none; }
+:where([data-theme="dark"]) .slider {
+  background-image: linear-gradient(90deg, rgba(238, 238, 238, 0.3) 0 1px, transparent 1px 9px);
+}
+:where([data-theme="dark"]) .ratiobar__track {
+  background-image: linear-gradient(90deg, rgba(238, 238, 238, 0.3) 0 1px, transparent 1px 7px);
+}
+:where([data-theme="dark"]) .ratiobar__fill { background: rgba(238, 238, 238, 0.2); }
+
+:where([data-theme="dark"]) .field__in:focus {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sp-biscay) 20%, transparent);
+}
+
+:where([data-theme="dark"]) :is(select, textarea, summary):focus-visible {
+  outline: 2px solid var(--sp-biscay);
+  outline-offset: 3px;
+}
+
+:where([data-theme="dark"]) .picker__menu { box-shadow: 0 18px 44px rgb(0 0 0 / 45%); }
+:where([data-theme="dark"]) .risks-dialog::backdrop { background: rgb(0 0 0 / 65%); }
+:where([data-theme="dark"]) .swap__error .warn { border-color: var(--risk-bad); }
+:where([data-theme="dark"]) .tag--danger {
+  background: var(--tint-warm);
+  color: var(--risk-bad);
+  border-color: var(--risk-bad);
+}
+
+/* These are permanently reversed regions, not inverted page surfaces. The
+   footer is black in both themes, so at night a hairline marks its edge. */
+:where([data-theme="dark"]) .site-footer {
+  --paper: #eeeeee;
+  --sp-hawkes: #dcebe2;
+  background: #1e1e1e;
+  border-top: 1px solid rgba(238, 238, 238, 0.14);
+}
+:where([data-theme="dark"]) .site-footer a:focus-visible { outline-color: #eeeeee; }
+:where([data-theme="dark"]) .hero__btn--solid { color: #0f3d2e; }
+:where([data-theme="dark"]) .hero :is(a, button):focus-visible { outline-color: #eeeeee; }
+
+/* The same field after dark. The night painting is already dark, so the
+   scrim only has to steady the type and ground the stats row rather than
+   hold back a bright sky. */
+:where([data-theme="dark"]) .hero__bg { background-image: url('/hero-night.webp'); }
+:where([data-theme="dark"]) .hero__scrim {
+  background:
+    radial-gradient(ellipse 78% 56% at 50% 42%,
+      color-mix(in srgb, var(--sp-black) 30%, transparent) 0%,
+      color-mix(in srgb, var(--sp-black) 12%, transparent) 55%,
+      transparent 78%),
+    linear-gradient(to bottom,
+      transparent 0%,
+      transparent 52%,
+      color-mix(in srgb, var(--sp-black) 22%, transparent) 76%,
+      color-mix(in srgb, var(--sp-black) 58%, transparent) 100%);
+}
+
+/* The switch thumb slides over the moon, and the icons trade emphasis. */
+:where([data-theme="dark"]) .theme-switch__thumb { transform: translateX(30px); }
+:where([data-theme="dark"]) .theme-switch__icon--sun { color: inherit; opacity: 0.72; }
+:where([data-theme="dark"]) .theme-switch__icon--moon { color: var(--charcoal); opacity: 1; }
