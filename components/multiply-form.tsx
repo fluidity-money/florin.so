@@ -47,7 +47,9 @@ import {
   multiplierForLiquidationPrice,
   multiplyAmountsBps,
 } from '../lib/multiply-contract';
-import { LTV_RISK, liquidationRisk, type RiskLevel } from '../lib/protocol-math';
+import { LTV_RISK, liquidationRisk, redemptionRisk as redemptionRiskFor, type RiskLevel } from '../lib/protocol-math';
+import { parseDisplayPercent, spyMarket, type FlorinMarkets } from '../lib/florin-markets';
+import { useFlorinMarkets } from '../lib/use-florin-markets';
 
 const publicClient = createPublicClient({ chain: robinhoodTestnet, transport: http() });
 // Multiples in basis points: 10,000 is 1x. The slider moves in 0.1x steps.
@@ -118,7 +120,9 @@ function errorMessage(error: unknown): string {
   return String(error);
 }
 
-export function MultiplyForm() {
+export function MultiplyForm({ initialMarkets }: { initialMarkets: FlorinMarkets }) {
+  const markets = useFlorinMarkets(initialMarkets);
+  const marketAverageRate = parseDisplayPercent(spyMarket(markets).borrow?.avgRatePa);
   const wallet = useWallet();
   const account = wallet.address as Address | null;
   const zapperAddress = CONTRACTS.leverageZapper;
@@ -135,7 +139,7 @@ export function MultiplyForm() {
   const [multiplierBps, setMultiplierBps] = useState(20_000);
   // Size the position by its multiple or by where it liquidates. Both drive
   // the same slider; only the number you type into changes.
-  const [sizeBy, setSizeBy] = useState<SizeBy>('liquidation');
+  const [sizeBy, setSizeBy] = useState<SizeBy>('multiplier');
   // What the holder is typing into the liquidation price box. Null shows the
   // price that the current multiple actually produces.
   const [liquidationDraft, setLiquidationDraft] = useState<string | null>(null);
@@ -230,6 +234,7 @@ export function MultiplyForm() {
   const shownLtv = active ? ltv : plannedLtv;
   const shownLiquidationPrice = active ? liquidationPrice : spyPrice * MIN_COLLATERAL_RATIO * plannedLtv;
   const riskLevel = liquidationRisk(shownLtv, MAX_LTV);
+  const redemptionRisk = redemptionRiskFor(rate, marketAverageRate);
 
   function setMultiple(bps: number) {
     const clamped = Math.min(MAX_MULTIPLIER_BPS, Math.max(MIN_MULTIPLIER_BPS, Math.round(bps)));
@@ -450,7 +455,7 @@ export function MultiplyForm() {
         <div className="swap__row">
           <span className="swap__label">{sizeBy === 'liquidation' ? 'Liquidation price' : 'Multiplier'}</span>
           <span className="seg" role="group" aria-label="Size the position by">
-            {(['liquidation', 'multiplier'] as const).map((option) => (
+            {(['multiplier', 'liquidation'] as const).map((option) => (
               <button
                 key={option}
                 type="button"
@@ -524,19 +529,33 @@ export function MultiplyForm() {
         </span>
         <span>LTV <b>{pct(shownLtv * 100, 1)}</b></span>
       </div>
-      <div className="swap__meta">
-        <span>FUSD debt <b>{active ? money(totalDebt, 2) : '−'}</b></span>
-        <span>Total SPY exposure <b>{active ? `${money(exposure, 4)} SPY` : '−'}</b></span>
+      <div className="swap__meta swap__meta--right">
+        <span>Exposure <b>{active ? `${money(exposure, 4)} SPY` : '−'}</b></span>
       </div>
 
       <div className="swap__field swap__field--rate">
         <div className="swap__row">
-          <span className="swap__label">Set interest rate</span>
-          <span className="swap__amount swap__amount--rate">{pct(rate * 100, 2)}</span>
+          <span className="swap__label">
+            Set interest rate
+            {marketAverageRate !== null && <em> (avg. {pct(marketAverageRate * 100, 2)})</em>}
+          </span>
         </div>
-        <input className="slider swap__slider" type="range" min={MIN_RATE} max={MAX_RATE} step={0.0025}
-          value={rate} onChange={(event) => setRate(Number(event.target.value))} aria-label="Interest rate" />
+        <div className="swap__row">
+          <span className="swap__amount swap__amount--rate">{pct(rate * 100, 2)}</span>
+          <input disabled={pending} className="slider swap__slider" type="range" min={MIN_RATE} max={MAX_RATE} step={0.0025}
+            value={rate} onChange={(event) => setRate(Number(event.target.value))} aria-label="Interest rate" />
+        </div>
         <span className="swap__usd">${money(totalDebt * rate)} FUSD / year</span>
+      </div>
+      <div className="swap__meta">
+        {redemptionRisk ? (
+          <span className={`risk-tag risk-tag--${redemptionRisk}`}>
+            <i className={`swap__dot swap__dot--${redemptionRisk}`} />
+            {RISK_LABEL[redemptionRisk]} redemption risk
+          </span>
+        ) : (
+          <span>Market average rate unavailable</span>
+        )}
       </div>
 
       <details className="swap__note">
@@ -547,7 +566,7 @@ export function MultiplyForm() {
         </p>
         <p>
           More exposure means bigger gains and losses, and a liquidation price closer to today&apos;s
-          price. You can add SPY or repay FUSD from the Manage page at any time.
+          price.
         </p>
       </details>
 

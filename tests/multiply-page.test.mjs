@@ -19,9 +19,9 @@ test('multiply page exposes SPY looping controls and risk information', () => {
   assert.match(page, /MultiplyForm/);
   assert.match(form, /aria-label="SPY deposit"/);
   assert.match(form, /aria-label="Multiplier"/);
-  assert.match(form, /Total SPY exposure/);
+  assert.match(form, /Exposure/);
   assert.match(form, /Liquidation price/);
-  assert.match(form, /FUSD debt/);
+  assert.match(form, /redemption risk/);
   assert.match(form, /liquidation/i);
 });
 

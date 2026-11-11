@@ -17,7 +17,7 @@ import { Button } from './ui';
 import { Token, TokenIcon } from './token-icon';
 import { TokenSelect } from './token-select';
 import { money, pct, xnum } from '../lib/format';
-import { DEBT_SUGGESTIONS, liquidationRisk, type RiskLevel } from '../lib/protocol-math';
+import { DEBT_SUGGESTIONS, liquidationRisk, redemptionRisk as redemptionRiskFor, type RiskLevel } from '../lib/protocol-math';
 import {
   DEFAULT_RATE,
   MAX_RATE,
@@ -195,13 +195,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   const minimumRatio = quote ? Number(formatUnits(quote.mcr, 18)) : MIN_COLLATERAL_RATIO;
   const liquidationPrice = spy > 0 && totalDebt > 0 ? minimumRatio * totalDebt / spy : 0;
   const annualInterest = totalDebt * rate;
-  const redemptionRisk = marketAverageRate === null
-    ? null
-    : rate >= marketAverageRate
-      ? 'low'
-      : rate >= marketAverageRate * 0.6
-        ? 'medium'
-        : 'high';
+  const redemptionRisk = redemptionRiskFor(rate, marketAverageRate);
   const maxLtv = 1 / minimumRatio;
   const active = collateralWei > 0n && borrowedWei > 0n;
   // Named the way Liquity names it, from how much of the maximum LTV is used.
