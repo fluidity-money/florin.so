@@ -54,9 +54,9 @@ import { useFlorinMarkets } from '../lib/use-florin-markets';
 const publicClient = createPublicClient({ chain: robinhoodTestnet, transport: http() });
 // Multiples in basis points: 10,000 is 1x. The slider moves in 0.1x steps.
 const MIN_MULTIPLIER_BPS = 11_000;
-const MAX_MULTIPLIER_BPS = 50_000;
+const MAX_MULTIPLIER_BPS = 60_000;
 const MULTIPLIER_STEP_BPS = 1_000;
-const MULTIPLIER_TICKS = [11_000, 20_000, 30_000, 40_000, 50_000];
+const MULTIPLIER_TICKS = [11_000, 20_000, 30_000, 40_000, 50_000, 60_000];
 const MAX_LTV = 1 / MIN_COLLATERAL_RATIO;
 
 const RISK_LABEL: Record<RiskLevel, string> = { low: 'Low', medium: 'Medium', high: 'High' };
