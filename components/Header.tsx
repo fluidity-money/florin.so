@@ -12,6 +12,7 @@ const NAV = [
   { href: '/', label: 'Home' },
   { href: '/open', label: 'Open position' },
   { href: '/stability', label: 'Earn' },
+  { href: '/multiply', label: 'MULTIPLY' },
   { href: '/position', label: 'Manage' },
 ];
 

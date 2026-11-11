@@ -1,9 +1,11 @@
 import 'server-only';
+import { withMarketCheckpoint } from './market-adjustments';
 
 import { isFlorinMarkets, type FlorinMarkets } from './florin-markets';
 import { FLORIN_GRAPH_URL, MARKET_QUERY } from './florin-market-query';
 
 interface GraphResponse {
+  extensions?: unknown;
   data?: unknown;
   errors?: { message: string }[];
 }
@@ -33,7 +35,7 @@ async function queryFlorinMarkets(options: FlorinFetchOptions): Promise<FlorinMa
     throw new Error('Florin GraphQL returned invalid market data');
   }
 
-  return result.data;
+  return withMarketCheckpoint(result.data, result.extensions);
 }
 
 // Initial HTML uses Next's shared server data cache. A stale value can be served

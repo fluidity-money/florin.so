@@ -18,7 +18,7 @@ import { parseDisplayPercent, spyMarket, type FlorinMarkets } from '../lib/flori
 import { money } from '../lib/format';
 import { MIN_COLLATERAL_RATIO } from '../lib/protocol-constants';
 import { useWallet } from './wallet/wallet';
-import { useFlorinMarkets } from '../lib/use-florin-markets';
+import { useFlorinMarkets, useMarketAction } from '../lib/use-florin-markets';
 import { robinhoodPublicClient } from '../lib/robinhood-client';
 import { captureEvent } from '../lib/analytics';
 import {
@@ -95,6 +95,7 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
   const wallet = useWallet();
   const account = wallet.address as Address | null;
   const markets = useFlorinMarkets(initialMarkets);
+  const prepareMarketAction = useMarketAction();
   const { earn: rewards } = spyMarket(markets);
   const [mode, setMode] = useState<Mode>('deposit');
   const [amountStr, setAmountStr] = useState('');
@@ -175,19 +176,22 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
         ? 'medium'
         : 'high';
 
-  async function waitForReceipt(hash: Hash): Promise<Hash> {
+  async function waitForReceipt(hash: Hash) {
     let currentHash = hash;
+    let replacementInvalid = false;
     setTxHash(hash);
     setStage('confirming');
     const receipt = await robinhoodPublicClient.waitForTransactionReceipt({
       hash,
       onReplaced: (replacement) => {
+        if (replacement.reason !== 'repriced') replacementInvalid = true;
         currentHash = replacement.transaction.hash;
         setTxHash(currentHash);
       },
     });
+    if (replacementInvalid) throw new Error('The transaction was cancelled or replaced.');
     if (receipt.status !== 'success') throw new Error('The transaction reverted.');
-    return currentHash;
+    return receipt;
   }
 
   async function transact(action: Mode | 'claim') {
@@ -269,7 +273,9 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
           functionName: 'provideToSP',
           args: [amount, false],
         });
-        await waitForReceipt(await walletClient.writeContract(simulation.request));
+        const updateMarkets = prepareMarketAction();
+        const receipt = await waitForReceipt(await walletClient.writeContract(simulation.request));
+        updateMarkets(receipt, { poolSize: Number(formatUnits(amount, 18)) });
         setSuccess(`${money(Number(formatUnits(amount, 18)), 2)} FUSD deposited.`);
       } else if (action === 'withdraw') {
         const [currentDeposit, currentTotalDeposits] = await Promise.all([
@@ -301,7 +307,9 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
           functionName: 'withdrawFromSP',
           args: [amount, false],
         });
-        await waitForReceipt(await walletClient.writeContract(simulation.request));
+        const updateMarkets = prepareMarketAction();
+        const receipt = await waitForReceipt(await walletClient.writeContract(simulation.request));
+        updateMarkets(receipt, { poolSize: -Number(formatUnits(amount, 18)) });
         setSuccess(`${money(Number(formatUnits(amount, 18)), 2)} FUSD withdrawn.`);
       } else {
         const initialDeposit = await robinhoodPublicClient.readContract({

@@ -5,10 +5,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FLORIN_GRAPH_URL, MARKET_QUERY } from './florin-market-query';
 import { hasMarketData, isFlorinMarkets, type FlorinMarkets } from './florin-markets';
 
+import { applyMarketReceipt, reconcileMarkets, withMarketCheckpoint, type MarketSnapshot, type MarketDelta, type MarketReceipt } from './market-adjustments';
+
 const STORAGE_KEY = 'florin-markets-v1';
 const QUERY_KEY = ['florin-markets'] as const;
 
-async function fetchMarkets(): Promise<FlorinMarkets> {
+async function fetchMarkets(): Promise<MarketSnapshot> {
   const response = await fetch(FLORIN_GRAPH_URL, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -25,15 +27,22 @@ async function fetchMarkets(): Promise<FlorinMarkets> {
   ) {
     throw new Error('Florin GraphQL returned invalid market data');
   }
-  return payload.data;
+  if ('errors' in payload && Array.isArray(payload.errors) && payload.errors.length) {
+    throw new Error('Florin GraphQL returned partial market data');
+  }
+  return withMarketCheckpoint(payload.data, 'extensions' in payload ? payload.extensions : undefined);
 }
 
 export function useFlorinMarkets(initialData: FlorinMarkets): FlorinMarkets {
   const queryClient = useQueryClient();
   const query = useQuery({
     queryKey: QUERY_KEY,
-    queryFn: fetchMarkets,
+    queryFn: async () => {
+      const incoming = await fetchMarkets();
+      return reconcileMarkets(queryClient.getQueryData<MarketSnapshot>(QUERY_KEY), incoming);
+    },
     initialData,
+    gcTime: Infinity,
     staleTime: 60_000,
     // Render SSR data immediately, but always request the browser's own copy.
     refetchOnMount: 'always',
@@ -49,7 +58,7 @@ export function useFlorinMarkets(initialData: FlorinMarkets): FlorinMarkets {
     try {
       const parsed: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null');
       if (isFlorinMarkets(parsed) && hasMarketData(parsed)) {
-        queryClient.setQueryData(QUERY_KEY, parsed);
+        queryClient.setQueryData(QUERY_KEY, withMarketCheckpoint(parsed, undefined));
       }
     } catch {
       // Missing or invalid cached data is equivalent to no fallback.
@@ -57,7 +66,7 @@ export function useFlorinMarkets(initialData: FlorinMarkets): FlorinMarkets {
   }, [query.data, queryClient]);
 
   useEffect(() => {
-    if (!hasMarketData(query.data)) return;
+    if (!hasMarketData(query.data) || (query.data as MarketSnapshot).marketSync?.pending) return;
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(query.data));
     } catch {
@@ -66,4 +75,17 @@ export function useFlorinMarkets(initialData: FlorinMarkets): FlorinMarkets {
   }, [query.data]);
 
   return query.data;
+}
+
+// Call prepare before submitting a protocol action, and its returned callback
+// only with that action's successful receipt (never an approval receipt).
+export function useMarketAction() {
+  const client = useQueryClient();
+  return () => {
+    const before = client.getQueryData<MarketSnapshot>(QUERY_KEY);
+    return (receipt: MarketReceipt, delta: MarketDelta) => {
+      client.setQueryData<MarketSnapshot>(QUERY_KEY, current => applyMarketReceipt(current, before, receipt, delta));
+      void client.invalidateQueries({ queryKey: QUERY_KEY });
+    };
+  };
 }

@@ -21,7 +21,7 @@ import type { FlorinPosition } from '../lib/florin-positions';
 import { positionMetrics } from '../lib/protocol-math';
 import { MAX_RATE, MIN_COLLATERAL_RATIO, MIN_RATE } from '../lib/protocol-constants';
 import { parseDisplayPercent, spyMarket, type FlorinMarkets } from '../lib/florin-markets';
-import { useFlorinMarkets } from '../lib/use-florin-markets';
+import { useFlorinMarkets, useMarketAction } from '../lib/use-florin-markets';
 import {
   maxWithdrawableCollateral,
   rateChangePreview,
@@ -346,6 +346,7 @@ function PositionEditor({
   const w = useWallet();
   const account = w.address as Address | null;
   const deploymentMatches = position.troveManager.toLowerCase() === CONTRACTS.troveManager.toLowerCase();
+  const prepareMarketAction = useMarketAction();
   const [rate, setRate] = useState(position.rate);
   const [rateEdited, setRateEdited] = useState(false);
 
@@ -547,7 +548,9 @@ function PositionEditor({
       async function writeAndConfirm(
         request: Parameters<typeof walletClient.writeContract>[0],
         revertedMessage: string,
+        delta?: { deposited?: number; debtIssued?: number },
       ) {
+        const updateMarkets = prepareMarketAction();
         failureStage = 'opening';
         setStage('submitting');
         let hash = await walletClient.writeContract(request);
@@ -569,6 +572,7 @@ function PositionEditor({
           throw new Error('The transaction was cancelled or replaced by a different wallet transaction.');
         }
         if (receipt.status !== 'success') throw new Error(revertedMessage);
+        if (delta) updateMarkets(receipt, delta);
       }
 
       failureStage = 'preparing';
@@ -613,7 +617,7 @@ function PositionEditor({
           functionName: 'addColl',
           args: [troveId, collateralWei],
         });
-        await writeAndConfirm(adjustment.request, 'The collateral deposit reverted.');
+        await writeAndConfirm(adjustment.request, 'The collateral deposit reverted.', { deposited: Number(formatUnits(collateralWei, 18)) });
         setCollStr('');
       } else if (action === 'withdraw') {
         const state = requireFreshRead(await chainState.refetch());
@@ -627,7 +631,7 @@ function PositionEditor({
           functionName: 'withdrawColl',
           args: [troveId, collateralWei],
         });
-        await writeAndConfirm(adjustment.request, 'The collateral withdrawal reverted.');
+        await writeAndConfirm(adjustment.request, 'The collateral withdrawal reverted.', { deposited: -Number(formatUnits(collateralWei, 18)) });
         setCollStr('');
       } else if (action === 'borrow') {
         const validation = validatePositionAmount('borrow', debtWei, 0n);
@@ -657,7 +661,7 @@ function PositionEditor({
           functionName: 'withdrawBold',
           args: [troveId, debtWei, maxUpfrontFee(predictedFee)],
         });
-        await writeAndConfirm(adjustment.request, 'The FUSD borrowing transaction reverted.');
+        await writeAndConfirm(adjustment.request, 'The FUSD borrowing transaction reverted.', { debtIssued: Number(formatUnits(debtWei, 18)) });
         setDebtStr('');
       } else if (action === 'repay') {
         const fusdBalance = await robinhoodPublicClient.readContract({
@@ -678,7 +682,7 @@ function PositionEditor({
           functionName: 'repayBold',
           args: [troveId, debtWei],
         });
-        await writeAndConfirm(adjustment.request, 'The FUSD repayment reverted.');
+        await writeAndConfirm(adjustment.request, 'The FUSD repayment reverted.', { debtIssued: -Number(formatUnits(debtWei, 18)) });
         setDebtStr('');
       } else if (action === 'rate') {
         if (latest.interestBatchManager.toLowerCase() !== zeroAddress) throw new Error('This position is managed by an interest-rate batch.');
@@ -731,7 +735,10 @@ function PositionEditor({
           functionName: 'closeTrove',
           args: [troveId],
         });
-        await writeAndConfirm(adjustment.request, 'The position-close transaction reverted.');
+        await writeAndConfirm(adjustment.request, 'The position-close transaction reverted.', {
+          deposited: -Number(formatUnits(currentCollateralWei, 18)),
+          debtIssued: -Number(formatUnits(currentDebtWei, 18)),
+        });
       }
 
       captureEvent('position_action_succeeded', {

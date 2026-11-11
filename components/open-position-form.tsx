@@ -25,7 +25,7 @@ import {
   MIN_RATE,
 } from '../lib/protocol-constants';
 import { parseDisplayPercent, spyMarket, type FlorinMarkets } from '../lib/florin-markets';
-import { useFlorinMarkets } from '../lib/use-florin-markets';
+import { useFlorinMarkets, useMarketAction } from '../lib/use-florin-markets';
 import {
   describeTransactionError,
   type TransactionErrorDescription,
@@ -97,6 +97,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   const enableAccounts = useFeature('enable-accounts');
   const { createAccountFlorinOpenPosition } = useAccount();
   const markets = useFlorinMarkets(initialMarkets);
+  const prepareMarketAction = useMarketAction();
   const { borrow: spyMarketDetails } = spyMarket(markets);
   const marketAverageRate = parseDisplayPercent(spyMarketDetails?.avgRatePa);
   const account = wallet.address as Address | null;
@@ -304,6 +305,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         failureStage = 'opening';
         setStage('opening');
         const ownerIndex = randomOwnerIndex();
+        const updateMarkets = prepareMarketAction();
         const result = await createAccountFlorinOpenPosition({
           openPosition: {
             owner: account,
@@ -329,8 +331,21 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         setTxHash(hash);
         failureStage = 'confirming';
         setStage('confirming');
-        const receipt = await publicClient.waitForTransactionReceipt({ hash });
+        let replacementInvalid = false;
+        const receipt = await publicClient.waitForTransactionReceipt({
+          hash,
+          onReplaced: (replacement) => {
+            if (replacement.reason !== 'repriced') replacementInvalid = true;
+            transactionHash = replacement.transaction.hash;
+            setTxHash(transactionHash);
+          },
+        });
+        if (replacementInvalid) throw new Error('The transaction was cancelled or replaced.');
         if (receipt.status !== 'success') throw new Error('The account open-position transaction reverted.');
+        updateMarkets(receipt, {
+          deposited: Number(formatUnits(collateralWei, 18)),
+          debtIssued: Number(formatUnits(borrowedWei, 18)),
+        });
 
         await chainState.refetch();
         captureEvent('position_open_succeeded', {
@@ -464,6 +479,8 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
           zeroAddress,
         ],
       });
+      const updateMarkets = prepareMarketAction();
+      let replacementInvalid = false;
       const hash = await walletClient.writeContract(simulation.request);
       transactionHash = hash;
       setTxHash(hash);
@@ -472,11 +489,17 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       const receipt = await publicClient.waitForTransactionReceipt({
         hash,
         onReplaced: (replacement) => {
+          if (replacement.reason !== 'repriced') replacementInvalid = true;
           transactionHash = replacement.transaction.hash;
           setTxHash(transactionHash);
         },
       });
+      if (replacementInvalid) throw new Error('The transaction was cancelled or replaced.');
       if (receipt.status !== 'success') throw new Error('The open-trove transaction reverted.');
+      updateMarkets(receipt, {
+        deposited: Number(formatUnits(collateralWei, 18)),
+        debtIssued: Number(formatUnits(borrowedWei, 18)),
+      });
 
       await chainState.refetch();
       captureEvent('position_open_succeeded', {

@@ -19,6 +19,7 @@ import (
 
 	_ "github.com/lib/pq"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
@@ -211,6 +212,22 @@ func main() {
 		},
 	}))
 	srv.AddTransport(transport.Options{})
+	// Read BEFORE resolvers: the checkpoint and events commit atomically, so
+	// this is a conservative inclusive lower bound for every field returned.
+	// Reading afterwards could certify older resolver results as fresh.
+	srv.AroundResponses(func(ctx context.Context, next graphql.ResponseHandler) *graphql.Response {
+		var block string
+		err := db.QueryRowContext(ctx, `SELECT (block_number - 1)::text
+			FROM florin_ingestor_checkpointing_1 WHERE id = 1 AND block_number > 0`).Scan(&block)
+		response := next(ctx)
+		if err == nil && response != nil {
+			if response.Extensions == nil {
+				response.Extensions = make(map[string]interface{})
+			}
+			response.Extensions["florinIndexedBlock"] = block
+		}
+		return response
+	})
 	srv.AddTransport(transport.GET{})
 	srv.AddTransport(transport.POST{})
 	srv.SetQueryCache(lru.New[*ast.QueryDocument](1000))
