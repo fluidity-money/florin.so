@@ -10,7 +10,17 @@ test('home and stability pages use the existing event-backed market query', () =
   const stabilityPage = read('app/stability/page.tsx');
   const stability = read('components/stability-pool.tsx');
 
-  assert.match(home, /await fetchFlorinMarkets\(\)/);
+  assert.match(home, /await Promise\.all\(\[fetchFlorinMarkets\(\), fetchSpyDisplayPrice\(\)\]\)/);
+  assert.match(home, /initialSpyPrice=\{initialSpyPrice\}/);
+  assert.match(hero, /useSpyPrice\(initialSpyPrice\)/);
+  assert.doesNotMatch(hero, /priceLive/);
+  const serverPrice = read('lib/spy-price-server.ts');
+  assert.match(serverPrice, /unstable_cache/);
+  assert.match(serverPrice, /revalidate: 30/);
+  assert.match(serverPrice, /validatedOraclePrice\(simulation.result\)/);
+  const priceHook = read('lib/use-spy-price.ts');
+  assert.match(priceHook, /Number\.isFinite\(initialPrice\)/);
+  assert.match(priceHook, /\.\.\.current, live: false/);
   assert.match(home, /<Hero markets=\{markets\}/);
   assert.doesNotMatch(hero, /mockData|PROTOCOL_STATS/);
   assert.match(hero, /useFlorinMarkets\(markets\)/);

@@ -18,10 +18,10 @@ const FAUCET_INTRO_MAX_AGE = 60 * 60 * 24 * 365;
 // deliberately plain: a badge, a headline, a line of copy, two buttons, and
 // the protocol's three numbers along the foot. Anything more competes with
 // the picture and none of it would win.
-export function Hero({ markets }: { markets: FlorinMarkets }) {
+export function Hero({ markets, initialSpyPrice = null }: { markets: FlorinMarkets; initialSpyPrice?: number | null }) {
   const liveMarkets = useFlorinMarkets(markets);
   const { borrow, earn } = spyMarket(liveMarkets);
-  const { price: spyPrice, live: priceLive } = useSpyPrice();
+  const { price: spyPrice } = useSpyPrice(initialSpyPrice);
   const [showFaucetIntro, setShowFaucetIntro] = useState(false);
   const faucetIntroRef = useRef<HTMLDialogElement>(null);
   const showFaucetCallToAction = useFeature('show-call-to-action-faucet');
@@ -43,11 +43,11 @@ export function Hero({ markets }: { markets: FlorinMarkets }) {
   }, [showFaucetCallToAction]);
 
   // All three read in dollars. FUSD is a dollar stablecoin so those two are a
-  // relabel, but collateral is held in SPY and has to be priced: it waits for
-  // the oracle rather than showing $0 while the feed is still loading.
+  // relabel, but collateral is held in SPY and has to be priced. Seed from the
+  // server's display snapshot and retain it while the browser refreshes.
   const depositedSpy = parseDisplayNumber(borrow?.deposited);
   const collateralUsd =
-    depositedSpy !== null && priceLive && spyPrice > 0 ? depositedSpy * spyPrice : null;
+    depositedSpy !== null && spyPrice > 0 ? depositedSpy * spyPrice : null;
   const debtUsd = parseDisplayNumber(borrow?.debtIssued);
   const poolUsd = parseDisplayNumber(earn?.poolSize);
 

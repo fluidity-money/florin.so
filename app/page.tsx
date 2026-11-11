@@ -3,12 +3,13 @@ import { Hero } from '../components/hero';
 import { Markets } from '../components/markets';
 import { RisksDialog } from '../components/risks-dialog';
 import { fetchFlorinMarkets } from '../lib/florin-graph';
+import { fetchSpyDisplayPrice } from '../lib/spy-price-server';
 
 export default async function HomePage() {
-  const markets = await fetchFlorinMarkets();
+  const [markets, initialSpyPrice] = await Promise.all([fetchFlorinMarkets(), fetchSpyDisplayPrice()]);
   return (
     <div className="home home--hero">
-      <Hero markets={markets} />
+      <Hero markets={markets} initialSpyPrice={initialSpyPrice} />
 
       <div className="home-action-grid">
         <Link href="/open" className="card home-action">

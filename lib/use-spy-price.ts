@@ -11,9 +11,9 @@ export interface SpyPrice {
   change24h: number | null;
 }
 
-export function useSpyPrice(): SpyPrice {
+export function useSpyPrice(initialPrice: number | null = null): SpyPrice {
   const [state, setState] = useState<SpyPrice>({
-    price: 0,
+    price: initialPrice !== null && Number.isFinite(initialPrice) && initialPrice > 0 ? initialPrice : 0,
     live: false,
     change24h: null,
   });
