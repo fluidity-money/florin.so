@@ -1682,6 +1682,30 @@ input:focus-visible {
   white-space: nowrap;
 }
 
+/* Stretch the real link over its row: native navigation, one tab stop,
+   and no click handlers or invalid links wrapping table rows. */
+.market .table tbody tr:has(.market__cta) {
+  position: relative;
+}
+
+.market__cta::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  cursor: pointer;
+}
+
+.market .table tbody tr:has(.market__cta):hover,
+.market .table tbody tr:has(.market__cta:focus-visible) {
+  background: color-mix(in srgb, var(--sp-biscay) 12%, transparent);
+}
+
+.market__cta:focus-visible::after {
+  outline: 2px solid var(--sp-biscay);
+  outline-offset: -2px;
+}
+
 .market__cta:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
