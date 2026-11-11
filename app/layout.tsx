@@ -57,8 +57,9 @@ export default function RootLayout({
             target="_blank"
             rel="noopener noreferrer"
           >
-            Florin Testnet V2 has started! All positions have been reset.{' '}
-            <span className="testnet-banner__link">Click here to learn more</span>
+            Florin Testnet V2 has started! All positions have been reset.{' '} All users
+            have received 100 SPY. <span className="testnet-banner__link">Click here to
+            learn more</span>
           </a>
           <Header />
           <main className="main">{children}</main>
