@@ -1249,13 +1249,20 @@ input:focus-visible {
   width: min(100%, 1500px);
   max-width: none;
   margin: 0 auto;
-  padding: 14px var(--page-gutter);
+  padding: 28px var(--page-gutter);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px 36px;
+  gap: 14px 36px;
   color: var(--ink);
   font-family: var(--sans);
+}
+
+/* The social link leads the bar, then the links. */
+.site-footer__start {
+  display: flex;
+  align-items: center;
+  gap: 22px;
 }
 
 .site-footer__nav {
@@ -1317,10 +1324,13 @@ input:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
+/* Auto margins on both right-hand groups share the spare width, and keep
+   each group to the right when the bar has to wrap onto a second row. */
 .site-footer__controls {
   display: flex;
   align-items: center;
   gap: 10px;
+  margin-left: auto;
 }
 
 /* Version and short commit of this build. */
@@ -1573,7 +1583,7 @@ a.site-footer__version:hover {
     gap: 16px;
   }
 
-  .site-footer__nav,
+  .site-footer__start,
   .site-footer__prices,
   .site-footer__controls {
     width: 100%;
@@ -2606,6 +2616,109 @@ input:focus-visible {
   cursor: pointer;
   font-weight: 600;
   color: var(--sp-biscay);
+}
+
+/* Redemptions in a nutshell: the short version in the open, the mechanics of
+   opening a position folded underneath. */
+.swap__brief {
+  margin-top: 14px;
+  padding: 16px 18px;
+}
+
+.swap__brief h2 {
+  margin: 0;
+  color: var(--sp-biscay);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.swap__brief ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  line-height: 1.5;
+}
+
+.swap__brief li + li {
+  margin-top: 4px;
+}
+
+.swap__brief details {
+  margin-top: 14px;
+  border-top: 1px solid color-mix(in srgb, var(--sp-biscay) 22%, transparent);
+  padding-top: 12px;
+}
+
+/* Risk named in words, not only by the colour of a dot. */
+.risk-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  padding: 3px 10px 3px 9px;
+  color: var(--gray-2);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.risk-tag .swap__dot {
+  width: 8px;
+  height: 8px;
+}
+
+.risk-tag--low,
+.risk-tag--medium,
+.risk-tag--high {
+  color: var(--ink);
+}
+
+.risk-tag--low { border-color: color-mix(in srgb, var(--risk-ok) 55%, transparent); }
+.risk-tag--medium { border-color: color-mix(in srgb, var(--risk-warn) 60%, transparent); }
+.risk-tag--high { border-color: color-mix(in srgb, var(--risk-bad) 60%, transparent); }
+
+/* The loan field's last line: what you receive on the left, three suggested
+   loan sizes on the right, one for each risk band. */
+.swap__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.swap__suggest {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.swap__chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+  padding: 3px 10px 3px 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.swap__chip:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.swap__chip:disabled {
+  opacity: 0.58;
+  cursor: default;
 }
 
 .swap__note p {

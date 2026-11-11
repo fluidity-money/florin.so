@@ -14,10 +14,10 @@ import {
 } from 'viem';
 import { robinhoodTestnet } from '@reown/appkit/networks';
 import { Button } from './ui';
-import { RisksDialog } from './risks-dialog';
 import { Token, TokenIcon } from './token-icon';
 import { TokenSelect } from './token-select';
 import { money, pct, xnum } from '../lib/format';
+import { DEBT_SUGGESTIONS, liquidationRisk, type RiskLevel } from '../lib/protocol-math';
 import {
   DEFAULT_RATE,
   MAX_RATE,
@@ -52,6 +52,7 @@ import {
   ROBINHOOD_TESTNET_CHAIN_ID,
   sortedTrovesAbi,
   wethAbi,
+  MIN_DEBT,
 } from '../lib/borrow-contract';
 
 import { quoteOpening, requireOpeningQuote, reviewOpeningRefresh, validateOpeningAmount, formatOpeningMax } from '../lib/opening-capacity';
@@ -63,6 +64,16 @@ type TxStage = 'idle' | 'switching' | 'wrapping' | 'approving-weth' | 'approving
 
 const LOAN_TOKENS = ['FUSD', 'USDG'] as const;
 type LoanToken = (typeof LOAN_TOKENS)[number];
+
+const RISK_LABEL: Record<RiskLevel, string> = { low: 'Low', medium: 'Medium', high: 'High' };
+
+// $850 / $5.7K / $1.2M. Short enough to sit on a suggestion chip.
+function chipAmount(n: number): string {
+  const trim = (value: number) => value.toFixed(1).replace(/\.0$/, '');
+  if (n >= 1_000_000) return '$' + trim(n / 1_000_000) + 'M';
+  if (n >= 1_000) return '$' + trim(n / 1_000) + 'K';
+  return '$' + n.toFixed(0);
+}
 
 function parseToken(value: string): bigint {
   if (!value.trim()) return 0n;
@@ -191,6 +202,19 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       : rate >= marketAverageRate * 0.6
         ? 'medium'
         : 'high';
+  const maxLtv = 1 / minimumRatio;
+  const active = collateralWei > 0n && borrowedWei > 0n;
+  // Named the way Liquity names it, from how much of the maximum LTV is used.
+  const liquidationLevel = active && quoteReady ? liquidationRisk(ltv, maxLtv) : null;
+  // Three loan sizes for this collateral, one per risk band, each rounded down
+  // to a whole FUSD. Anything under the protocol minimum debt is left out.
+  const minDebt = Number(formatUnits(MIN_DEBT, 18));
+  const debtSuggestions = quoteReady && collateralUsd > 0 && maxBorrowWei > 0n
+    ? DEBT_SUGGESTIONS
+      .map((share) => Math.floor(Number(formatUnits(maxBorrowWei, 18)) * share))
+      .filter((amount) => amount >= minDebt)
+      .map((amount) => ({ amount, risk: liquidationRisk(amount / collateralUsd, maxLtv) }))
+    : [];
   const pending = stage !== 'idle';
   const walletBalance = chainState.data ? Number(formatUnits(chainState.data.balance, 18)) : 0;
   const protocolError = quoteReady && quote ? validateOpeningAmount(collateralWei, borrowedWei, rateWei, quote.fee, quote.capacity) : null;
@@ -198,7 +222,6 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
     ? chainState.data.balance < requiredSpyApproval(collateralWei)
     : false;
   const unsafe = quoteReady && quote ? borrowedWei + quote.fee > quote.capacity : false;
-  const active = collateralWei > 0n && borrowedWei > 0n;
 
   function reportError(cause: unknown, failureStage: TransactionFailureStage, transactionHash: Hash | null = null) {
     const description = describeTransactionError(cause, failureStage);
@@ -608,7 +631,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
           Oracle price <b>{priceReady ? `$${money(spyPrice)}` : openingQuote.isError ? 'unavailable' : 'loading…'}</b>{' '}
           {priceReady && <><i className="swap__dot swap__dot--ok" /> onchain</>}
         </span>
-        <span>Individual max LTV <b>{quoteReady ? pct(100 / minimumRatio, 1) : '−'}</b></span>
+        <span>Max LTV <b>{quoteReady ? pct(100 / minimumRatio, 1) : '−'}</b></span>
       </div>
 
       <div className="swap__field">
@@ -643,12 +666,43 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
             }}
           />
         </div>
-        <span className="swap__usd">
-          ${money(borrow)} received{fee > 0 ? ` · ${money(totalDebt)} debt including ${money(fee)} upfront interest` : ''}
-        </span>
+        <div className="swap__foot">
+          <span className="swap__usd">
+            ${money(borrow)} received{fee > 0 ? ` · ${money(totalDebt)} debt including ${money(fee)} upfront interest` : ''}
+          </span>
+          {debtSuggestions.length > 0 && (
+            <span className="swap__suggest" role="group" aria-label="Suggested loan amounts">
+              {debtSuggestions.map(({ amount, risk }) => (
+                <button
+                  key={risk}
+                  type="button"
+                  className="swap__chip"
+                  disabled={pending}
+                  title={`${RISK_LABEL[risk]} liquidation risk`}
+                  aria-label={`Borrow ${money(amount, 0)} ${loanToken}, ${risk} liquidation risk`}
+                  onClick={() => {
+                    markFormStarted('borrow_amount');
+                    captureEvent('loan_suggestion_selected', { context: 'open_position', risk });
+                    setDebtStr(String(amount));
+                  }}
+                >
+                  <i className={`swap__dot swap__dot--${risk}`} />
+                  {chipAmount(amount)}
+                </button>
+              ))}
+            </span>
+          )}
+        </div>
       </div>
       <div className="swap__meta">
-        <span><i className={`swap__dot swap__dot--${unsafe ? 'liquidation' : collateralRatio < 1.3 && active ? 'warning' : 'healthy'}`} /> Liquidation risk</span>
+        {liquidationLevel ? (
+          <span className={`risk-tag risk-tag--${liquidationLevel}`}>
+            <i className={`swap__dot swap__dot--${liquidationLevel}`} />
+            {RISK_LABEL[liquidationLevel]} liquidation risk
+          </span>
+        ) : (
+          <span className="risk-tag"><i className="swap__dot" /> Liquidation risk</span>
+        )}
         <span>Current max borrow <b>{quoteReady && spy > 0 ? `${formatOpeningMax(maxBorrowWei)} FUSD` : '−'}</b></span>
       </div>
       <div className="swap__meta swap__meta--right">
@@ -684,21 +738,16 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
           it is not repeated here. */}
       <div className="swap__meta">
         {redemptionRisk ? (
-          <span><i className={`swap__dot swap__dot--${redemptionRisk}`} /> {redemptionRisk} redemption risk</span>
+          <span className={`risk-tag risk-tag--${redemptionRisk}`}>
+            <i className={`swap__dot swap__dot--${redemptionRisk}`} />
+            {RISK_LABEL[redemptionRisk]} redemption risk
+          </span>
         ) : (
           <span>Market average rate unavailable</span>
         )}
       </div>
 
-      <details className="swap__note">
-        <summary>What happens when you open a position?</summary>
-        <p>Your wallet wraps up to 0.001 ETH into WETH and approves it for liquidator compensation. It separately approves the exact SPY collateral, then opens the position and mints FUSD.</p>
-        <p>Max includes the upfront fee and the live branch collateral requirement. It is a boundary, not a guarantee: price and accrued debt can change before execution. If your amount no longer fits, you must review it before submitting.</p>
-        <p>Your interest rate also determines your place in the redemption queue: lower-rate positions are redeemed first.</p>
-      </details>
-
       {protocolError && active && <p className="warn">{protocolError}</p>}
-      {unsafe && <p className="warn">This amount exceeds the current individual or branch borrowing limit.</p>}
       {quoteReady && collateralWei > 0n && maxBorrowWei === 0n && (
         <p className="warn">No opening amount at cent precision meets the minimum debt and current collateral limits. Increase your collateral.</p>
       )}
@@ -733,7 +782,23 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         {submitLabel}
       </Button>
 
-      <RisksDialog />
+      <section className="swap__note swap__brief" aria-labelledby="redemptions-brief">
+        <h2 id="redemptions-brief">Redemptions in a nutshell</h2>
+        <p>
+          Redemptions keep FUSD worth a dollar. If your position is redeemed, your collateral and
+          your debt fall by the same value, so you lose some exposure to SPY but no money.
+        </p>
+        <ul>
+          <li>Redemptions happen when FUSD trades below $1.</li>
+          <li>Positions paying the lowest interest rate are redeemed first.</li>
+          <li>Raising your interest rate lowers your redemption risk.</li>
+        </ul>
+        <details>
+          <summary>What happens when you open a position?</summary>
+          <p>Your wallet wraps up to 0.001 ETH into WETH and approves it for liquidator compensation. It separately approves the exact SPY collateral, then opens the position and mints FUSD.</p>
+          <p>Max includes the upfront fee and the live branch collateral requirement. It is a boundary, not a guarantee, because price and accrued debt can change before execution. If your amount no longer fits, you must review it before submitting.</p>
+        </details>
+      </section>
     </div>
   );
 }

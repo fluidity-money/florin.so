@@ -76,14 +76,25 @@ export function Footer() {
   return (
     <footer className="site-footer">
       <div className="site-footer__inner">
-        <nav className="site-footer__nav" aria-label="Footer">
-          <Link href="/">Home</Link>
-          <Link href="/open">Borrow</Link>
-          <Link href="/multiply">Multiply</Link>
-          <Link href="/stability">Earn</Link>
-          <Link href="/position">Manage</Link>
-          <RisksDialog variant="link" label="Risks" />
-        </nav>
+        <div className="site-footer__start">
+          <a
+            className="site-footer__social"
+            href="https://x.com/FlorinProtocol"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Florin on X"
+          >
+            <XLogo />
+          </a>
+          <nav className="site-footer__nav" aria-label="Footer">
+            <Link href="/">Home</Link>
+            <Link href="/open">Borrow</Link>
+            <Link href="/multiply">Multiply</Link>
+            <Link href="/stability">Earn</Link>
+            <Link href="/position">Manage</Link>
+            <RisksDialog variant="link" label="Risks" />
+          </nav>
+        </div>
 
         <div className="site-footer__prices">
           <span
@@ -105,15 +116,6 @@ export function Footer() {
 
         <div className="site-footer__controls">
           <VersionStamp />
-          <a
-            className="site-footer__social"
-            href="https://x.com/FlorinProtocol"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Florin on X"
-          >
-            <XLogo />
-          </a>
           <ThemeSwitch />
         </div>
       </div>

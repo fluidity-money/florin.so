@@ -44,3 +44,19 @@ export function positionMetrics(
     liquidationPriceUsd,
   };
 }
+
+export type RiskLevel = 'low' | 'medium' | 'high';
+
+// Liquidation risk steps up with the share of the maximum LTV a position uses.
+// These are the same bands Liquity's own interface draws.
+export const LTV_RISK = { medium: 0.54, high: 0.73 } as const;
+
+// Suggested loan sizes as a share of the most the collateral allows, one for
+// each band above.
+export const DEBT_SUGGESTIONS = [0.3, 0.6, 0.8] as const;
+
+export function liquidationRisk(ltv: number, maxLtv: number): RiskLevel {
+  if (!(maxLtv > 0)) return 'high';
+  const used = ltv / maxLtv;
+  return used > LTV_RISK.high ? 'high' : used > LTV_RISK.medium ? 'medium' : 'low';
+}
