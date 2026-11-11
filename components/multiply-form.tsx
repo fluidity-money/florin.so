@@ -16,7 +16,6 @@ import {
 } from 'viem';
 import { robinhoodTestnet } from '@reown/appkit/networks';
 import { Button } from './ui';
-import { RisksDialog } from './risks-dialog';
 import { Token, TokenIcon } from './token-icon';
 import { useWallet } from './wallet/wallet';
 import Link from 'next/link';
@@ -45,12 +44,40 @@ import {
   isMultiplyCollateralSafe,
   CONTRACTS,
   leverageZapperAbi,
-  multiplyAmounts,
+  multiplierForLiquidationPrice,
+  multiplyAmountsBps,
 } from '../lib/multiply-contract';
+import { LTV_RISK, liquidationRisk, type RiskLevel } from '../lib/protocol-math';
 
 const publicClient = createPublicClient({ chain: robinhoodTestnet, transport: http() });
-const MIN_MULTIPLIER_TENTHS = 11;
-const MAX_MULTIPLIER_TENTHS = 50;
+// Multiples in basis points: 10,000 is 1x. The slider moves in 0.1x steps.
+const MIN_MULTIPLIER_BPS = 11_000;
+const MAX_MULTIPLIER_BPS = 50_000;
+const MULTIPLIER_STEP_BPS = 1_000;
+const MULTIPLIER_TICKS = [11_000, 20_000, 30_000, 40_000, 50_000];
+const MAX_LTV = 1 / MIN_COLLATERAL_RATIO;
+
+const RISK_LABEL: Record<RiskLevel, string> = { low: 'Low', medium: 'Medium', high: 'High' };
+
+// Where a multiple sits along the slider, as a percentage of its width.
+function sliderPosition(bps: number): number {
+  return ((bps - MIN_MULTIPLIER_BPS) / (MAX_MULTIPLIER_BPS - MIN_MULTIPLIER_BPS)) * 100;
+}
+
+// The multiple at which a given LTV is reached: LTV = (m - 1) / m.
+function multipleAtLtv(ltv: number): number {
+  return Math.round(10_000 / (1 - ltv));
+}
+
+// Green, then amber, then red along the track, changing colour where the
+// liquidation risk bands change, so the slider says what the tag will say.
+const TRACK_STOPS = (() => {
+  const medium = Math.min(100, Math.max(0, sliderPosition(multipleAtLtv(LTV_RISK.medium * MAX_LTV))));
+  const high = Math.min(100, Math.max(0, sliderPosition(multipleAtLtv(LTV_RISK.high * MAX_LTV))));
+  return `linear-gradient(90deg, var(--risk-ok) 0%, var(--risk-ok) ${medium}%, var(--risk-warn) ${medium}%, var(--risk-warn) ${high}%, var(--risk-bad) ${high}%, var(--risk-bad) 100%)`;
+})();
+
+type SizeBy = 'multiplier' | 'liquidation';
 
 type Stage = 'idle' | 'switching' | 'approving' | 'opening' | 'confirming';
 
@@ -105,7 +132,13 @@ export function MultiplyForm() {
     && exchangeAddress !== zeroAddress,
   );
   const [depositStr, setDepositStr] = useState('');
-  const [multiplierTenths, setMultiplierTenths] = useState(20);
+  const [multiplierBps, setMultiplierBps] = useState(20_000);
+  // Size the position by its multiple or by where it liquidates. Both drive
+  // the same slider; only the number you type into changes.
+  const [sizeBy, setSizeBy] = useState<SizeBy>('liquidation');
+  // What the holder is typing into the liquidation price box. Null shows the
+  // price that the current multiple actually produces.
+  const [liquidationDraft, setLiquidationDraft] = useState<string | null>(null);
   const [rate, setRate] = useState(DEFAULT_RATE);
   const [stage, setStage] = useState<Stage>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -130,7 +163,7 @@ export function MultiplyForm() {
     },
   });
 
-  const amounts = multiplyAmounts(depositWei, multiplierTenths);
+  const amounts = multiplyAmountsBps(depositWei, multiplierBps);
 
   const swapQuote = useQuery({
     queryKey: ['multiply-swap-quote', exchangeAddress, amounts.flashLoanAmount.toString()],
@@ -170,7 +203,7 @@ export function MultiplyForm() {
   });
 
   const deposit = Math.max(0, xnum(depositStr));
-  const multiplier = multiplierTenths / 10;
+  const multiplier = multiplierBps / 10_000;
   const spyPrice = !oraclePrice.isError && oraclePrice.data ? Number(formatUnits(oraclePrice.data, 18)) : 0;
   const exposure = Number(formatUnits(amounts.totalCollateral, 18));
   const principalDebt = Number(formatUnits(boldAmount, 18));
@@ -190,6 +223,25 @@ export function MultiplyForm() {
   const belowMinimumDebt = boldAmount > 0n && boldAmount < MIN_DEBT;
   const pending = stage !== 'idle';
   const active = depositWei > 0n && boldAmount > 0n;
+  // Before a deposit is entered there is no quote, so the risk and the
+  // liquidation price come from the multiple alone: the debt is the
+  // flash-loaned share of the exposure.
+  const plannedLtv = (multiplier - 1) / multiplier;
+  const shownLtv = active ? ltv : plannedLtv;
+  const shownLiquidationPrice = active ? liquidationPrice : spyPrice * MIN_COLLATERAL_RATIO * plannedLtv;
+  const riskLevel = liquidationRisk(shownLtv, MAX_LTV);
+
+  function setMultiple(bps: number) {
+    const clamped = Math.min(MAX_MULTIPLIER_BPS, Math.max(MIN_MULTIPLIER_BPS, Math.round(bps)));
+    setMultiplierBps(clamped);
+  }
+
+  function setLiquidationPrice(value: string) {
+    setLiquidationDraft(value);
+    const target = xnum(value);
+    const multiple = multiplierForLiquidationPrice(target, spyPrice, MIN_COLLATERAL_RATIO);
+    if (multiple !== null) setMultiple(multiple * 10_000);
+  }
 
   async function openMultiplyPosition() {
     if (!wallet.connected || !account || !wallet.provider) {
@@ -386,23 +438,95 @@ export function MultiplyForm() {
           ${money(deposit * spyPrice)} · wallet {wallet.connected ? `${money(walletBalance, 4)} SPY` : 'not connected'}
         </span>
       </div>
+      <div className="swap__meta">
+        <span>
+          Oracle price <b>{spyPrice > 0 ? `$${money(spyPrice)}` : oraclePrice.isError ? 'unavailable' : 'loading…'}</b>{' '}
+          {spyPrice > 0 && <><i className="swap__dot swap__dot--ok" /> onchain</>}
+        </span>
+        <span>Max LTV <b>{pct(MAX_LTV * 100, 1)}</b></span>
+      </div>
 
-      <div className="swap__field swap__field--rate">
+      <div className="swap__field lev">
         <div className="swap__row">
-          <span className="swap__label">Multiplier</span>
-          <span className="swap__amount swap__amount--rate">{multiplier.toFixed(1)}×</span>
+          <span className="swap__label">{sizeBy === 'liquidation' ? 'Liquidation price' : 'Multiplier'}</span>
+          <span className="seg" role="group" aria-label="Size the position by">
+            {(['liquidation', 'multiplier'] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                className={sizeBy === option ? 'seg__opt seg__opt--on' : 'seg__opt'}
+                aria-pressed={sizeBy === option}
+                onClick={() => {
+                  setSizeBy(option);
+                  setLiquidationDraft(null);
+                }}
+              >
+                {option === 'liquidation' ? 'Liq. price' : 'Multiplier'}
+              </button>
+            ))}
+          </span>
         </div>
-        <input className="slider swap__slider" type="range" min={MIN_MULTIPLIER_TENTHS} max={MAX_MULTIPLIER_TENTHS} step={1}
-          value={multiplierTenths} onChange={(event) => setMultiplierTenths(Number(event.target.value))} aria-label="Multiplier" />
-        <span className="swap__usd">Total SPY exposure: {active ? `${money(exposure, 4)} SPY ($${money(exposureUsd)})` : '−'}</span>
+        <div className="swap__row">
+          {sizeBy === 'liquidation' ? (
+            <span className="lev__price">
+              <span aria-hidden="true">$</span>
+              <input
+                className="swap__amount"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={liquidationDraft ?? (shownLiquidationPrice > 0 ? shownLiquidationPrice.toFixed(2) : '')}
+                onChange={(event) => setLiquidationPrice(event.target.value.replaceAll(',', ''))}
+                onBlur={() => setLiquidationDraft(null)}
+                disabled={pending || !(spyPrice > 0)}
+                aria-label="Liquidation price"
+              />
+            </span>
+          ) : (
+            <span className="swap__amount swap__amount--rate">{multiplier.toFixed(1)}x</span>
+          )}
+        </div>
+        <div className="lev__slider">
+          <input
+            className="lev__range"
+            type="range"
+            min={MIN_MULTIPLIER_BPS}
+            max={MAX_MULTIPLIER_BPS}
+            step={MULTIPLIER_STEP_BPS}
+            value={Math.round(multiplierBps / MULTIPLIER_STEP_BPS) * MULTIPLIER_STEP_BPS}
+            onChange={(event) => {
+              setLiquidationDraft(null);
+              setMultiple(Number(event.target.value));
+            }}
+            disabled={pending}
+            style={{ '--lev-track': TRACK_STOPS } as React.CSSProperties}
+            aria-label="Multiplier"
+            aria-valuetext={`${multiplier.toFixed(2)}x`}
+          />
+          <div className="lev__ticks" aria-hidden="true">
+            {MULTIPLIER_TICKS.map((tick) => (
+              <span key={tick} style={{ left: `${sliderPosition(tick)}%` }}>{(tick / 10_000).toString()}x</span>
+            ))}
+          </div>
+        </div>
+        <div className="swap__row lev__foot">
+          <span className="swap__usd">
+            {sizeBy === 'liquidation'
+              ? `Multiplier ${multiplier.toFixed(2)}x`
+              : `Liquidation price ${shownLiquidationPrice > 0 ? `$${money(shownLiquidationPrice)}` : '−'}`}
+          </span>
+          <span className="swap__usd">SPY price {spyPrice > 0 ? `$${money(spyPrice)}` : '−'}</span>
+        </div>
       </div>
       <div className="swap__meta">
-        <span><i className={`swap__dot swap__dot--${unsafe ? 'liquidation' : ltv > 0.75 && active ? 'warning' : 'healthy'}`} /> Liquidation risk</span>
-        <span>LTV <b>{active ? pct(ltv * 100, 1) : '−'}</b></span>
+        <span className={`risk-tag risk-tag--${unsafe ? 'high' : riskLevel}`}>
+          <i className={`swap__dot swap__dot--${unsafe ? 'high' : riskLevel}`} />
+          {RISK_LABEL[unsafe ? 'high' : riskLevel]} liquidation risk
+        </span>
+        <span>LTV <b>{pct(shownLtv * 100, 1)}</b></span>
       </div>
       <div className="swap__meta">
         <span>FUSD debt <b>{active ? money(totalDebt, 2) : '−'}</b></span>
-        <span>Liquidation price <b>{active ? `$${money(liquidationPrice)}` : '−'}</b></span>
+        <span>Total SPY exposure <b>{active ? `${money(exposure, 4)} SPY` : '−'}</b></span>
       </div>
 
       <div className="swap__field swap__field--rate">
@@ -417,8 +541,14 @@ export function MultiplyForm() {
 
       <details className="swap__note">
         <summary>How does Multiply work?</summary>
-        <p>The leverage contract flash-borrows SPY, opens one collateralized position, mints FUSD and swaps that FUSD back to SPY to repay the flash loan.</p>
-        <p>Higher multipliers increase both equity exposure and liquidation risk. The quote includes 0.5% swap protection; unused FUSD or SPY is returned by the contract.</p>
+        <p>
+          Multiply borrows FUSD against your SPY and uses it to buy more SPY, all in one transaction.
+          At 2x, a deposit of 10 SPY gives you exposure to 20 SPY.
+        </p>
+        <p>
+          More exposure means bigger gains and losses, and a liquidation price closer to today&apos;s
+          price. You can add SPY or repay FUSD from the Manage page at any time.
+        </p>
       </details>
 
       {!zapperConfigured && <p className="warn">Multiply is disabled. Configure the SPY leverage zapper and mock exchange addresses.</p>}
@@ -442,7 +572,6 @@ export function MultiplyForm() {
       >
         {buttonLabel}
       </Button>
-      <RisksDialog />
     </div>
   );
 }

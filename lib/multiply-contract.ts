@@ -16,12 +16,33 @@ export function multiplyAmounts(
   deposit: bigint,
   multiplierTenths: number,
 ): { flashLoanAmount: bigint; totalCollateral: bigint } {
-  if (deposit <= 0n || multiplierTenths < 10) {
+  return multiplyAmountsBps(deposit, multiplierTenths * 1_000);
+}
+
+// Same sizing in basis points of a multiple (10,000 is 1x), for a multiplier
+// set from a liquidation price, which rarely lands on a tenth.
+export function multiplyAmountsBps(
+  deposit: bigint,
+  multiplierBps: number,
+): { flashLoanAmount: bigint; totalCollateral: bigint } {
+  if (deposit <= 0n || !Number.isInteger(multiplierBps) || multiplierBps < 10_000) {
     return { flashLoanAmount: 0n, totalCollateral: 0n };
   }
 
-  const flashLoanAmount = (deposit * BigInt(multiplierTenths - 10)) / 10n;
+  const flashLoanAmount = (deposit * BigInt(multiplierBps - 10_000)) / BPS;
   return { flashLoanAmount, totalCollateral: deposit + flashLoanAmount };
+}
+
+// The multiple that puts liquidation at `liquidationPrice`, before fees.
+// Liquidation sits where collateral is worth MCR times the debt, and the debt
+// is the flash-loaned share of the exposure, so (m - 1) / m = liq / (MCR * price).
+export function multiplierForLiquidationPrice(liquidationPrice: number, price: number, mcr: number): number | null {
+  if (!(price > 0) || !(mcr > 0) || !(liquidationPrice > 0)) return null;
+  const share = liquidationPrice / (mcr * price);
+  // At or past the limit there is no multiple. The margin also catches values
+  // that float rounding leaves a hair under 1, which would mean a huge one.
+  if (!(share < 1 - 1e-9)) return null;
+  return 1 / (1 - share);
 }
 
 export function addMultiplySlippage(quotedInput: bigint): bigint {
