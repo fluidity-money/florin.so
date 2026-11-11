@@ -2565,6 +2565,16 @@ input:focus-visible {
   text-align: center;
 }
 
+.swap__done .btn--transaction {
+  background: #fff;
+  color: #0f3d2e;
+  border-color: #0f3d2e;
+}
+
+.swap__done .btn--transaction:hover {
+  background: #eeeeee;
+}
+
 .swap__done-mark {
   font-size: 30px;
   color: var(--sp-biscay);

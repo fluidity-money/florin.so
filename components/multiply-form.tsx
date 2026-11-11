@@ -337,12 +337,18 @@ export function MultiplyForm() {
           <span className="swap__done-mark" aria-hidden="true">✓</span>
           <h2>Multiply position opened</h2>
           <p>{money(deposit, 4)} SPY was multiplied to approximately {money(exposure, 4)} SPY of exposure.</p>
-          <a className="btn btn--primary" href={`${robinhoodTestnet.blockExplorers.default.url}/tx/${txHash}`} target="_blank" rel="noreferrer">
+          <Link className="btn btn--primary" href="/stability">Earn with position →</Link>
+          {openedPosition && openedPosition.owner.toLowerCase() === wallet.address?.toLowerCase() && (
+            <Link className="btn btn--primary" href={managePositionHref(openedPosition)}>Manage position →</Link>
+          )}
+          <a
+            className="btn btn--transaction"
+            href={`${robinhoodTestnet.blockExplorers.default.url}/tx/${txHash}`}
+            target="_blank"
+            rel="noreferrer"
+          >
             View transaction ↗
           </a>
-          {openedPosition && openedPosition.owner.toLowerCase() === wallet.address?.toLowerCase() && (
-            <Link className="btn" href={managePositionHref(openedPosition)}>Manage position →</Link>
-          )}
         </div>
       </div>
     );
