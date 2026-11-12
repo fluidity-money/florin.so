@@ -4,6 +4,7 @@ Description=Run the Florin interest microservice every hour
 [Timer]
 OnCalendar=hourly
 Persistent=true
+Unit=florin-interest%i.service
 
 [Install]
 WantedBy=timers.target
