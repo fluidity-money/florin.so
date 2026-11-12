@@ -89,6 +89,22 @@ type Position struct {
 type Query struct {
 }
 
+// A stored Stability Pool APR observation. APRs are exact decimal strings containing
+// annualised fractions: "0.05" means 5%, not 0.05%. They are not compounded APYs.
+// Unavailable APRs are null, with the reason in the corresponding status field.
+type StabilityPoolApr struct {
+	ID string `json:"id"`
+	// UTC time when yield-cron recorded this observation.
+	RecordedAt    string  `json:"recordedAt"`
+	StabilityPool string  `json:"stabilityPool"`
+	Apr24h        *string `json:"apr24h,omitempty"`
+	Apr7d         *string `json:"apr7d,omitempty"`
+	// ok, or the unavailability reason reported by the APR view.
+	Status24h string `json:"status24h"`
+	// ok, or the unavailability reason reported by the APR view.
+	Status7d string `json:"status7d"`
+}
+
 type Asset string
 
 const (

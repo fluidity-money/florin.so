@@ -80,9 +80,20 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		BorrowDetails func(childComplexity int) int
-		EarnRewards   func(childComplexity int) int
-		OpenPositions func(childComplexity int, owner string) int
+		BorrowDetails    func(childComplexity int) int
+		EarnRewards      func(childComplexity int) int
+		OpenPositions    func(childComplexity int, owner string) int
+		StabilityPoolApr func(childComplexity int) int
+	}
+
+	StabilityPoolApr struct {
+		Apr24h        func(childComplexity int) int
+		Apr7d         func(childComplexity int) int
+		ID            func(childComplexity int) int
+		RecordedAt    func(childComplexity int) int
+		StabilityPool func(childComplexity int) int
+		Status24h     func(childComplexity int) int
+		Status7d      func(childComplexity int) int
 	}
 }
 
@@ -98,6 +109,7 @@ type QueryResolver interface {
 	BorrowDetails(ctx context.Context) ([]*model.BorrowDetails, error)
 	EarnRewards(ctx context.Context) ([]*model.EarnRewards, error)
 	OpenPositions(ctx context.Context, owner string) ([]*model.Position, error)
+	StabilityPoolApr(ctx context.Context) ([]*model.StabilityPoolApr, error)
 }
 
 // endregion ************************** generated!.gotpl **************************
@@ -291,6 +303,55 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.OpenPositions(childComplexity, args["owner"].(string)), true
+	case "Query.stabilityPoolApr":
+		if e.ComplexityRoot.Query.StabilityPoolApr == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.StabilityPoolApr(childComplexity), true
+
+	case "StabilityPoolApr.apr24h":
+		if e.ComplexityRoot.StabilityPoolApr.Apr24h == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StabilityPoolApr.Apr24h(childComplexity), true
+	case "StabilityPoolApr.apr7d":
+		if e.ComplexityRoot.StabilityPoolApr.Apr7d == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StabilityPoolApr.Apr7d(childComplexity), true
+	case "StabilityPoolApr.id":
+		if e.ComplexityRoot.StabilityPoolApr.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StabilityPoolApr.ID(childComplexity), true
+	case "StabilityPoolApr.recordedAt":
+		if e.ComplexityRoot.StabilityPoolApr.RecordedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StabilityPoolApr.RecordedAt(childComplexity), true
+	case "StabilityPoolApr.stabilityPool":
+		if e.ComplexityRoot.StabilityPoolApr.StabilityPool == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StabilityPoolApr.StabilityPool(childComplexity), true
+	case "StabilityPoolApr.status24h":
+		if e.ComplexityRoot.StabilityPoolApr.Status24h == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StabilityPoolApr.Status24h(childComplexity), true
+	case "StabilityPoolApr.status7d":
+		if e.ComplexityRoot.StabilityPoolApr.Status7d == nil {
+			break
+		}
+
+		return e.ComplexityRoot.StabilityPoolApr.Status7d(childComplexity), true
 
 	}
 	return 0, false
@@ -455,6 +516,24 @@ input Permit {
   permitS: String!
 }
 
+"""
+A stored Stability Pool APR observation. APRs are exact decimal strings containing
+annualised fractions: "0.05" means 5%, not 0.05%. They are not compounded APYs.
+Unavailable APRs are null, with the reason in the corresponding status field.
+"""
+type StabilityPoolApr {
+  id: ID!
+  "UTC time when yield-cron recorded this observation."
+  recordedAt: String!
+  stabilityPool: Address!
+  apr24h: String
+  apr7d: String
+  "ok, or the unavailability reason reported by the APR view."
+  status24h: String!
+  "ok, or the unavailability reason reported by the APR view."
+  status7d: String!
+}
+
 type Query {
   """
   Details of the borrowed amount of SPY in circulation with FUSD.
@@ -470,6 +549,15 @@ type Query {
   Open positions for a specific address given.
   """
   openPositions(owner: Address!): [Position!]!
+
+  """
+  Latest stored APR observation per pool, ordered by pool address. Reads only the
+  history table, never recalculates yield. Returns [] before the first capture.
+  Inspect asOfTimestamp and recordedAt for freshness; unavailable observations
+  are returned rather than falling back to older successful APRs.
+  """
+  stabilityPoolApr: [StabilityPoolApr!]!
+
 }
 
 type CreateAccountExec {
@@ -610,6 +698,26 @@ func (ec *executionContext) childFields_Position(ctx context.Context, field grap
 		return ec.fieldContext_Position_interestBatchManager(ctx, field)
 	}
 	return nil, fmt.Errorf("no field named %q was found under type Position", field.Name)
+}
+
+func (ec *executionContext) childFields_StabilityPoolApr(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+	switch field.Name {
+	case "id":
+		return ec.fieldContext_StabilityPoolApr_id(ctx, field)
+	case "recordedAt":
+		return ec.fieldContext_StabilityPoolApr_recordedAt(ctx, field)
+	case "stabilityPool":
+		return ec.fieldContext_StabilityPoolApr_stabilityPool(ctx, field)
+	case "apr24h":
+		return ec.fieldContext_StabilityPoolApr_apr24h(ctx, field)
+	case "apr7d":
+		return ec.fieldContext_StabilityPoolApr_apr7d(ctx, field)
+	case "status24h":
+		return ec.fieldContext_StabilityPoolApr_status24h(ctx, field)
+	case "status7d":
+		return ec.fieldContext_StabilityPoolApr_status7d(ctx, field)
+	}
+	return nil, fmt.Errorf("no field named %q was found under type StabilityPoolApr", field.Name)
 }
 
 func (ec *executionContext) childFields___Directive(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
@@ -1550,6 +1658,38 @@ func (ec *executionContext) fieldContext_Query_openPositions(ctx context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_stabilityPoolApr(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_Query_stabilityPoolApr(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().StabilityPoolApr(ctx)
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v []*model.StabilityPoolApr) graphql.Marshaler {
+			return ec.marshalNStabilityPoolApr2ᚕᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐStabilityPoolAprᚄ(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_Query_stabilityPoolApr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.childFields_StabilityPoolApr(ctx, field)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -1624,6 +1764,167 @@ func (ec *executionContext) fieldContext_Query___schema(_ context.Context, field
 		},
 	}
 	return fc, nil
+}
+
+func (ec *executionContext) _StabilityPoolApr_id(ctx context.Context, field graphql.CollectedField, obj *model.StabilityPoolApr) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StabilityPoolApr_id(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNID2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_StabilityPoolApr_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StabilityPoolApr", field, false, false, errors.New("field of type ID does not have child fields"))
+}
+
+func (ec *executionContext) _StabilityPoolApr_recordedAt(ctx context.Context, field graphql.CollectedField, obj *model.StabilityPoolApr) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StabilityPoolApr_recordedAt(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.RecordedAt, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_StabilityPoolApr_recordedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StabilityPoolApr", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _StabilityPoolApr_stabilityPool(ctx context.Context, field graphql.CollectedField, obj *model.StabilityPoolApr) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StabilityPoolApr_stabilityPool(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.StabilityPool, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNAddress2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_StabilityPoolApr_stabilityPool(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StabilityPoolApr", field, false, false, errors.New("field of type Address does not have child fields"))
+}
+
+func (ec *executionContext) _StabilityPoolApr_apr24h(ctx context.Context, field graphql.CollectedField, obj *model.StabilityPoolApr) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StabilityPoolApr_apr24h(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Apr24h, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_StabilityPoolApr_apr24h(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StabilityPoolApr", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _StabilityPoolApr_apr7d(ctx context.Context, field graphql.CollectedField, obj *model.StabilityPoolApr) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StabilityPoolApr_apr7d(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Apr7d, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v *string) graphql.Marshaler {
+			return ec.marshalOString2ᚖstring(ctx, selections, v)
+		},
+		true,
+		false,
+	)
+}
+func (ec *executionContext) fieldContext_StabilityPoolApr_apr7d(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StabilityPoolApr", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _StabilityPoolApr_status24h(ctx context.Context, field graphql.CollectedField, obj *model.StabilityPoolApr) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StabilityPoolApr_status24h(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Status24h, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_StabilityPoolApr_status24h(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StabilityPoolApr", field, false, false, errors.New("field of type String does not have child fields"))
+}
+
+func (ec *executionContext) _StabilityPoolApr_status7d(ctx context.Context, field graphql.CollectedField, obj *model.StabilityPoolApr) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_StabilityPoolApr_status7d(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Status7d, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNString2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_StabilityPoolApr_status7d(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("StabilityPoolApr", field, false, false, errors.New("field of type String does not have child fields"))
 }
 
 func (ec *executionContext) ___Directive_name(ctx context.Context, field graphql.CollectedField, obj *introspection.Directive) (ret graphql.Marshaler) {
@@ -3348,6 +3649,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "stabilityPoolApr":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_stabilityPoolApr(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "__type":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___type(ctx, field)
@@ -3361,6 +3684,74 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			})
 			if out.Values[i] == graphql.RequiredNull {
 				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(min(len(deferLabelToView), math.MaxInt32)))
+
+	ec.ProcessDeferredGroup(graphql.DeferredGroup{
+		Defers:   deferLabelToView,
+		Path:     graphql.GetPath(ctx),
+		FieldSet: deferredFieldSet,
+		Context:  ctx,
+	})
+
+	return out
+}
+
+var stabilityPoolAprImplementors = []string{"StabilityPoolApr"}
+
+func (ec *executionContext) _StabilityPoolApr(ctx context.Context, sel ast.SelectionSet, obj *model.StabilityPoolApr) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, stabilityPoolAprImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferredFieldSet := graphql.NewFieldSet(nil)
+	deferLabelToView := make(map[string]*graphql.FieldSetView)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("StabilityPoolApr")
+		case "id":
+			out.Values[i] = ec._StabilityPoolApr_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "recordedAt":
+			out.Values[i] = ec._StabilityPoolApr_recordedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "stabilityPool":
+			out.Values[i] = ec._StabilityPoolApr_stabilityPool(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "apr24h":
+			out.Values[i] = ec._StabilityPoolApr_apr24h(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "apr7d":
+			out.Values[i] = ec._StabilityPoolApr_apr7d(ctx, field, obj)
+			if out.Values[i] == graphql.RequiredNull {
+				out.Invalids++
+			}
+		case "status24h":
+			out.Values[i] = ec._StabilityPoolApr_status24h(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status7d":
+			out.Values[i] = ec._StabilityPoolApr_status7d(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -3921,6 +4312,22 @@ func (ec *executionContext) marshalNHash2string(ctx context.Context, sel ast.Sel
 	return res
 }
 
+func (ec *executionContext) unmarshalNID2string(ctx context.Context, v any) (string, error) {
+	res, err := graphql.UnmarshalID(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalID(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) unmarshalNInt2int(ctx context.Context, v any) (int, error) {
 	res, err := graphql.UnmarshalInt(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3977,6 +4384,32 @@ func (ec *executionContext) marshalNPosition2ᚖgithubᚗcomᚋfluidityᚑmoney�
 		return graphql.Null
 	}
 	return ec._Position(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNStabilityPoolApr2ᚕᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐStabilityPoolAprᚄ(ctx context.Context, sel ast.SelectionSet, v []*model.StabilityPoolApr) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNStabilityPoolApr2ᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐStabilityPoolApr(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNStabilityPoolApr2ᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐStabilityPoolApr(ctx context.Context, sel ast.SelectionSet, v *model.StabilityPoolApr) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._StabilityPoolApr(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNString2string(ctx context.Context, v any) (string, error) {

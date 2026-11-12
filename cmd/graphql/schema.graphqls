@@ -75,6 +75,23 @@ input Permit {
   permitS: String!
 }
 
+"""
+A stored Stability Pool APR observation. APRs are exact decimal strings containing
+annualised fractions: "0.05" means 5%, not 0.05%. They are not compounded APYs.
+Unavailable APRs are null, with the reason in the corresponding status field.
+"""
+type StabilityPoolApr {
+  "UTC time when yield-cron recorded this observation."
+  recordedAt: String!
+  stabilityPool: Address!
+  apr24h: String
+  apr7d: String
+  "ok, or the unavailability reason reported by the APR view."
+  status24h: String!
+  "ok, or the unavailability reason reported by the APR view."
+  status7d: String!
+}
+
 type Query {
   """
   Details of the borrowed amount of SPY in circulation with FUSD.
@@ -90,6 +107,15 @@ type Query {
   Open positions for a specific address given.
   """
   openPositions(owner: Address!): [Position!]!
+
+  """
+  Latest stored APR observation per pool, ordered by pool address. Reads only the
+  history table, never recalculates yield. Returns [] before the first capture.
+  Inspect asOfTimestamp and recordedAt for freshness; unavailable observations
+  are returned rather than falling back to older successful APRs.
+  """
+  stabilityPoolApr: [StabilityPoolApr!]!
+
 }
 
 type CreateAccountExec {

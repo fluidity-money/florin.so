@@ -1,4 +1,4 @@
-\restrict NzrgZFwSGFZ54f9sYPoP7FJ2hCU1dgED3sbl2dL4WKVKTF0CZENSNfh74iBRwfE
+\restrict u82MA4UfaMyVnL84zaKAOce3YMpnSV4GZt7WPCV6UBytk51q8zL4Ntat01bogWz
 
 -- Dumped from database version 16.13 (Ubuntu 16.13-1.pgdg22.04+1)
 -- Dumped by pg_dump version 17.11 (Debian 17.11-0+deb13u1)
@@ -511,6 +511,19 @@ CREATE VIEW public.accounts_transaction_statistics_1 AS
 
 
 --
+-- Name: florin_chain_blocks_1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.florin_chain_blocks_1 (
+    block_number bigint NOT NULL,
+    block_hash public.hash NOT NULL,
+    block_timestamp bigint NOT NULL,
+    CONSTRAINT florin_chain_blocks_1_block_number_check CHECK ((block_number >= 0)),
+    CONSTRAINT florin_chain_blocks_1_block_timestamp_check CHECK ((block_timestamp >= 0))
+);
+
+
+--
 -- Name: liquity_events_active_pool_coll_balance_updated; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -569,7 +582,7 @@ CREATE TABLE public.florin_faucet_amounts_sent_1 (
     id integer NOT NULL,
     created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     recipient public.address NOT NULL,
-    x_handle character varying NOT NULL
+    x_handle character varying
 );
 
 
@@ -679,6 +692,37 @@ CREATE SEQUENCE public.florin_ingestor_checkpointing_1_id_seq
 --
 
 ALTER SEQUENCE public.florin_ingestor_checkpointing_1_id_seq OWNED BY public.florin_ingestor_checkpointing_1.id;
+
+
+--
+-- Name: florin_ingestor_checkpointing_1_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.florin_ingestor_checkpointing_1_testnet_v1 (
+    id integer NOT NULL,
+    last_updated timestamp without time zone NOT NULL,
+    block_number integer NOT NULL
+);
+
+
+--
+-- Name: florin_ingestor_checkpointing_1_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.florin_ingestor_checkpointing_1_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: florin_ingestor_checkpointing_1_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.florin_ingestor_checkpointing_1_testnet_v1_id_seq OWNED BY public.florin_ingestor_checkpointing_1_testnet_v1.id;
 
 
 --
@@ -938,6 +982,296 @@ CREATE VIEW public.florin_stability_pool_1 AS
 
 
 --
+-- Name: florin_stability_pool_accounting_1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.florin_stability_pool_accounting_1 (
+    stability_pool public.address NOT NULL,
+    block_number bigint NOT NULL,
+    block_hash public.hash NOT NULL,
+    p public.hugeint NOT NULL,
+    scale public.hugeint NOT NULL,
+    b public.hugeint NOT NULL,
+    total_deposits public.hugeint NOT NULL,
+    pending_yield public.hugeint NOT NULL,
+    CONSTRAINT florin_stability_pool_accounting_1_b_check CHECK (((b)::numeric >= (0)::numeric)),
+    CONSTRAINT florin_stability_pool_accounting_1_p_check CHECK (((p)::numeric > (0)::numeric)),
+    CONSTRAINT florin_stability_pool_accounting_1_pending_yield_check CHECK (((pending_yield)::numeric >= (0)::numeric)),
+    CONSTRAINT florin_stability_pool_accounting_1_scale_check CHECK (((scale)::numeric >= (0)::numeric)),
+    CONSTRAINT florin_stability_pool_accounting_1_total_deposits_check CHECK (((total_deposits)::numeric >= (0)::numeric))
+);
+
+
+--
+-- Name: liquity_events_b_updated; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_b_updated (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    b public.hugeint NOT NULL,
+    scale public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_p_updated; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_p_updated (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    p public.hugeint NOT NULL
+);
+
+
+--
+-- Name: florin_stability_pool_apr_1; Type: VIEW; Schema: public; Owner: -
+--
+
+CREATE VIEW public.florin_stability_pool_apr_1 AS
+ WITH pools AS (
+         SELECT florin_stability_pool_accounting_1.stability_pool
+           FROM public.florin_stability_pool_accounting_1
+        UNION
+         SELECT liquity_events_b_updated.emitter_addr
+           FROM public.liquity_events_b_updated
+        UNION
+         SELECT liquity_events_stability_pool_bold_balance_updated.emitter_addr
+           FROM public.liquity_events_stability_pool_bold_balance_updated
+        ), latest AS (
+         SELECT DISTINCT ON (florin_stability_pool_accounting_1.stability_pool) florin_stability_pool_accounting_1.stability_pool,
+            florin_stability_pool_accounting_1.block_number,
+            florin_stability_pool_accounting_1.block_hash,
+            florin_stability_pool_accounting_1.p,
+            florin_stability_pool_accounting_1.scale,
+            florin_stability_pool_accounting_1.b,
+            florin_stability_pool_accounting_1.total_deposits,
+            florin_stability_pool_accounting_1.pending_yield
+           FROM public.florin_stability_pool_accounting_1
+          ORDER BY florin_stability_pool_accounting_1.stability_pool, florin_stability_pool_accounting_1.block_number DESC
+        ), state AS (
+         SELECT pools.stability_pool,
+            s.block_number,
+            s.block_hash,
+            s.p,
+            s.scale,
+            h.block_timestamp AS as_of_timestamp,
+            (h.block_timestamp - pace.block_timestamp) AS pace_seconds,
+            checkpoint.block_number AS next_indexed_block,
+            ((s.b)::numeric +
+                CASE
+                    WHEN (((s.total_deposits)::numeric > (0)::numeric) AND ((s.pending_yield)::numeric > (0)::numeric)) THEN div(((s.p)::numeric * (s.pending_yield)::numeric), (s.total_deposits)::numeric)
+                    ELSE (0)::numeric
+                END) AS effective_b
+           FROM ((((pools
+             LEFT JOIN latest s USING (stability_pool))
+             LEFT JOIN public.florin_chain_blocks_1 h ON (((h.block_number = s.block_number) AND ((h.block_hash)::bpchar = (s.block_hash)::bpchar))))
+             LEFT JOIN public.florin_chain_blocks_1 pace ON ((pace.block_number = (s.block_number - 100000))))
+             LEFT JOIN public.florin_ingestor_checkpointing_1 checkpoint ON ((checkpoint.id = 1)))
+        ), windows AS (
+         SELECT s.stability_pool,
+            s.block_number,
+            s.block_hash,
+            s.p,
+            s.scale,
+            s.as_of_timestamp,
+            s.pace_seconds,
+            s.next_indexed_block,
+            s.effective_b,
+            w.window_seconds,
+            GREATEST((0)::numeric, ((s.block_number)::numeric - div(((((w.window_seconds)::numeric * (100000)::numeric) + (s.pace_seconds)::numeric) - (1)::numeric), (NULLIF(s.pace_seconds, 0))::numeric))) AS start_block,
+            GREATEST((0)::numeric, ((s.block_number)::numeric - div(((((691200)::numeric * (100000)::numeric) + (s.pace_seconds)::numeric) - (1)::numeric), (NULLIF(s.pace_seconds, 0))::numeric))) AS from_block
+           FROM (state s
+             CROSS JOIN ( VALUES (86400), (604800)) w(window_seconds))
+        ), baselines AS (
+         SELECT w.stability_pool,
+            w.block_number,
+            w.block_hash,
+            w.p,
+            w.scale,
+            w.as_of_timestamp,
+            w.pace_seconds,
+            w.next_indexed_block,
+            w.effective_b,
+            w.window_seconds,
+            w.start_block,
+            w.from_block,
+            baseline.b AS baseline_b,
+            baseline.scale AS baseline_scale,
+            baseline.block_number AS baseline_block,
+            baseline.block_hash AS baseline_hash,
+            ((baseline.block_number)::numeric <= w.start_block) AS full_window,
+            h.block_timestamp AS baseline_timestamp,
+                CASE
+                    WHEN (NOT (EXISTS ( SELECT 1
+                       FROM public.liquity_events_p_updated e
+                      WHERE (((e.emitter_addr)::bpchar = (w.stability_pool)::bpchar) AND (((e.block_number)::numeric >= w.from_block) AND (e.block_number <= w.block_number)))))) THEN w.p
+                    ELSE starting_p.p
+                END AS baseline_p
+           FROM (((windows w
+             LEFT JOIN LATERAL ( SELECT e.b,
+                    e.scale,
+                    e.block_number,
+                    e.block_hash
+                   FROM public.liquity_events_b_updated e
+                  WHERE (((e.emitter_addr)::bpchar = (w.stability_pool)::bpchar) AND (((e.block_number)::numeric >= w.from_block) AND (e.block_number <= w.block_number)))
+                  ORDER BY ((e.block_number)::numeric <= w.start_block) DESC,
+                        CASE
+                            WHEN ((e.block_number)::numeric <= w.start_block) THEN e.block_number
+                            ELSE NULL::integer
+                        END DESC,
+                        CASE
+                            WHEN ((e.block_number)::numeric <= w.start_block) THEN e.id
+                            ELSE NULL::integer
+                        END DESC, e.block_number, e.id
+                 LIMIT 1) baseline ON (true))
+             LEFT JOIN public.florin_chain_blocks_1 h ON (((h.block_number = baseline.block_number) AND ((h.block_hash)::bpchar = (baseline.block_hash)::bpchar))))
+             LEFT JOIN LATERAL ( SELECT e.p
+                   FROM public.liquity_events_p_updated e
+                  WHERE (((e.emitter_addr)::bpchar = (w.stability_pool)::bpchar) AND (((e.block_number)::numeric >= w.from_block) AND (e.block_number <= baseline.block_number)))
+                  ORDER BY e.block_number DESC, e.id DESC
+                 LIMIT 1) starting_p ON (true))
+        ), checked AS (
+         SELECT baselines.stability_pool,
+            baselines.block_number,
+            baselines.block_hash,
+            baselines.p,
+            baselines.scale,
+            baselines.as_of_timestamp,
+            baselines.pace_seconds,
+            baselines.next_indexed_block,
+            baselines.effective_b,
+            baselines.window_seconds,
+            baselines.start_block,
+            baselines.from_block,
+            baselines.baseline_b,
+            baselines.baseline_scale,
+            baselines.baseline_block,
+            baselines.baseline_hash,
+            baselines.full_window,
+            baselines.baseline_timestamp,
+            baselines.baseline_p,
+            (baselines.as_of_timestamp - baselines.baseline_timestamp) AS elapsed_seconds,
+                CASE
+                    WHEN (baselines.block_number IS NULL) THEN 'missing_snapshot'::text
+                    WHEN ((baselines.next_indexed_block IS NULL) OR (baselines.next_indexed_block <= baselines.block_number)) THEN 'events_not_indexed'::text
+                    WHEN (baselines.block_number <= 100000) THEN 'insufficient_chain_history'::text
+                    WHEN (baselines.pace_seconds IS NULL) THEN 'missing_pace_block'::text
+                    WHEN (baselines.pace_seconds <= 0) THEN 'invalid_block_pace'::text
+                    WHEN (baselines.baseline_block IS NULL) THEN 'missing_baseline'::text
+                    WHEN ((baselines.baseline_scale)::numeric <> (baselines.scale)::numeric) THEN 'scale_changed'::text
+                    WHEN (baselines.baseline_p IS NULL) THEN 'unknown_baseline_p'::text
+                    WHEN (baselines.baseline_timestamp IS NULL) THEN 'missing_baseline_timestamp'::text
+                    WHEN (((baselines.baseline_p)::numeric <= (0)::numeric) OR (baselines.as_of_timestamp <= baselines.baseline_timestamp) OR (baselines.effective_b < (baselines.baseline_b)::numeric)) THEN 'invalid_return'::text
+                    WHEN ((NOT baselines.full_window) AND ((baselines.as_of_timestamp - baselines.baseline_timestamp) < (baselines.window_seconds / 2))) THEN 'insufficient_history'::text
+                    ELSE 'ok'::text
+                END AS status
+           FROM baselines
+        ), returns AS (
+         SELECT checked.stability_pool,
+            checked.block_number,
+            checked.block_hash,
+            checked.p,
+            checked.scale,
+            checked.as_of_timestamp,
+            checked.pace_seconds,
+            checked.next_indexed_block,
+            checked.effective_b,
+            checked.window_seconds,
+            checked.start_block,
+            checked.from_block,
+            checked.baseline_b,
+            checked.baseline_scale,
+            checked.baseline_block,
+            checked.baseline_hash,
+            checked.full_window,
+            checked.baseline_timestamp,
+            checked.baseline_p,
+            checked.elapsed_seconds,
+            checked.status,
+                CASE
+                    WHEN (checked.status = 'ok'::text) THEN (((div(((checked.effective_b - (checked.baseline_b)::numeric) * ('1000000000000'::bigint)::numeric), NULLIF((checked.baseline_p)::numeric, (0)::numeric)) * (31536000)::numeric) / ('1000000000000'::bigint)::numeric) / (NULLIF(checked.elapsed_seconds, 0))::numeric)
+                    ELSE NULL::numeric
+                END AS apr
+           FROM checked
+        )
+ SELECT stability_pool,
+    block_number AS as_of_block,
+    block_hash AS as_of_block_hash,
+    as_of_timestamp,
+    max(apr) FILTER (WHERE (window_seconds = 86400)) AS apr_24h,
+    max(apr) FILTER (WHERE (window_seconds = 604800)) AS apr_7d,
+    max(baseline_timestamp) FILTER (WHERE (window_seconds = 86400)) AS baseline_24h_timestamp,
+    max(baseline_timestamp) FILTER (WHERE (window_seconds = 604800)) AS baseline_7d_timestamp,
+    max(status) FILTER (WHERE (window_seconds = 86400)) AS status_24h,
+    max(status) FILTER (WHERE (window_seconds = 604800)) AS status_7d
+   FROM returns
+  GROUP BY stability_pool, block_number, block_hash, as_of_timestamp;
+
+
+--
+-- Name: florin_stability_pool_apr_history_1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.florin_stability_pool_apr_history_1 (
+    id bigint NOT NULL,
+    recorded_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    stability_pool public.address NOT NULL,
+    as_of_block bigint,
+    as_of_block_hash public.hash,
+    as_of_timestamp bigint,
+    apr_24h numeric,
+    apr_7d numeric,
+    baseline_24h_timestamp bigint,
+    baseline_7d_timestamp bigint,
+    status_24h text NOT NULL,
+    status_7d text NOT NULL
+);
+
+
+--
+-- Name: COLUMN florin_stability_pool_apr_history_1.apr_24h; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.florin_stability_pool_apr_history_1.apr_24h IS 'Annualised decimal fraction, not a percentage: 0.05 means 5%. NULL means unavailable.';
+
+
+--
+-- Name: COLUMN florin_stability_pool_apr_history_1.apr_7d; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.florin_stability_pool_apr_history_1.apr_7d IS 'Annualised decimal fraction, not a percentage: 0.05 means 5%. NULL means unavailable.';
+
+
+--
+-- Name: florin_stability_pool_apr_history_1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.florin_stability_pool_apr_history_1_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: florin_stability_pool_apr_history_1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.florin_stability_pool_apr_history_1_id_seq OWNED BY public.florin_stability_pool_apr_history_1.id;
+
+
+--
 -- Name: liquity_events_active_pool_address_added; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -970,6 +1304,41 @@ CREATE SEQUENCE public.liquity_events_active_pool_address_added_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_active_pool_address_added_id_seq OWNED BY public.liquity_events_active_pool_address_added.id;
+
+
+--
+-- Name: liquity_events_active_pool_address_added_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_active_pool_address_added_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    new_active_pool_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_active_pool_address_added_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_active_pool_address_added_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_active_pool_address_added_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_active_pool_address_added_testnet_v1_id_seq OWNED BY public.liquity_events_active_pool_address_added_testnet_v1.id;
 
 
 --
@@ -1008,6 +1377,41 @@ ALTER SEQUENCE public.liquity_events_active_pool_address_changed_id_seq OWNED BY
 
 
 --
+-- Name: liquity_events_active_pool_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_active_pool_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    new_active_pool_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_active_pool_address_changed_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_active_pool_address_changed_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_active_pool_address_changed_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_active_pool_address_changed_testnet_v1_id_seq OWNED BY public.liquity_events_active_pool_address_changed_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_active_pool_bold_debt_updated; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1043,6 +1447,41 @@ ALTER SEQUENCE public.liquity_events_active_pool_bold_debt_updated_id_seq OWNED 
 
 
 --
+-- Name: liquity_events_active_pool_bold_debt_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_active_pool_bold_debt_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    recorded_debt_sum public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_active_pool_bold_debt_updated_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_active_pool_bold_debt_updated_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_active_pool_bold_debt_updated_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_active_pool_bold_debt_updated_testnet_v1_id_seq OWNED BY public.liquity_events_active_pool_bold_debt_updated_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_active_pool_coll_balance_updated_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -1060,6 +1499,41 @@ CREATE SEQUENCE public.liquity_events_active_pool_coll_balance_updated_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_active_pool_coll_balance_updated_id_seq OWNED BY public.liquity_events_active_pool_coll_balance_updated.id;
+
+
+--
+-- Name: liquity_events_active_pool_coll_balance_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_active_pool_coll_balance_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    coll_balance public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_active_pool_coll_balance_updated_testnet__id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_active_pool_coll_balance_updated_testnet__id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_active_pool_coll_balance_updated_testnet__id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_active_pool_coll_balance_updated_testnet__id_seq OWNED BY public.liquity_events_active_pool_coll_balance_updated_testnet_v1.id;
 
 
 --
@@ -1099,19 +1573,39 @@ ALTER SEQUENCE public.liquity_events_add_manager_updated_id_seq OWNED BY public.
 
 
 --
--- Name: liquity_events_b_updated; Type: TABLE; Schema: public; Owner: -
+-- Name: liquity_events_add_manager_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.liquity_events_b_updated (
+CREATE TABLE public.liquity_events_add_manager_updated_testnet_v1 (
     id integer NOT NULL,
     created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     block_hash public.hash NOT NULL,
     transaction_hash public.hash NOT NULL,
     block_number integer NOT NULL,
     emitter_addr public.address NOT NULL,
-    b public.hugeint NOT NULL,
-    scale public.hugeint NOT NULL
+    trove_id public.hugeint NOT NULL,
+    new_add_manager public.address NOT NULL
 );
+
+
+--
+-- Name: liquity_events_add_manager_updated_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_add_manager_updated_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_add_manager_updated_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_add_manager_updated_testnet_v1_id_seq OWNED BY public.liquity_events_add_manager_updated_testnet_v1.id;
 
 
 --
@@ -1132,6 +1626,42 @@ CREATE SEQUENCE public.liquity_events_b_updated_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_b_updated_id_seq OWNED BY public.liquity_events_b_updated.id;
+
+
+--
+-- Name: liquity_events_b_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_b_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    b public.hugeint NOT NULL,
+    scale public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_b_updated_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_b_updated_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_b_updated_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_b_updated_testnet_v1_id_seq OWNED BY public.liquity_events_b_updated_testnet_v1.id;
 
 
 --
@@ -1170,6 +1700,41 @@ ALTER SEQUENCE public.liquity_events_base_rate_updated_id_seq OWNED BY public.li
 
 
 --
+-- Name: liquity_events_base_rate_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_base_rate_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    base_rate public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_base_rate_updated_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_base_rate_updated_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_base_rate_updated_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_base_rate_updated_testnet_v1_id_seq OWNED BY public.liquity_events_base_rate_updated_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_batch_updated_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -1187,6 +1752,48 @@ CREATE SEQUENCE public.liquity_events_batch_updated_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_batch_updated_id_seq OWNED BY public.liquity_events_batch_updated.id;
+
+
+--
+-- Name: liquity_events_batch_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_batch_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    interest_batch_manager public.address NOT NULL,
+    operation integer NOT NULL,
+    debt public.hugeint NOT NULL,
+    coll public.hugeint NOT NULL,
+    annual_interest_rate public.hugeint NOT NULL,
+    annual_management_fee public.hugeint NOT NULL,
+    total_debt_shares public.hugeint NOT NULL,
+    debt_increase_from_upfront_fee public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_batch_updated_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_batch_updated_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_batch_updated_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_batch_updated_testnet_v1_id_seq OWNED BY public.liquity_events_batch_updated_testnet_v1.id;
 
 
 --
@@ -1210,6 +1817,47 @@ ALTER SEQUENCE public.liquity_events_batched_trove_updated_id_seq OWNED BY publi
 
 
 --
+-- Name: liquity_events_batched_trove_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_batched_trove_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    trove_id public.hugeint NOT NULL,
+    interest_batch_manager public.address NOT NULL,
+    batch_debt_shares public.hugeint NOT NULL,
+    coll public.hugeint NOT NULL,
+    stake public.hugeint NOT NULL,
+    snapshot_of_total_coll_redist public.hugeint NOT NULL,
+    snapshot_of_total_debt_redist public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_batched_trove_updated_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_batched_trove_updated_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_batched_trove_updated_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_batched_trove_updated_testnet_v1_id_seq OWNED BY public.liquity_events_batched_trove_updated_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_bold_token_address_changed_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -1227,6 +1875,41 @@ CREATE SEQUENCE public.liquity_events_bold_token_address_changed_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_bold_token_address_changed_id_seq OWNED BY public.liquity_events_bold_token_address_changed.id;
+
+
+--
+-- Name: liquity_events_bold_token_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_bold_token_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    new_bold_token_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_bold_token_address_changed_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_bold_token_address_changed_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_bold_token_address_changed_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_bold_token_address_changed_testnet_v1_id_seq OWNED BY public.liquity_events_bold_token_address_changed_testnet_v1.id;
 
 
 --
@@ -1267,6 +1950,43 @@ ALTER SEQUENCE public.liquity_events_bold_token_approval_id_seq OWNED BY public.
 
 
 --
+-- Name: liquity_events_bold_token_approval_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_bold_token_approval_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    owner public.address NOT NULL,
+    spender public.address NOT NULL,
+    value public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_bold_token_approval_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_bold_token_approval_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_bold_token_approval_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_bold_token_approval_testnet_v1_id_seq OWNED BY public.liquity_events_bold_token_approval_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_bold_token_transfer_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -1284,6 +2004,43 @@ CREATE SEQUENCE public.liquity_events_bold_token_transfer_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_bold_token_transfer_id_seq OWNED BY public.liquity_events_bold_token_transfer.id;
+
+
+--
+-- Name: liquity_events_bold_token_transfer_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_bold_token_transfer_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    from_address public.address NOT NULL,
+    to_address public.address NOT NULL,
+    value public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_bold_token_transfer_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_bold_token_transfer_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_bold_token_transfer_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_bold_token_transfer_testnet_v1_id_seq OWNED BY public.liquity_events_bold_token_transfer_testnet_v1.id;
 
 
 --
@@ -1322,6 +2079,41 @@ ALTER SEQUENCE public.liquity_events_borrower_operations_address_added_id_seq OW
 
 
 --
+-- Name: liquity_events_borrower_operations_address_added_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_borrower_operations_address_added_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    new_borrower_operations_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_borrower_operations_address_added_testnet_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_borrower_operations_address_added_testnet_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_borrower_operations_address_added_testnet_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_borrower_operations_address_added_testnet_id_seq OWNED BY public.liquity_events_borrower_operations_address_added_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_borrower_operations_address_changed; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1354,6 +2146,41 @@ CREATE SEQUENCE public.liquity_events_borrower_operations_address_changed_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_borrower_operations_address_changed_id_seq OWNED BY public.liquity_events_borrower_operations_address_changed.id;
+
+
+--
+-- Name: liquity_events_borrower_operations_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_borrower_operations_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    new_borrower_operations_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_borrower_operations_address_changed_testn_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_borrower_operations_address_changed_testn_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_borrower_operations_address_changed_testn_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_borrower_operations_address_changed_testn_id_seq OWNED BY public.liquity_events_borrower_operations_address_changed_testnet_v1.id;
 
 
 --
@@ -1393,6 +2220,42 @@ ALTER SEQUENCE public.liquity_events_coll_balance_updated_id_seq OWNED BY public
 
 
 --
+-- Name: liquity_events_coll_balance_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_coll_balance_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    account public.address NOT NULL,
+    new_balance public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_coll_balance_updated_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_coll_balance_updated_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_coll_balance_updated_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_coll_balance_updated_testnet_v1_id_seq OWNED BY public.liquity_events_coll_balance_updated_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_coll_sent; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1426,6 +2289,42 @@ CREATE SEQUENCE public.liquity_events_coll_sent_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_coll_sent_id_seq OWNED BY public.liquity_events_coll_sent.id;
+
+
+--
+-- Name: liquity_events_coll_sent_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_coll_sent_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    to_address public.address NOT NULL,
+    amount public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_coll_sent_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_coll_sent_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_coll_sent_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_coll_sent_testnet_v1_id_seq OWNED BY public.liquity_events_coll_sent_testnet_v1.id;
 
 
 --
@@ -1464,6 +2363,41 @@ ALTER SEQUENCE public.liquity_events_coll_surplus_pool_address_changed_id_seq OW
 
 
 --
+-- Name: liquity_events_coll_surplus_pool_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_coll_surplus_pool_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    coll_surplus_pool_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_coll_surplus_pool_address_changed_testnet_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_coll_surplus_pool_address_changed_testnet_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_coll_surplus_pool_address_changed_testnet_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_coll_surplus_pool_address_changed_testnet_id_seq OWNED BY public.liquity_events_coll_surplus_pool_address_changed_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_coll_token_address_changed; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1496,6 +2430,41 @@ CREATE SEQUENCE public.liquity_events_coll_token_address_changed_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_coll_token_address_changed_id_seq OWNED BY public.liquity_events_coll_token_address_changed.id;
+
+
+--
+-- Name: liquity_events_coll_token_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_coll_token_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    new_coll_token_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_coll_token_address_changed_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_coll_token_address_changed_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_coll_token_address_changed_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_coll_token_address_changed_testnet_v1_id_seq OWNED BY public.liquity_events_coll_token_address_changed_testnet_v1.id;
 
 
 --
@@ -1534,6 +2503,41 @@ ALTER SEQUENCE public.liquity_events_collateral_registry_address_changed_id_seq 
 
 
 --
+-- Name: liquity_events_collateral_registry_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_collateral_registry_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    collateral_registry_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_collateral_registry_address_changed_testn_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_collateral_registry_address_changed_testn_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_collateral_registry_address_changed_testn_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_collateral_registry_address_changed_testn_id_seq OWNED BY public.liquity_events_collateral_registry_address_changed_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_default_pool_address_changed; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1566,6 +2570,41 @@ CREATE SEQUENCE public.liquity_events_default_pool_address_changed_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_default_pool_address_changed_id_seq OWNED BY public.liquity_events_default_pool_address_changed.id;
+
+
+--
+-- Name: liquity_events_default_pool_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_default_pool_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    new_default_pool_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_default_pool_address_changed_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_default_pool_address_changed_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_default_pool_address_changed_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_default_pool_address_changed_testnet_v1_id_seq OWNED BY public.liquity_events_default_pool_address_changed_testnet_v1.id;
 
 
 --
@@ -1604,6 +2643,41 @@ ALTER SEQUENCE public.liquity_events_default_pool_bold_debt_updated_id_seq OWNED
 
 
 --
+-- Name: liquity_events_default_pool_bold_debt_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_default_pool_bold_debt_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    bold_debt public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_default_pool_bold_debt_updated_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_default_pool_bold_debt_updated_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_default_pool_bold_debt_updated_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_default_pool_bold_debt_updated_testnet_v1_id_seq OWNED BY public.liquity_events_default_pool_bold_debt_updated_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_default_pool_coll_balance_updated_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -1621,6 +2695,41 @@ CREATE SEQUENCE public.liquity_events_default_pool_coll_balance_updated_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_default_pool_coll_balance_updated_id_seq OWNED BY public.liquity_events_default_pool_coll_balance_updated.id;
+
+
+--
+-- Name: liquity_events_default_pool_coll_balance_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_default_pool_coll_balance_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    coll_balance public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_default_pool_coll_balance_updated_testnet_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_default_pool_coll_balance_updated_testnet_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_default_pool_coll_balance_updated_testnet_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_default_pool_coll_balance_updated_testnet_id_seq OWNED BY public.liquity_events_default_pool_coll_balance_updated_testnet_v1.id;
 
 
 --
@@ -1666,6 +2775,48 @@ ALTER SEQUENCE public.liquity_events_deposit_operation_id_seq OWNED BY public.li
 
 
 --
+-- Name: liquity_events_deposit_operation_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_deposit_operation_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    depositor public.address NOT NULL,
+    operation integer NOT NULL,
+    deposit_loss_since_last_operation public.hugeint NOT NULL,
+    top_up_or_withdrawal public.hugeint NOT NULL,
+    yield_gain_since_last_operation public.hugeint NOT NULL,
+    yield_gain_claimed public.hugeint NOT NULL,
+    eth_gain_since_last_operation public.hugeint NOT NULL,
+    eth_gain_claimed public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_deposit_operation_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_deposit_operation_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_deposit_operation_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_deposit_operation_testnet_v1_id_seq OWNED BY public.liquity_events_deposit_operation_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_deposit_updated; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1707,6 +2858,47 @@ ALTER SEQUENCE public.liquity_events_deposit_updated_id_seq OWNED BY public.liqu
 
 
 --
+-- Name: liquity_events_deposit_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_deposit_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    depositor public.address NOT NULL,
+    new_deposit public.hugeint NOT NULL,
+    stashed_coll public.hugeint NOT NULL,
+    snapshot_p public.hugeint NOT NULL,
+    snapshot_s public.hugeint NOT NULL,
+    snapshot_b public.hugeint NOT NULL,
+    snapshot_scale public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_deposit_updated_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_deposit_updated_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_deposit_updated_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_deposit_updated_testnet_v1_id_seq OWNED BY public.liquity_events_deposit_updated_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_gas_pool_address_changed; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1739,6 +2931,41 @@ CREATE SEQUENCE public.liquity_events_gas_pool_address_changed_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_gas_pool_address_changed_id_seq OWNED BY public.liquity_events_gas_pool_address_changed.id;
+
+
+--
+-- Name: liquity_events_gas_pool_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_gas_pool_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    gas_pool_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_gas_pool_address_changed_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_gas_pool_address_changed_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_gas_pool_address_changed_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_gas_pool_address_changed_testnet_v1_id_seq OWNED BY public.liquity_events_gas_pool_address_changed_testnet_v1.id;
 
 
 --
@@ -1777,6 +3004,41 @@ ALTER SEQUENCE public.liquity_events_hint_helpers_address_changed_id_seq OWNED B
 
 
 --
+-- Name: liquity_events_hint_helpers_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_hint_helpers_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    hint_helpers_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_hint_helpers_address_changed_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_hint_helpers_address_changed_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_hint_helpers_address_changed_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_hint_helpers_address_changed_testnet_v1_id_seq OWNED BY public.liquity_events_hint_helpers_address_changed_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_interest_router_address_changed; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1809,6 +3071,41 @@ CREATE SEQUENCE public.liquity_events_interest_router_address_changed_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_interest_router_address_changed_id_seq OWNED BY public.liquity_events_interest_router_address_changed.id;
+
+
+--
+-- Name: liquity_events_interest_router_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_interest_router_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    interest_router_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_interest_router_address_changed_testnet_v_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_interest_router_address_changed_testnet_v_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_interest_router_address_changed_testnet_v_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_interest_router_address_changed_testnet_v_id_seq OWNED BY public.liquity_events_interest_router_address_changed_testnet_v1.id;
 
 
 --
@@ -1847,6 +3144,41 @@ ALTER SEQUENCE public.liquity_events_last_fee_op_time_updated_id_seq OWNED BY pu
 
 
 --
+-- Name: liquity_events_last_fee_op_time_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_last_fee_op_time_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    last_fee_op_time public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_last_fee_op_time_updated_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_last_fee_op_time_updated_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_last_fee_op_time_updated_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_last_fee_op_time_updated_testnet_v1_id_seq OWNED BY public.liquity_events_last_fee_op_time_updated_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_last_good_price_updated; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1879,6 +3211,41 @@ CREATE SEQUENCE public.liquity_events_last_good_price_updated_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_last_good_price_updated_id_seq OWNED BY public.liquity_events_last_good_price_updated.id;
+
+
+--
+-- Name: liquity_events_last_good_price_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_last_good_price_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    last_good_price public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_last_good_price_updated_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_last_good_price_updated_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_last_good_price_updated_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_last_good_price_updated_testnet_v1_id_seq OWNED BY public.liquity_events_last_good_price_updated_testnet_v1.id;
 
 
 --
@@ -1926,6 +3293,50 @@ ALTER SEQUENCE public.liquity_events_liquidation_id_seq OWNED BY public.liquity_
 
 
 --
+-- Name: liquity_events_liquidation_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_liquidation_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    debt_offset_by_sp public.hugeint NOT NULL,
+    debt_redistributed public.hugeint NOT NULL,
+    bold_gas_compensation public.hugeint NOT NULL,
+    coll_gas_compensation public.hugeint NOT NULL,
+    coll_sent_to_sp public.hugeint NOT NULL,
+    coll_redistributed public.hugeint NOT NULL,
+    coll_surplus public.hugeint NOT NULL,
+    l_eth public.hugeint NOT NULL,
+    l_bold_debt public.hugeint NOT NULL,
+    price public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_liquidation_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_liquidation_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_liquidation_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_liquidation_testnet_v1_id_seq OWNED BY public.liquity_events_liquidation_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_metadata_nft_address_changed; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1961,6 +3372,41 @@ ALTER SEQUENCE public.liquity_events_metadata_nft_address_changed_id_seq OWNED B
 
 
 --
+-- Name: liquity_events_metadata_nft_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_metadata_nft_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    metadata_nft_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_metadata_nft_address_changed_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_metadata_nft_address_changed_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_metadata_nft_address_changed_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_metadata_nft_address_changed_testnet_v1_id_seq OWNED BY public.liquity_events_metadata_nft_address_changed_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_multi_trove_getter_address_changed; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1993,6 +3439,41 @@ CREATE SEQUENCE public.liquity_events_multi_trove_getter_address_changed_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_multi_trove_getter_address_changed_id_seq OWNED BY public.liquity_events_multi_trove_getter_address_changed.id;
+
+
+--
+-- Name: liquity_events_multi_trove_getter_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_multi_trove_getter_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    multi_trove_getter_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_multi_trove_getter_address_changed_testne_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_multi_trove_getter_address_changed_testne_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_multi_trove_getter_address_changed_testne_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_multi_trove_getter_address_changed_testne_id_seq OWNED BY public.liquity_events_multi_trove_getter_address_changed_testnet_v1.id;
 
 
 --
@@ -2032,18 +3513,39 @@ ALTER SEQUENCE public.liquity_events_ownership_transferred_id_seq OWNED BY publi
 
 
 --
--- Name: liquity_events_p_updated; Type: TABLE; Schema: public; Owner: -
+-- Name: liquity_events_ownership_transferred_testnet_v1; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.liquity_events_p_updated (
+CREATE TABLE public.liquity_events_ownership_transferred_testnet_v1 (
     id integer NOT NULL,
     created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
     block_hash public.hash NOT NULL,
     transaction_hash public.hash NOT NULL,
     block_number integer NOT NULL,
     emitter_addr public.address NOT NULL,
-    p public.hugeint NOT NULL
+    previous_owner public.address NOT NULL,
+    new_owner public.address NOT NULL
 );
+
+
+--
+-- Name: liquity_events_ownership_transferred_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_ownership_transferred_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_ownership_transferred_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_ownership_transferred_testnet_v1_id_seq OWNED BY public.liquity_events_ownership_transferred_testnet_v1.id;
 
 
 --
@@ -2064,6 +3566,41 @@ CREATE SEQUENCE public.liquity_events_p_updated_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_p_updated_id_seq OWNED BY public.liquity_events_p_updated.id;
+
+
+--
+-- Name: liquity_events_p_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_p_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    p public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_p_updated_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_p_updated_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_p_updated_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_p_updated_testnet_v1_id_seq OWNED BY public.liquity_events_p_updated_testnet_v1.id;
 
 
 --
@@ -2099,6 +3636,41 @@ CREATE SEQUENCE public.liquity_events_price_feed_address_changed_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_price_feed_address_changed_id_seq OWNED BY public.liquity_events_price_feed_address_changed.id;
+
+
+--
+-- Name: liquity_events_price_feed_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_price_feed_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    new_price_feed_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_price_feed_address_changed_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_price_feed_address_changed_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_price_feed_address_changed_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_price_feed_address_changed_testnet_v1_id_seq OWNED BY public.liquity_events_price_feed_address_changed_testnet_v1.id;
 
 
 --
@@ -2158,6 +3730,42 @@ ALTER SEQUENCE public.liquity_events_redemption_fee_paid_to_trove_id_seq OWNED B
 
 
 --
+-- Name: liquity_events_redemption_fee_paid_to_trove_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_redemption_fee_paid_to_trove_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    trove_id public.hugeint NOT NULL,
+    eth_fee public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_redemption_fee_paid_to_trove_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_redemption_fee_paid_to_trove_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_redemption_fee_paid_to_trove_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_redemption_fee_paid_to_trove_testnet_v1_id_seq OWNED BY public.liquity_events_redemption_fee_paid_to_trove_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_redemption_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -2175,6 +3783,46 @@ CREATE SEQUENCE public.liquity_events_redemption_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_redemption_id_seq OWNED BY public.liquity_events_redemption.id;
+
+
+--
+-- Name: liquity_events_redemption_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_redemption_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    attempted_bold_amount public.hugeint NOT NULL,
+    actual_bold_amount public.hugeint NOT NULL,
+    eth_sent public.hugeint NOT NULL,
+    eth_fee public.hugeint NOT NULL,
+    price public.hugeint NOT NULL,
+    redemption_price public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_redemption_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_redemption_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_redemption_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_redemption_testnet_v1_id_seq OWNED BY public.liquity_events_redemption_testnet_v1.id;
 
 
 --
@@ -2215,6 +3863,43 @@ ALTER SEQUENCE public.liquity_events_remove_manager_and_receiver_updated_id_seq 
 
 
 --
+-- Name: liquity_events_remove_manager_and_receiver_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_remove_manager_and_receiver_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    trove_id public.hugeint NOT NULL,
+    new_remove_manager public.address NOT NULL,
+    new_receiver public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_remove_manager_and_receiver_updated_testn_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_remove_manager_and_receiver_updated_testn_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_remove_manager_and_receiver_updated_testn_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_remove_manager_and_receiver_updated_testn_id_seq OWNED BY public.liquity_events_remove_manager_and_receiver_updated_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_s_updated; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2248,6 +3933,42 @@ CREATE SEQUENCE public.liquity_events_s_updated_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_s_updated_id_seq OWNED BY public.liquity_events_s_updated.id;
+
+
+--
+-- Name: liquity_events_s_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_s_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    s public.hugeint NOT NULL,
+    scale public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_s_updated_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_s_updated_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_s_updated_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_s_updated_testnet_v1_id_seq OWNED BY public.liquity_events_s_updated_testnet_v1.id;
 
 
 --
@@ -2286,6 +4007,41 @@ ALTER SEQUENCE public.liquity_events_scale_updated_id_seq OWNED BY public.liquit
 
 
 --
+-- Name: liquity_events_scale_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_scale_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    current_scale public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_scale_updated_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_scale_updated_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_scale_updated_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_scale_updated_testnet_v1_id_seq OWNED BY public.liquity_events_scale_updated_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_shut_down_from_oracle_failure; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2318,6 +4074,41 @@ CREATE SEQUENCE public.liquity_events_shut_down_from_oracle_failure_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_shut_down_from_oracle_failure_id_seq OWNED BY public.liquity_events_shut_down_from_oracle_failure.id;
+
+
+--
+-- Name: liquity_events_shut_down_from_oracle_failure_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_shut_down_from_oracle_failure_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    failed_oracle_addr public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_shut_down_from_oracle_failure_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_shut_down_from_oracle_failure_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_shut_down_from_oracle_failure_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_shut_down_from_oracle_failure_testnet_v1_id_seq OWNED BY public.liquity_events_shut_down_from_oracle_failure_testnet_v1.id;
 
 
 --
@@ -2356,6 +4147,41 @@ ALTER SEQUENCE public.liquity_events_sorted_troves_address_changed_id_seq OWNED 
 
 
 --
+-- Name: liquity_events_sorted_troves_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_sorted_troves_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    sorted_troves_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_sorted_troves_address_changed_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_sorted_troves_address_changed_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_sorted_troves_address_changed_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_sorted_troves_address_changed_testnet_v1_id_seq OWNED BY public.liquity_events_sorted_troves_address_changed_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_stability_pool_address_added; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2388,6 +4214,41 @@ CREATE SEQUENCE public.liquity_events_stability_pool_address_added_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_stability_pool_address_added_id_seq OWNED BY public.liquity_events_stability_pool_address_added.id;
+
+
+--
+-- Name: liquity_events_stability_pool_address_added_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_stability_pool_address_added_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    new_stability_pool_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_stability_pool_address_added_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_stability_pool_address_added_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_stability_pool_address_added_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_stability_pool_address_added_testnet_v1_id_seq OWNED BY public.liquity_events_stability_pool_address_added_testnet_v1.id;
 
 
 --
@@ -2426,6 +4287,41 @@ ALTER SEQUENCE public.liquity_events_stability_pool_address_changed_id_seq OWNED
 
 
 --
+-- Name: liquity_events_stability_pool_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_stability_pool_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    stability_pool_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_stability_pool_address_changed_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_stability_pool_address_changed_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_stability_pool_address_changed_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_stability_pool_address_changed_testnet_v1_id_seq OWNED BY public.liquity_events_stability_pool_address_changed_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_stability_pool_bold_balance_updated_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -2443,6 +4339,41 @@ CREATE SEQUENCE public.liquity_events_stability_pool_bold_balance_updated_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_stability_pool_bold_balance_updated_id_seq OWNED BY public.liquity_events_stability_pool_bold_balance_updated.id;
+
+
+--
+-- Name: liquity_events_stability_pool_bold_balance_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_stability_pool_bold_balance_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    new_balance public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_stability_pool_bold_balance_updated_testn_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_stability_pool_bold_balance_updated_testn_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_stability_pool_bold_balance_updated_testn_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_stability_pool_bold_balance_updated_testn_id_seq OWNED BY public.liquity_events_stability_pool_bold_balance_updated_testnet_v1.id;
 
 
 --
@@ -2481,6 +4412,41 @@ ALTER SEQUENCE public.liquity_events_stability_pool_coll_balance_updated_id_seq 
 
 
 --
+-- Name: liquity_events_stability_pool_coll_balance_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_stability_pool_coll_balance_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    new_balance public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_stability_pool_coll_balance_updated_testn_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_stability_pool_coll_balance_updated_testn_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_stability_pool_coll_balance_updated_testn_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_stability_pool_coll_balance_updated_testn_id_seq OWNED BY public.liquity_events_stability_pool_coll_balance_updated_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_trove_manager_address_added; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -2513,6 +4479,41 @@ CREATE SEQUENCE public.liquity_events_trove_manager_address_added_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_trove_manager_address_added_id_seq OWNED BY public.liquity_events_trove_manager_address_added.id;
+
+
+--
+-- Name: liquity_events_trove_manager_address_added_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_trove_manager_address_added_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    new_trove_manager_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_trove_manager_address_added_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_trove_manager_address_added_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_trove_manager_address_added_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_trove_manager_address_added_testnet_v1_id_seq OWNED BY public.liquity_events_trove_manager_address_added_testnet_v1.id;
 
 
 --
@@ -2551,6 +4552,41 @@ ALTER SEQUENCE public.liquity_events_trove_manager_address_changed_id_seq OWNED 
 
 
 --
+-- Name: liquity_events_trove_manager_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_trove_manager_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    new_trove_manager_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_trove_manager_address_changed_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_trove_manager_address_changed_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_trove_manager_address_changed_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_trove_manager_address_changed_testnet_v1_id_seq OWNED BY public.liquity_events_trove_manager_address_changed_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_trove_nft_address_changed_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -2568,6 +4604,41 @@ CREATE SEQUENCE public.liquity_events_trove_nft_address_changed_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_trove_nft_address_changed_id_seq OWNED BY public.liquity_events_trove_nft_address_changed.id;
+
+
+--
+-- Name: liquity_events_trove_nft_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_trove_nft_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    new_trove_nft_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_trove_nft_address_changed_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_trove_nft_address_changed_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_trove_nft_address_changed_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_trove_nft_address_changed_testnet_v1_id_seq OWNED BY public.liquity_events_trove_nft_address_changed_testnet_v1.id;
 
 
 --
@@ -2625,6 +4696,43 @@ ALTER SEQUENCE public.liquity_events_trove_nft_approval_for_all_id_seq OWNED BY 
 
 
 --
+-- Name: liquity_events_trove_nft_approval_for_all_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_trove_nft_approval_for_all_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    owner public.address NOT NULL,
+    operator public.address NOT NULL,
+    approved boolean NOT NULL
+);
+
+
+--
+-- Name: liquity_events_trove_nft_approval_for_all_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_trove_nft_approval_for_all_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_trove_nft_approval_for_all_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_trove_nft_approval_for_all_testnet_v1_id_seq OWNED BY public.liquity_events_trove_nft_approval_for_all_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_trove_nft_approval_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -2642,6 +4750,43 @@ CREATE SEQUENCE public.liquity_events_trove_nft_approval_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_trove_nft_approval_id_seq OWNED BY public.liquity_events_trove_nft_approval.id;
+
+
+--
+-- Name: liquity_events_trove_nft_approval_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_trove_nft_approval_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    owner public.address NOT NULL,
+    approved public.address NOT NULL,
+    token_id public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_trove_nft_approval_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_trove_nft_approval_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_trove_nft_approval_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_trove_nft_approval_testnet_v1_id_seq OWNED BY public.liquity_events_trove_nft_approval_testnet_v1.id;
 
 
 --
@@ -2665,6 +4810,43 @@ ALTER SEQUENCE public.liquity_events_trove_nft_transfer_id_seq OWNED BY public.l
 
 
 --
+-- Name: liquity_events_trove_nft_transfer_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_trove_nft_transfer_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    from_address public.address NOT NULL,
+    to_address public.address NOT NULL,
+    token_id public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_trove_nft_transfer_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_trove_nft_transfer_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_trove_nft_transfer_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_trove_nft_transfer_testnet_v1_id_seq OWNED BY public.liquity_events_trove_nft_transfer_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_trove_operation_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -2685,6 +4867,48 @@ ALTER SEQUENCE public.liquity_events_trove_operation_id_seq OWNED BY public.liqu
 
 
 --
+-- Name: liquity_events_trove_operation_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_trove_operation_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    trove_id public.hugeint NOT NULL,
+    operation integer NOT NULL,
+    annual_interest_rate public.hugeint NOT NULL,
+    debt_increase_from_redist public.hugeint NOT NULL,
+    debt_increase_from_upfront_fee public.hugeint NOT NULL,
+    debt_change_from_operation public.hugeint NOT NULL,
+    coll_increase_from_redist public.hugeint NOT NULL,
+    coll_change_from_operation public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_trove_operation_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_trove_operation_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_trove_operation_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_trove_operation_testnet_v1_id_seq OWNED BY public.liquity_events_trove_operation_testnet_v1.id;
+
+
+--
 -- Name: liquity_events_trove_updated_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -2702,6 +4926,47 @@ CREATE SEQUENCE public.liquity_events_trove_updated_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_trove_updated_id_seq OWNED BY public.liquity_events_trove_updated.id;
+
+
+--
+-- Name: liquity_events_trove_updated_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_trove_updated_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    trove_id public.hugeint NOT NULL,
+    debt public.hugeint NOT NULL,
+    coll public.hugeint NOT NULL,
+    stake public.hugeint NOT NULL,
+    annual_interest_rate public.hugeint NOT NULL,
+    snapshot_of_total_coll_redist public.hugeint NOT NULL,
+    snapshot_of_total_debt_redist public.hugeint NOT NULL
+);
+
+
+--
+-- Name: liquity_events_trove_updated_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_trove_updated_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_trove_updated_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_trove_updated_testnet_v1_id_seq OWNED BY public.liquity_events_trove_updated_testnet_v1.id;
 
 
 --
@@ -2737,6 +5002,41 @@ CREATE SEQUENCE public.liquity_events_weth_address_changed_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_weth_address_changed_id_seq OWNED BY public.liquity_events_weth_address_changed.id;
+
+
+--
+-- Name: liquity_events_weth_address_changed_testnet_v1; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_weth_address_changed_testnet_v1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    weth_address public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_weth_address_changed_testnet_v1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_weth_address_changed_testnet_v1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_weth_address_changed_testnet_v1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_weth_address_changed_testnet_v1_id_seq OWNED BY public.liquity_events_weth_address_changed_testnet_v1.id;
 
 
 --
@@ -2803,10 +5103,31 @@ ALTER TABLE ONLY public.florin_ingestor_checkpointing_1 ALTER COLUMN id SET DEFA
 
 
 --
+-- Name: florin_ingestor_checkpointing_1_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.florin_ingestor_checkpointing_1_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.florin_ingestor_checkpointing_1_testnet_v1_id_seq'::regclass);
+
+
+--
+-- Name: florin_stability_pool_apr_history_1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.florin_stability_pool_apr_history_1 ALTER COLUMN id SET DEFAULT nextval('public.florin_stability_pool_apr_history_1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_active_pool_address_added id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_active_pool_address_added ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_active_pool_address_added_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_active_pool_address_added_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_active_pool_address_added_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_active_pool_address_added_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -2817,10 +5138,24 @@ ALTER TABLE ONLY public.liquity_events_active_pool_address_changed ALTER COLUMN 
 
 
 --
+-- Name: liquity_events_active_pool_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_active_pool_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_active_pool_address_changed_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_active_pool_bold_debt_updated id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_active_pool_bold_debt_updated ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_active_pool_bold_debt_updated_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_active_pool_bold_debt_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_active_pool_bold_debt_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_active_pool_bold_debt_updated_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -2831,10 +5166,24 @@ ALTER TABLE ONLY public.liquity_events_active_pool_coll_balance_updated ALTER CO
 
 
 --
+-- Name: liquity_events_active_pool_coll_balance_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_active_pool_coll_balance_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_active_pool_coll_balance_updated_testnet__id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_add_manager_updated id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_add_manager_updated ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_add_manager_updated_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_add_manager_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_add_manager_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_add_manager_updated_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -2845,10 +5194,24 @@ ALTER TABLE ONLY public.liquity_events_b_updated ALTER COLUMN id SET DEFAULT nex
 
 
 --
+-- Name: liquity_events_b_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_b_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_b_updated_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_base_rate_updated id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_base_rate_updated ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_base_rate_updated_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_base_rate_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_base_rate_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_base_rate_updated_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -2859,10 +5222,24 @@ ALTER TABLE ONLY public.liquity_events_batch_updated ALTER COLUMN id SET DEFAULT
 
 
 --
+-- Name: liquity_events_batch_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_batch_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_batch_updated_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_batched_trove_updated id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_batched_trove_updated ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_batched_trove_updated_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_batched_trove_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_batched_trove_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_batched_trove_updated_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -2873,10 +5250,24 @@ ALTER TABLE ONLY public.liquity_events_bold_token_address_changed ALTER COLUMN i
 
 
 --
+-- Name: liquity_events_bold_token_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_bold_token_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_bold_token_address_changed_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_bold_token_approval id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_bold_token_approval ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_bold_token_approval_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_bold_token_approval_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_bold_token_approval_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_bold_token_approval_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -2887,10 +5278,24 @@ ALTER TABLE ONLY public.liquity_events_bold_token_transfer ALTER COLUMN id SET D
 
 
 --
+-- Name: liquity_events_bold_token_transfer_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_bold_token_transfer_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_bold_token_transfer_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_borrower_operations_address_added id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_borrower_operations_address_added ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_borrower_operations_address_added_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_borrower_operations_address_added_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_borrower_operations_address_added_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_borrower_operations_address_added_testnet_id_seq'::regclass);
 
 
 --
@@ -2901,10 +5306,24 @@ ALTER TABLE ONLY public.liquity_events_borrower_operations_address_changed ALTER
 
 
 --
+-- Name: liquity_events_borrower_operations_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_borrower_operations_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_borrower_operations_address_changed_testn_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_coll_balance_updated id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_coll_balance_updated ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_coll_balance_updated_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_coll_balance_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_coll_balance_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_coll_balance_updated_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -2915,10 +5334,24 @@ ALTER TABLE ONLY public.liquity_events_coll_sent ALTER COLUMN id SET DEFAULT nex
 
 
 --
+-- Name: liquity_events_coll_sent_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_coll_sent_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_coll_sent_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_coll_surplus_pool_address_changed id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_coll_surplus_pool_address_changed ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_coll_surplus_pool_address_changed_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_coll_surplus_pool_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_coll_surplus_pool_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_coll_surplus_pool_address_changed_testnet_id_seq'::regclass);
 
 
 --
@@ -2929,10 +5362,24 @@ ALTER TABLE ONLY public.liquity_events_coll_token_address_changed ALTER COLUMN i
 
 
 --
+-- Name: liquity_events_coll_token_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_coll_token_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_coll_token_address_changed_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_collateral_registry_address_changed id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_collateral_registry_address_changed ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_collateral_registry_address_changed_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_collateral_registry_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_collateral_registry_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_collateral_registry_address_changed_testn_id_seq'::regclass);
 
 
 --
@@ -2943,10 +5390,24 @@ ALTER TABLE ONLY public.liquity_events_default_pool_address_changed ALTER COLUMN
 
 
 --
+-- Name: liquity_events_default_pool_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_default_pool_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_default_pool_address_changed_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_default_pool_bold_debt_updated id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_default_pool_bold_debt_updated ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_default_pool_bold_debt_updated_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_default_pool_bold_debt_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_default_pool_bold_debt_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_default_pool_bold_debt_updated_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -2957,10 +5418,24 @@ ALTER TABLE ONLY public.liquity_events_default_pool_coll_balance_updated ALTER C
 
 
 --
+-- Name: liquity_events_default_pool_coll_balance_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_default_pool_coll_balance_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_default_pool_coll_balance_updated_testnet_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_deposit_operation id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_deposit_operation ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_deposit_operation_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_deposit_operation_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_deposit_operation_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_deposit_operation_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -2971,10 +5446,24 @@ ALTER TABLE ONLY public.liquity_events_deposit_updated ALTER COLUMN id SET DEFAU
 
 
 --
+-- Name: liquity_events_deposit_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_deposit_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_deposit_updated_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_gas_pool_address_changed id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_gas_pool_address_changed ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_gas_pool_address_changed_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_gas_pool_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_gas_pool_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_gas_pool_address_changed_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -2985,10 +5474,24 @@ ALTER TABLE ONLY public.liquity_events_hint_helpers_address_changed ALTER COLUMN
 
 
 --
+-- Name: liquity_events_hint_helpers_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_hint_helpers_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_hint_helpers_address_changed_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_interest_router_address_changed id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_interest_router_address_changed ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_interest_router_address_changed_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_interest_router_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_interest_router_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_interest_router_address_changed_testnet_v_id_seq'::regclass);
 
 
 --
@@ -2999,10 +5502,24 @@ ALTER TABLE ONLY public.liquity_events_last_fee_op_time_updated ALTER COLUMN id 
 
 
 --
+-- Name: liquity_events_last_fee_op_time_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_last_fee_op_time_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_last_fee_op_time_updated_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_last_good_price_updated id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_last_good_price_updated ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_last_good_price_updated_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_last_good_price_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_last_good_price_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_last_good_price_updated_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -3013,10 +5530,24 @@ ALTER TABLE ONLY public.liquity_events_liquidation ALTER COLUMN id SET DEFAULT n
 
 
 --
+-- Name: liquity_events_liquidation_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_liquidation_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_liquidation_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_metadata_nft_address_changed id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_metadata_nft_address_changed ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_metadata_nft_address_changed_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_metadata_nft_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_metadata_nft_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_metadata_nft_address_changed_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -3027,10 +5558,24 @@ ALTER TABLE ONLY public.liquity_events_multi_trove_getter_address_changed ALTER 
 
 
 --
+-- Name: liquity_events_multi_trove_getter_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_multi_trove_getter_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_multi_trove_getter_address_changed_testne_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_ownership_transferred id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_ownership_transferred ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_ownership_transferred_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_ownership_transferred_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_ownership_transferred_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_ownership_transferred_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -3041,10 +5586,24 @@ ALTER TABLE ONLY public.liquity_events_p_updated ALTER COLUMN id SET DEFAULT nex
 
 
 --
+-- Name: liquity_events_p_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_p_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_p_updated_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_price_feed_address_changed id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_price_feed_address_changed ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_price_feed_address_changed_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_price_feed_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_price_feed_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_price_feed_address_changed_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -3062,10 +5621,31 @@ ALTER TABLE ONLY public.liquity_events_redemption_fee_paid_to_trove ALTER COLUMN
 
 
 --
+-- Name: liquity_events_redemption_fee_paid_to_trove_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_redemption_fee_paid_to_trove_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_redemption_fee_paid_to_trove_testnet_v1_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_redemption_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_redemption_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_redemption_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_remove_manager_and_receiver_updated id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_remove_manager_and_receiver_updated ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_remove_manager_and_receiver_updated_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_remove_manager_and_receiver_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_remove_manager_and_receiver_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_remove_manager_and_receiver_updated_testn_id_seq'::regclass);
 
 
 --
@@ -3076,10 +5656,24 @@ ALTER TABLE ONLY public.liquity_events_s_updated ALTER COLUMN id SET DEFAULT nex
 
 
 --
+-- Name: liquity_events_s_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_s_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_s_updated_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_scale_updated id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_scale_updated ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_scale_updated_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_scale_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_scale_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_scale_updated_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -3090,10 +5684,24 @@ ALTER TABLE ONLY public.liquity_events_shut_down_from_oracle_failure ALTER COLUM
 
 
 --
+-- Name: liquity_events_shut_down_from_oracle_failure_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_shut_down_from_oracle_failure_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_shut_down_from_oracle_failure_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_sorted_troves_address_changed id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_sorted_troves_address_changed ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_sorted_troves_address_changed_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_sorted_troves_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_sorted_troves_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_sorted_troves_address_changed_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -3104,10 +5712,24 @@ ALTER TABLE ONLY public.liquity_events_stability_pool_address_added ALTER COLUMN
 
 
 --
+-- Name: liquity_events_stability_pool_address_added_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_stability_pool_address_added_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_stability_pool_address_added_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_stability_pool_address_changed id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_stability_pool_address_changed ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_stability_pool_address_changed_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_stability_pool_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_stability_pool_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_stability_pool_address_changed_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -3118,10 +5740,24 @@ ALTER TABLE ONLY public.liquity_events_stability_pool_bold_balance_updated ALTER
 
 
 --
+-- Name: liquity_events_stability_pool_bold_balance_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_stability_pool_bold_balance_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_stability_pool_bold_balance_updated_testn_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_stability_pool_coll_balance_updated id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_stability_pool_coll_balance_updated ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_stability_pool_coll_balance_updated_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_stability_pool_coll_balance_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_stability_pool_coll_balance_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_stability_pool_coll_balance_updated_testn_id_seq'::regclass);
 
 
 --
@@ -3132,6 +5768,13 @@ ALTER TABLE ONLY public.liquity_events_trove_manager_address_added ALTER COLUMN 
 
 
 --
+-- Name: liquity_events_trove_manager_address_added_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_trove_manager_address_added_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_trove_manager_address_added_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_trove_manager_address_changed id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3139,10 +5782,24 @@ ALTER TABLE ONLY public.liquity_events_trove_manager_address_changed ALTER COLUM
 
 
 --
+-- Name: liquity_events_trove_manager_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_trove_manager_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_trove_manager_address_changed_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_trove_nft_address_changed id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_trove_nft_address_changed ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_trove_nft_address_changed_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_trove_nft_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_trove_nft_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_trove_nft_address_changed_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -3160,10 +5817,31 @@ ALTER TABLE ONLY public.liquity_events_trove_nft_approval_for_all ALTER COLUMN i
 
 
 --
+-- Name: liquity_events_trove_nft_approval_for_all_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_trove_nft_approval_for_all_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_trove_nft_approval_for_all_testnet_v1_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_trove_nft_approval_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_trove_nft_approval_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_trove_nft_approval_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_trove_nft_transfer id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_trove_nft_transfer ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_trove_nft_transfer_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_trove_nft_transfer_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_trove_nft_transfer_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_trove_nft_transfer_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -3174,6 +5852,13 @@ ALTER TABLE ONLY public.liquity_events_trove_operation ALTER COLUMN id SET DEFAU
 
 
 --
+-- Name: liquity_events_trove_operation_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_trove_operation_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_trove_operation_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_trove_updated id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -3181,10 +5866,24 @@ ALTER TABLE ONLY public.liquity_events_trove_updated ALTER COLUMN id SET DEFAULT
 
 
 --
+-- Name: liquity_events_trove_updated_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_trove_updated_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_trove_updated_testnet_v1_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_weth_address_changed id; Type: DEFAULT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_weth_address_changed ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_weth_address_changed_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_weth_address_changed_testnet_v1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_weth_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_weth_address_changed_testnet_v1_id_seq'::regclass);
 
 
 --
@@ -3268,6 +5967,22 @@ ALTER TABLE ONLY public.accounts_sender_keys_1
 
 
 --
+-- Name: florin_chain_blocks_1 florin_chain_blocks_1_block_number_block_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.florin_chain_blocks_1
+    ADD CONSTRAINT florin_chain_blocks_1_block_number_block_hash_key UNIQUE (block_number, block_hash);
+
+
+--
+-- Name: florin_chain_blocks_1 florin_chain_blocks_1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.florin_chain_blocks_1
+    ADD CONSTRAINT florin_chain_blocks_1_pkey PRIMARY KEY (block_number);
+
+
+--
 -- Name: florin_faucet_amounts_sent_1 florin_faucet_amounts_sent_1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3292,11 +6007,35 @@ ALTER TABLE ONLY public.florin_ingestor_checkpointing_1
 
 
 --
+-- Name: florin_ingestor_checkpointing_1_testnet_v1 florin_ingestor_checkpointing_1_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.florin_ingestor_checkpointing_1_testnet_v1
+    ADD CONSTRAINT florin_ingestor_checkpointing_1_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: florin_migrations florin_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.florin_migrations
     ADD CONSTRAINT florin_migrations_pkey PRIMARY KEY (version);
+
+
+--
+-- Name: florin_stability_pool_accounting_1 florin_stability_pool_accounting_1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.florin_stability_pool_accounting_1
+    ADD CONSTRAINT florin_stability_pool_accounting_1_pkey PRIMARY KEY (stability_pool, block_number);
+
+
+--
+-- Name: florin_stability_pool_apr_history_1 florin_stability_pool_apr_history_1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.florin_stability_pool_apr_history_1
+    ADD CONSTRAINT florin_stability_pool_apr_history_1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3308,11 +6047,27 @@ ALTER TABLE ONLY public.liquity_events_active_pool_address_added
 
 
 --
+-- Name: liquity_events_active_pool_address_added_testnet_v1 liquity_events_active_pool_address_added_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_active_pool_address_added_testnet_v1
+    ADD CONSTRAINT liquity_events_active_pool_address_added_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_active_pool_address_changed liquity_events_active_pool_address_changed_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_active_pool_address_changed
     ADD CONSTRAINT liquity_events_active_pool_address_changed_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_active_pool_address_changed_testnet_v1 liquity_events_active_pool_address_changed_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_active_pool_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_active_pool_address_changed_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3324,11 +6079,27 @@ ALTER TABLE ONLY public.liquity_events_active_pool_bold_debt_updated
 
 
 --
+-- Name: liquity_events_active_pool_bold_debt_updated_testnet_v1 liquity_events_active_pool_bold_debt_updated_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_active_pool_bold_debt_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_active_pool_bold_debt_updated_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_active_pool_coll_balance_updated liquity_events_active_pool_coll_balance_updated_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_active_pool_coll_balance_updated
     ADD CONSTRAINT liquity_events_active_pool_coll_balance_updated_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_active_pool_coll_balance_updated_testnet_v1 liquity_events_active_pool_coll_balance_updated_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_active_pool_coll_balance_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_active_pool_coll_balance_updated_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3340,11 +6111,27 @@ ALTER TABLE ONLY public.liquity_events_add_manager_updated
 
 
 --
+-- Name: liquity_events_add_manager_updated_testnet_v1 liquity_events_add_manager_updated_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_add_manager_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_add_manager_updated_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_b_updated liquity_events_b_updated_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_b_updated
     ADD CONSTRAINT liquity_events_b_updated_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_b_updated_testnet_v1 liquity_events_b_updated_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_b_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_b_updated_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3356,11 +6143,27 @@ ALTER TABLE ONLY public.liquity_events_base_rate_updated
 
 
 --
+-- Name: liquity_events_base_rate_updated_testnet_v1 liquity_events_base_rate_updated_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_base_rate_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_base_rate_updated_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_batch_updated liquity_events_batch_updated_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_batch_updated
     ADD CONSTRAINT liquity_events_batch_updated_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_batch_updated_testnet_v1 liquity_events_batch_updated_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_batch_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_batch_updated_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3372,11 +6175,27 @@ ALTER TABLE ONLY public.liquity_events_batched_trove_updated
 
 
 --
+-- Name: liquity_events_batched_trove_updated_testnet_v1 liquity_events_batched_trove_updated_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_batched_trove_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_batched_trove_updated_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_bold_token_address_changed liquity_events_bold_token_address_changed_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_bold_token_address_changed
     ADD CONSTRAINT liquity_events_bold_token_address_changed_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_bold_token_address_changed_testnet_v1 liquity_events_bold_token_address_changed_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_bold_token_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_bold_token_address_changed_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3388,11 +6207,27 @@ ALTER TABLE ONLY public.liquity_events_bold_token_approval
 
 
 --
+-- Name: liquity_events_bold_token_approval_testnet_v1 liquity_events_bold_token_approval_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_bold_token_approval_testnet_v1
+    ADD CONSTRAINT liquity_events_bold_token_approval_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_bold_token_transfer liquity_events_bold_token_transfer_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_bold_token_transfer
     ADD CONSTRAINT liquity_events_bold_token_transfer_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_bold_token_transfer_testnet_v1 liquity_events_bold_token_transfer_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_bold_token_transfer_testnet_v1
+    ADD CONSTRAINT liquity_events_bold_token_transfer_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3404,11 +6239,27 @@ ALTER TABLE ONLY public.liquity_events_borrower_operations_address_added
 
 
 --
+-- Name: liquity_events_borrower_operations_address_added_testnet_v1 liquity_events_borrower_operations_address_added_testnet_v_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_borrower_operations_address_added_testnet_v1
+    ADD CONSTRAINT liquity_events_borrower_operations_address_added_testnet_v_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_borrower_operations_address_changed liquity_events_borrower_operations_address_changed_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_borrower_operations_address_changed
     ADD CONSTRAINT liquity_events_borrower_operations_address_changed_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_borrower_operations_address_changed_testnet_v1 liquity_events_borrower_operations_address_changed_testnet_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_borrower_operations_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_borrower_operations_address_changed_testnet_pkey PRIMARY KEY (id);
 
 
 --
@@ -3420,11 +6271,27 @@ ALTER TABLE ONLY public.liquity_events_coll_balance_updated
 
 
 --
+-- Name: liquity_events_coll_balance_updated_testnet_v1 liquity_events_coll_balance_updated_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_coll_balance_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_coll_balance_updated_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_coll_sent liquity_events_coll_sent_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_coll_sent
     ADD CONSTRAINT liquity_events_coll_sent_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_coll_sent_testnet_v1 liquity_events_coll_sent_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_coll_sent_testnet_v1
+    ADD CONSTRAINT liquity_events_coll_sent_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3436,11 +6303,27 @@ ALTER TABLE ONLY public.liquity_events_coll_surplus_pool_address_changed
 
 
 --
+-- Name: liquity_events_coll_surplus_pool_address_changed_testnet_v1 liquity_events_coll_surplus_pool_address_changed_testnet_v_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_coll_surplus_pool_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_coll_surplus_pool_address_changed_testnet_v_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_coll_token_address_changed liquity_events_coll_token_address_changed_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_coll_token_address_changed
     ADD CONSTRAINT liquity_events_coll_token_address_changed_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_coll_token_address_changed_testnet_v1 liquity_events_coll_token_address_changed_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_coll_token_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_coll_token_address_changed_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3452,11 +6335,27 @@ ALTER TABLE ONLY public.liquity_events_collateral_registry_address_changed
 
 
 --
+-- Name: liquity_events_collateral_registry_address_changed_testnet_v1 liquity_events_collateral_registry_address_changed_testnet_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_collateral_registry_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_collateral_registry_address_changed_testnet_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_default_pool_address_changed liquity_events_default_pool_address_changed_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_default_pool_address_changed
     ADD CONSTRAINT liquity_events_default_pool_address_changed_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_default_pool_address_changed_testnet_v1 liquity_events_default_pool_address_changed_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_default_pool_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_default_pool_address_changed_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3468,11 +6367,27 @@ ALTER TABLE ONLY public.liquity_events_default_pool_bold_debt_updated
 
 
 --
+-- Name: liquity_events_default_pool_bold_debt_updated_testnet_v1 liquity_events_default_pool_bold_debt_updated_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_default_pool_bold_debt_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_default_pool_bold_debt_updated_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_default_pool_coll_balance_updated liquity_events_default_pool_coll_balance_updated_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_default_pool_coll_balance_updated
     ADD CONSTRAINT liquity_events_default_pool_coll_balance_updated_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_default_pool_coll_balance_updated_testnet_v1 liquity_events_default_pool_coll_balance_updated_testnet_v_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_default_pool_coll_balance_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_default_pool_coll_balance_updated_testnet_v_pkey PRIMARY KEY (id);
 
 
 --
@@ -3484,11 +6399,27 @@ ALTER TABLE ONLY public.liquity_events_deposit_operation
 
 
 --
+-- Name: liquity_events_deposit_operation_testnet_v1 liquity_events_deposit_operation_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_deposit_operation_testnet_v1
+    ADD CONSTRAINT liquity_events_deposit_operation_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_deposit_updated liquity_events_deposit_updated_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_deposit_updated
     ADD CONSTRAINT liquity_events_deposit_updated_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_deposit_updated_testnet_v1 liquity_events_deposit_updated_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_deposit_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_deposit_updated_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3500,11 +6431,27 @@ ALTER TABLE ONLY public.liquity_events_gas_pool_address_changed
 
 
 --
+-- Name: liquity_events_gas_pool_address_changed_testnet_v1 liquity_events_gas_pool_address_changed_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_gas_pool_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_gas_pool_address_changed_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_hint_helpers_address_changed liquity_events_hint_helpers_address_changed_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_hint_helpers_address_changed
     ADD CONSTRAINT liquity_events_hint_helpers_address_changed_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_hint_helpers_address_changed_testnet_v1 liquity_events_hint_helpers_address_changed_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_hint_helpers_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_hint_helpers_address_changed_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3516,11 +6463,27 @@ ALTER TABLE ONLY public.liquity_events_interest_router_address_changed
 
 
 --
+-- Name: liquity_events_interest_router_address_changed_testnet_v1 liquity_events_interest_router_address_changed_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_interest_router_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_interest_router_address_changed_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_last_fee_op_time_updated liquity_events_last_fee_op_time_updated_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_last_fee_op_time_updated
     ADD CONSTRAINT liquity_events_last_fee_op_time_updated_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_last_fee_op_time_updated_testnet_v1 liquity_events_last_fee_op_time_updated_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_last_fee_op_time_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_last_fee_op_time_updated_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3532,11 +6495,27 @@ ALTER TABLE ONLY public.liquity_events_last_good_price_updated
 
 
 --
+-- Name: liquity_events_last_good_price_updated_testnet_v1 liquity_events_last_good_price_updated_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_last_good_price_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_last_good_price_updated_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_liquidation liquity_events_liquidation_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_liquidation
     ADD CONSTRAINT liquity_events_liquidation_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_liquidation_testnet_v1 liquity_events_liquidation_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_liquidation_testnet_v1
+    ADD CONSTRAINT liquity_events_liquidation_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3548,11 +6527,27 @@ ALTER TABLE ONLY public.liquity_events_metadata_nft_address_changed
 
 
 --
+-- Name: liquity_events_metadata_nft_address_changed_testnet_v1 liquity_events_metadata_nft_address_changed_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_metadata_nft_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_metadata_nft_address_changed_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_multi_trove_getter_address_changed liquity_events_multi_trove_getter_address_changed_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_multi_trove_getter_address_changed
     ADD CONSTRAINT liquity_events_multi_trove_getter_address_changed_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_multi_trove_getter_address_changed_testnet_v1 liquity_events_multi_trove_getter_address_changed_testnet__pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_multi_trove_getter_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_multi_trove_getter_address_changed_testnet__pkey PRIMARY KEY (id);
 
 
 --
@@ -3564,11 +6559,27 @@ ALTER TABLE ONLY public.liquity_events_ownership_transferred
 
 
 --
+-- Name: liquity_events_ownership_transferred_testnet_v1 liquity_events_ownership_transferred_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_ownership_transferred_testnet_v1
+    ADD CONSTRAINT liquity_events_ownership_transferred_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_p_updated liquity_events_p_updated_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_p_updated
     ADD CONSTRAINT liquity_events_p_updated_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_p_updated_testnet_v1 liquity_events_p_updated_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_p_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_p_updated_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3580,11 +6591,27 @@ ALTER TABLE ONLY public.liquity_events_price_feed_address_changed
 
 
 --
+-- Name: liquity_events_price_feed_address_changed_testnet_v1 liquity_events_price_feed_address_changed_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_price_feed_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_price_feed_address_changed_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_redemption_fee_paid_to_trove liquity_events_redemption_fee_paid_to_trove_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_redemption_fee_paid_to_trove
     ADD CONSTRAINT liquity_events_redemption_fee_paid_to_trove_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_redemption_fee_paid_to_trove_testnet_v1 liquity_events_redemption_fee_paid_to_trove_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_redemption_fee_paid_to_trove_testnet_v1
+    ADD CONSTRAINT liquity_events_redemption_fee_paid_to_trove_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3596,11 +6623,27 @@ ALTER TABLE ONLY public.liquity_events_redemption
 
 
 --
+-- Name: liquity_events_redemption_testnet_v1 liquity_events_redemption_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_redemption_testnet_v1
+    ADD CONSTRAINT liquity_events_redemption_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_remove_manager_and_receiver_updated liquity_events_remove_manager_and_receiver_updated_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_remove_manager_and_receiver_updated
     ADD CONSTRAINT liquity_events_remove_manager_and_receiver_updated_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_remove_manager_and_receiver_updated_testnet_v1 liquity_events_remove_manager_and_receiver_updated_testnet_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_remove_manager_and_receiver_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_remove_manager_and_receiver_updated_testnet_pkey PRIMARY KEY (id);
 
 
 --
@@ -3612,11 +6655,27 @@ ALTER TABLE ONLY public.liquity_events_s_updated
 
 
 --
+-- Name: liquity_events_s_updated_testnet_v1 liquity_events_s_updated_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_s_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_s_updated_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_scale_updated liquity_events_scale_updated_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_scale_updated
     ADD CONSTRAINT liquity_events_scale_updated_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_scale_updated_testnet_v1 liquity_events_scale_updated_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_scale_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_scale_updated_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3628,11 +6687,27 @@ ALTER TABLE ONLY public.liquity_events_shut_down_from_oracle_failure
 
 
 --
+-- Name: liquity_events_shut_down_from_oracle_failure_testnet_v1 liquity_events_shut_down_from_oracle_failure_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_shut_down_from_oracle_failure_testnet_v1
+    ADD CONSTRAINT liquity_events_shut_down_from_oracle_failure_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_sorted_troves_address_changed liquity_events_sorted_troves_address_changed_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_sorted_troves_address_changed
     ADD CONSTRAINT liquity_events_sorted_troves_address_changed_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_sorted_troves_address_changed_testnet_v1 liquity_events_sorted_troves_address_changed_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_sorted_troves_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_sorted_troves_address_changed_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3644,11 +6719,27 @@ ALTER TABLE ONLY public.liquity_events_stability_pool_address_added
 
 
 --
+-- Name: liquity_events_stability_pool_address_added_testnet_v1 liquity_events_stability_pool_address_added_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_stability_pool_address_added_testnet_v1
+    ADD CONSTRAINT liquity_events_stability_pool_address_added_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_stability_pool_address_changed liquity_events_stability_pool_address_changed_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_stability_pool_address_changed
     ADD CONSTRAINT liquity_events_stability_pool_address_changed_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_stability_pool_address_changed_testnet_v1 liquity_events_stability_pool_address_changed_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_stability_pool_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_stability_pool_address_changed_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3660,11 +6751,27 @@ ALTER TABLE ONLY public.liquity_events_stability_pool_bold_balance_updated
 
 
 --
+-- Name: liquity_events_stability_pool_bold_balance_updated_testnet_v1 liquity_events_stability_pool_bold_balance_updated_testnet_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_stability_pool_bold_balance_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_stability_pool_bold_balance_updated_testnet_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_stability_pool_coll_balance_updated liquity_events_stability_pool_coll_balance_updated_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_stability_pool_coll_balance_updated
     ADD CONSTRAINT liquity_events_stability_pool_coll_balance_updated_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_stability_pool_coll_balance_updated_testnet_v1 liquity_events_stability_pool_coll_balance_updated_testnet_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_stability_pool_coll_balance_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_stability_pool_coll_balance_updated_testnet_pkey PRIMARY KEY (id);
 
 
 --
@@ -3676,11 +6783,27 @@ ALTER TABLE ONLY public.liquity_events_trove_manager_address_added
 
 
 --
+-- Name: liquity_events_trove_manager_address_added_testnet_v1 liquity_events_trove_manager_address_added_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_trove_manager_address_added_testnet_v1
+    ADD CONSTRAINT liquity_events_trove_manager_address_added_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_trove_manager_address_changed liquity_events_trove_manager_address_changed_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_trove_manager_address_changed
     ADD CONSTRAINT liquity_events_trove_manager_address_changed_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_trove_manager_address_changed_testnet_v1 liquity_events_trove_manager_address_changed_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_trove_manager_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_trove_manager_address_changed_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3692,11 +6815,27 @@ ALTER TABLE ONLY public.liquity_events_trove_nft_address_changed
 
 
 --
+-- Name: liquity_events_trove_nft_address_changed_testnet_v1 liquity_events_trove_nft_address_changed_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_trove_nft_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_trove_nft_address_changed_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_trove_nft_approval_for_all liquity_events_trove_nft_approval_for_all_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_trove_nft_approval_for_all
     ADD CONSTRAINT liquity_events_trove_nft_approval_for_all_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_trove_nft_approval_for_all_testnet_v1 liquity_events_trove_nft_approval_for_all_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_trove_nft_approval_for_all_testnet_v1
+    ADD CONSTRAINT liquity_events_trove_nft_approval_for_all_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3708,11 +6847,27 @@ ALTER TABLE ONLY public.liquity_events_trove_nft_approval
 
 
 --
+-- Name: liquity_events_trove_nft_approval_testnet_v1 liquity_events_trove_nft_approval_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_trove_nft_approval_testnet_v1
+    ADD CONSTRAINT liquity_events_trove_nft_approval_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_trove_nft_transfer liquity_events_trove_nft_transfer_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_trove_nft_transfer
     ADD CONSTRAINT liquity_events_trove_nft_transfer_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_trove_nft_transfer_testnet_v1 liquity_events_trove_nft_transfer_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_trove_nft_transfer_testnet_v1
+    ADD CONSTRAINT liquity_events_trove_nft_transfer_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3724,6 +6879,14 @@ ALTER TABLE ONLY public.liquity_events_trove_operation
 
 
 --
+-- Name: liquity_events_trove_operation_testnet_v1 liquity_events_trove_operation_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_trove_operation_testnet_v1
+    ADD CONSTRAINT liquity_events_trove_operation_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_trove_updated liquity_events_trove_updated_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3732,11 +6895,27 @@ ALTER TABLE ONLY public.liquity_events_trove_updated
 
 
 --
+-- Name: liquity_events_trove_updated_testnet_v1 liquity_events_trove_updated_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_trove_updated_testnet_v1
+    ADD CONSTRAINT liquity_events_trove_updated_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_weth_address_changed liquity_events_weth_address_changed_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.liquity_events_weth_address_changed
     ADD CONSTRAINT liquity_events_weth_address_changed_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_weth_address_changed_testnet_v1 liquity_events_weth_address_changed_testnet_v1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_weth_address_changed_testnet_v1
+    ADD CONSTRAINT liquity_events_weth_address_changed_testnet_v1_pkey PRIMARY KEY (id);
 
 
 --
@@ -3782,17 +6961,39 @@ CREATE UNIQUE INDEX florin_faucet_amounts_sent_1_recipient_2hour ON public.flori
 
 
 --
--- Name: florin_faucet_amounts_sent_1_x_handle_2hour; Type: INDEX; Schema: public; Owner: -
+-- Name: florin_stability_pool_apr_history_1_latest_idx; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE UNIQUE INDEX florin_faucet_amounts_sent_1_x_handle_2hour ON public.florin_faucet_amounts_sent_1 USING btree (x_handle, ((date_trunc('day'::text, created_by) + ('02:00:00'::interval * (floor((EXTRACT(hour FROM created_by) / (2)::numeric)))::double precision))));
+CREATE INDEX florin_stability_pool_apr_history_1_latest_idx ON public.florin_stability_pool_apr_history_1 USING btree (stability_pool, id DESC);
+
+
+--
+-- Name: liquity_events_b_updated_pool_block_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX liquity_events_b_updated_pool_block_id_idx ON public.liquity_events_b_updated USING btree (emitter_addr, block_number, id);
+
+
+--
+-- Name: liquity_events_p_updated_pool_block_id_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX liquity_events_p_updated_pool_block_id_idx ON public.liquity_events_p_updated USING btree (emitter_addr, block_number, id);
+
+
+--
+-- Name: florin_stability_pool_accounting_1 florin_stability_pool_accounting_1_block_number_block_hash_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.florin_stability_pool_accounting_1
+    ADD CONSTRAINT florin_stability_pool_accounting_1_block_number_block_hash_fkey FOREIGN KEY (block_number, block_hash) REFERENCES public.florin_chain_blocks_1(block_number, block_hash) ON DELETE CASCADE;
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict NzrgZFwSGFZ54f9sYPoP7FJ2hCU1dgED3sbl2dL4WKVKTF0CZENSNfh74iBRwfE
+\unrestrict u82MA4UfaMyVnL84zaKAOce3YMpnSV4GZt7WPCV6UBytk51q8zL4Ntat01bogWz
 
 
 --
@@ -3802,4 +7003,6 @@ CREATE UNIQUE INDEX florin_faucet_amounts_sent_1_x_handle_2hour ON public.florin
 INSERT INTO public.florin_migrations (version) VALUES
     ('1789985083'),
     ('1789985084'),
-    ('1790683508');
+    ('1790683508'),
+    ('1794481872'),
+    ('1794483397');
