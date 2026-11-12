@@ -34,8 +34,11 @@ test('theme is resolved before first paint from the device setting only', () => 
   const init = read('lib/theme-init.ts');
   assert.match(read('app/layout.tsx'), /<script dangerouslySetInnerHTML=\{\{ __html: THEME_INIT_SCRIPT \}\} \/>/);
   assert.match(init, /matchMedia\('\(prefers-color-scheme: dark\)'\)/);
-  assert.match(init, /d\.dataset\.theme=m\.matches\?'dark':'light'/);
+  assert.match(init, /cur=m\.matches\?'dark':'light';d\.dataset\.theme=cur/);
   assert.match(init, /m\.addEventListener\('change',apply\)/);
+  // A document rebuild by React strips data-theme; the observer restores it.
+  assert.match(init, /new MutationObserver\(/);
+  assert.match(init, /attributeFilter:\['data-theme'\]/);
   // No saved choice is read; an old one is cleared.
   assert.doesNotMatch(init, /localStorage\.getItem/);
   assert.match(init, /localStorage\.removeItem\('\$\{LEGACY_THEME_STORAGE_KEY\}'\)/);

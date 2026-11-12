@@ -3,6 +3,7 @@ import { usePathname } from 'next/navigation';
 import { useSpyPrice } from '../lib/use-spy-price';
 import { money } from '../lib/format';
 import { setThemeMode, useThemeMode } from '../lib/theme-mode';
+import { useHydrated } from '../lib/use-hydrated';
 import { RisksDialog } from './risks-dialog';
 import { TokenIcon } from './token-icon';
 
@@ -67,10 +68,11 @@ function ThemeSwitch() {
 
 export function Footer() {
   const path = usePathname();
+  const hydrated = useHydrated();
   const { price, live } = useSpyPrice();
 
-  // Landing page only.
-  if (path !== '/') return null;
+  // Landing page only. The route is only trusted after hydration.
+  if (!hydrated || path !== '/') return null;
 
   return (
     <footer className="site-footer">

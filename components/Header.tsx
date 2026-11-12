@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useHydrated } from '../lib/use-hydrated';
 import { useState } from 'react';
 import { useAppKit, useAppKitNetworkCore } from '@reown/appkit/react';
 import { robinhoodTestnet } from '@reown/appkit/networks';
@@ -56,6 +57,8 @@ function ReownAccountControl({ short }: { short: string }) {
 export function Header() {
   const w = useWallet();
   const path = usePathname();
+  // The active link is only marked after hydration; see useHydrated.
+  const activePath = useHydrated() ? path : null;
   const [walletError, setWalletError] = useState(false);
 
   async function toggleWallet() {
@@ -93,7 +96,7 @@ export function Header() {
             <Link
               key={n.href}
               href={n.href}
-              className={path === n.href ? 'site-nav__link site-nav__link--active' : 'site-nav__link'}
+              className={activePath === n.href ? 'site-nav__link site-nav__link--active' : 'site-nav__link'}
             >
               {n.label}
             </Link>
