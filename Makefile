@@ -17,7 +17,7 @@ UNITS := \
 	florin-graph.socket \
 	florin-ingestor.service \
 	florin-interest@.service \
-	florin-interest@.socket
+	florin-interest@.timer
 
 cli: ${CLIS}
 
