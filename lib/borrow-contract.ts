@@ -205,6 +205,7 @@ export const borrowerOperationsAbi = parseAbi([
   'function withdrawBold(uint256 troveId, uint256 boldAmount, uint256 maxUpfrontFee)',
   'function repayBold(uint256 troveId, uint256 boldAmount)',
   'function adjustTroveInterestRate(uint256 troveId, uint256 newAnnualInterestRate, uint256 upperHint, uint256 lowerHint, uint256 maxUpfrontFee)',
+  'function adjustTrove(uint256 troveId, uint256 collChange, bool isCollIncrease, uint256 boldChange, bool isDebtIncrease, uint256 maxUpfrontFee)',
   'function closeTrove(uint256 troveId)',
   'error TroveExists()',
   'error ICRBelowMCRPlusBCR()',

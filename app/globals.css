@@ -2484,6 +2484,15 @@ input:focus-visible {
   min-height: 26px;
 }
 
+.mgmt__title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
 .mgmt__hint {
   margin: 0;
   font-size: 12px;
@@ -3000,46 +3009,42 @@ input:focus-visible {
 
 /* Close confirmation: the risks dialog's frame at a smaller size, with the
    facts as a two-line list and the actions at the foot. */
-.confirm-dialog {
-  width: min(92vw, 460px);
+/* Close tab: what is repaid and what comes back. */
+.close-facts {
+  margin: 0;
+  padding: 2px 16px;
+  border: 1px solid var(--line-soft);
+  border-radius: 16px;
 }
 
-.confirm-dialog__facts {
-  margin: 16px 0 0;
-}
-
-.confirm-dialog__facts div {
+.close-facts div {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  padding: 10px 0;
+  padding: 12px 0;
+}
+
+.close-facts div + div {
   border-top: 1px solid var(--line-soft);
 }
 
-.confirm-dialog__facts dt {
+.close-facts dt {
   color: var(--gray-2);
   font-size: 13px;
 }
 
-.confirm-dialog__facts dd {
+.close-facts dd {
   margin: 0;
   font-weight: 600;
   text-align: right;
 }
 
-.confirm-dialog__facts dd em {
+.close-facts dd em {
   display: block;
   color: var(--gray-2);
   font-size: 12px;
   font-style: normal;
   font-weight: 400;
-}
-
-.confirm-dialog__actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 18px;
 }
 
 /* Multiply sizing: one slider for the multiple, typed into either as a

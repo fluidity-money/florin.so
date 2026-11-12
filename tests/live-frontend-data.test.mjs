@@ -81,10 +81,8 @@ test('position screen submits every supported borrower operation onchain', () =>
   assert.doesNotMatch(manage, /MOCK_WALLET|queueAhead|RATE_BOOK_TOTAL|AVG_RATE/);
   assert.doesNotMatch(manage, /setCollateral\(nextCollateral\)|setDebt\(nextDebt\)|setHasClosed\(true\)/);
   assert.doesNotMatch(manage, /Position transactions coming soon/);
-  assert.match(manage, /functionName:\s*'addColl'/);
-  assert.match(manage, /functionName:\s*'withdrawColl'/);
-  assert.match(manage, /functionName:\s*'withdrawBold'/);
-  assert.match(manage, /functionName:\s*'repayBold'/);
+  // Deposit, withdraw, borrow and repay all go through one adjustTrove, like Liquity.
+  assert.match(manage, /functionName:\s*'adjustTrove'/);
   assert.match(manage, /functionName:\s*'adjustTroveInterestRate'/);
   assert.match(manage, /functionName:\s*'closeTrove'/);
   assert.match(manage, /functionName:\s*'approve'/);
