@@ -6,6 +6,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 	"context"
 	"math/big"
 	"encoding/hex"
@@ -81,8 +82,8 @@ FROM fees f`,
 	apr := events.NumberFromBig(new(big.Int).Add(interestApr18, feesApr18))
 	_, err = db.Exec(`
 INSERT INTO florin_apr_recorded_1 (stability_pool, active_pool, apr) VALUES ($1, $2, $3 / 1e18)`,
-		stabilityPoolAddr.String(),
-		activePoolAddr.String(),
+		strings.ToLower(stabilityPoolAddr.String()),
+		strings.ToLower(activePoolAddr.String()),
 		apr,
 	)
 	if err != nil {

@@ -395,12 +395,13 @@ ORDER BY block_number DESC, trove_id`, normalizedOwner)
 func (r *queryResolver) StabilityPoolApr(ctx context.Context) ([]string, error) {
 	rows, err := r.Db.Query(`
 SELECT
+	created_by::DATE AS day,
 	AVG(apr)::TEXT AS apr
 FROM florin_apr_recorded_1
 WHERE created_by >= CURRENT_DATE - INTERVAL '29 days'
 	AND created_by < CURRENT_DATE + INTERVAL '1 day'
-GROUP BY created_by
-ORDER BY created_by ASC`,
+GROUP BY created_by::DATE
+ORDER BY day ASC`,
 	)
 	if err != nil {
 		slog.Error("Failed to scan apr percentages",
@@ -409,7 +410,7 @@ ORDER BY created_by ASC`,
 		return nil, fmt.Errorf("scan apr percentages")
 	}
 	defer rows.Close()
-	pcts := make([]string, 0, 30)
+	pcts := make([]string, 30)
 	var count int
 	for ; rows.Next(); count++ {
 		if err := rows.Scan(&pcts[count]); err != nil {
