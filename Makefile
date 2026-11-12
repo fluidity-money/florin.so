@@ -12,7 +12,12 @@ build: cli
 
 CLIS := florin-ingestor florin-graph florin-interest
 
-UNITS := florin-graph.service florin-graph.socket florin-ingestor.service
+UNITS := \
+	florin-graph.service \
+	florin-graph.socket \
+	florin-ingestor.service \
+	florin-interest@.service \
+	florin-interest@.socket
 
 cli: ${CLIS}
 
