@@ -231,7 +231,7 @@ func main() {
 	srv.Use(extension.AutomaticPersistedQuery{
 		Cache: lru.New[string](100),
 	})
-	http.Handle("", middleware{srv, db})
+	http.Handle("/", middleware{srv, db})
 	l, err := activation.Listeners()
 	if err != nil {
 		log.Fatalf("listeners: %v", err)
