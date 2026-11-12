@@ -2,7 +2,7 @@
 Description=Florin interest cron service for %i
 
 [Service]
-Type=simple
+Type=oneshot
 User=florin
 Group=fluidity_apps
 EnvironmentFile=/etc/fluidity-apps/%i.conf
