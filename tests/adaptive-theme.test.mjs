@@ -30,21 +30,23 @@ test('inline light defaults do not override adaptive semantic tokens', () => {
   assert.match(css, /--paper: var\(--light-paper, #eeeeee\)/);
 });
 
-test('theme is resolved before first paint from the saved choice, else the device', () => {
+test('theme is resolved before first paint from the device setting only', () => {
   const init = read('lib/theme-init.ts');
   assert.match(read('app/layout.tsx'), /<script dangerouslySetInnerHTML=\{\{ __html: THEME_INIT_SCRIPT \}\} \/>/);
-  assert.match(init, /localStorage\.getItem\('\$\{THEME_STORAGE_KEY\}'\)/);
   assert.match(init, /matchMedia\('\(prefers-color-scheme: dark\)'\)/);
-  assert.match(init, /d\.dataset\.theme=saved\(\)\|\|\(m\.matches\?'dark':'light'\)/);
+  assert.match(init, /d\.dataset\.theme=m\.matches\?'dark':'light'/);
   assert.match(init, /m\.addEventListener\('change',apply\)/);
+  // No saved choice is read; an old one is cleared.
+  assert.doesNotMatch(init, /localStorage\.getItem/);
+  assert.match(init, /localStorage\.removeItem\('\$\{LEGACY_THEME_STORAGE_KEY\}'\)/);
 });
 
-test('footer switch saves a manual choice and the wallet modal follows it', () => {
+test('footer switch changes the theme for this visit only and the wallet modal follows it', () => {
   const mode = read('lib/theme-mode.ts');
   const footer = read('components/Footer.tsx');
   const wallet = read('components/wallet/wallet-provider.tsx');
   assert.match(mode, /document\.documentElement\.dataset\.theme = mode/);
-  assert.match(mode, /localStorage\.setItem\(THEME_STORAGE_KEY, mode\)/);
+  assert.doesNotMatch(mode, /localStorage/);
   assert.match(mode, /removeEventListener\(THEME_EVENT, onChange\)/);
   assert.match(footer, /role="switch"/);
   assert.match(footer, /aria-checked=\{dark\}/);
