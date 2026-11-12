@@ -10,7 +10,6 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"fmt"
-	"time"
 	"log"
 	"log/slog"
 	"strings"
@@ -394,57 +393,7 @@ ORDER BY block_number DESC, trove_id`, normalizedOwner)
 
 // StabilityPoolApr is the resolver for the stabilityPoolApr field.
 func (r *queryResolver) StabilityPoolApr(ctx context.Context) ([]*model.StabilityPoolApr, error) {
-	rows, err := r.Db.QueryContext(ctx, `
-SELECT DISTINCT ON (stability_pool)
-	recorded_at, stability_pool,
-	apr_24h::text, apr_7d::text,
-	status_24h, status_7d
-FROM florin_stability_pool_apr_history_1
-ORDER BY stability_pool, id DESC`,
-	)
-	if err != nil {
-		slog.Error("Failed to get stability pool apr",
-			"err", err,
-		)
-		return nil, fmt.Errorf("failed to get stability pool apr")
-	}
-	defer rows.Close()
-	var aprs []*model.StabilityPoolApr
-	for rows.Next() {
-		var (
-			recordedAt time.Time
-			apr24h, apr7d sql.NullString
-			stabilityPoolAddr, status24h, status7d string
-		)
-		err := rows.Scan(
-			&recordedAt,
-			&stabilityPoolAddr,
-			&apr24h,
-			&apr7d,
-			&status24h,
-			&status7d,
-		)
-		if err != nil {
-			slog.Error("Failed to scan stability pool info",
-				"err,", err,
-			)
-			return nil, fmt.Errorf("scan stability pool info: %v", err)
-		}
-		apr := model.StabilityPoolApr {
-			RecordedAt: recordedAt.String(),
-			StabilityPool: stabilityPoolAddr,
-			Status24h: status24h,
-			Status7d: status7d,
-		}
-		if apr24h.Valid {
-			apr.Apr24h = &apr24h.String
-		}
-		if apr7d.Valid {
-			apr.Apr7d = &apr7d.String
-		}
-		aprs = append(aprs, &apr)
-	}
-	return aprs, nil
+	panic("TODO")
 }
 
 // Mutation returns MutationResolver implementation.

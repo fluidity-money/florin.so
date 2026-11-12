@@ -1,4 +1,4 @@
-\restrict u82MA4UfaMyVnL84zaKAOce3YMpnSV4GZt7WPCV6UBytk51q8zL4Ntat01bogWz
+\restrict xpERqXmqhFYfCyepurA4S1HZWJgfBP9RdHutPE9hijXp3m3qwo4QMLtav7379ah
 
 -- Dumped from database version 16.13 (Ubuntu 16.13-1.pgdg22.04+1)
 -- Dumped by pg_dump version 17.11 (Debian 17.11-0+deb13u1)
@@ -511,16 +511,36 @@ CREATE VIEW public.accounts_transaction_statistics_1 AS
 
 
 --
--- Name: florin_chain_blocks_1; Type: TABLE; Schema: public; Owner: -
+-- Name: florin_apr_recorded_1; Type: TABLE; Schema: public; Owner: -
 --
 
-CREATE TABLE public.florin_chain_blocks_1 (
-    block_number bigint NOT NULL,
-    block_hash public.hash NOT NULL,
-    block_timestamp bigint NOT NULL,
-    CONSTRAINT florin_chain_blocks_1_block_number_check CHECK ((block_number >= 0)),
-    CONSTRAINT florin_chain_blocks_1_block_timestamp_check CHECK ((block_timestamp >= 0))
+CREATE TABLE public.florin_apr_recorded_1 (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    stability_pool public.address NOT NULL,
+    active_pool public.address NOT NULL,
+    apr numeric NOT NULL
 );
+
+
+--
+-- Name: florin_apr_recorded_1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.florin_apr_recorded_1_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: florin_apr_recorded_1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.florin_apr_recorded_1_id_seq OWNED BY public.florin_apr_recorded_1.id;
 
 
 --
@@ -982,296 +1002,6 @@ CREATE VIEW public.florin_stability_pool_1 AS
 
 
 --
--- Name: florin_stability_pool_accounting_1; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.florin_stability_pool_accounting_1 (
-    stability_pool public.address NOT NULL,
-    block_number bigint NOT NULL,
-    block_hash public.hash NOT NULL,
-    p public.hugeint NOT NULL,
-    scale public.hugeint NOT NULL,
-    b public.hugeint NOT NULL,
-    total_deposits public.hugeint NOT NULL,
-    pending_yield public.hugeint NOT NULL,
-    CONSTRAINT florin_stability_pool_accounting_1_b_check CHECK (((b)::numeric >= (0)::numeric)),
-    CONSTRAINT florin_stability_pool_accounting_1_p_check CHECK (((p)::numeric > (0)::numeric)),
-    CONSTRAINT florin_stability_pool_accounting_1_pending_yield_check CHECK (((pending_yield)::numeric >= (0)::numeric)),
-    CONSTRAINT florin_stability_pool_accounting_1_scale_check CHECK (((scale)::numeric >= (0)::numeric)),
-    CONSTRAINT florin_stability_pool_accounting_1_total_deposits_check CHECK (((total_deposits)::numeric >= (0)::numeric))
-);
-
-
---
--- Name: liquity_events_b_updated; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.liquity_events_b_updated (
-    id integer NOT NULL,
-    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    block_hash public.hash NOT NULL,
-    transaction_hash public.hash NOT NULL,
-    block_number integer NOT NULL,
-    emitter_addr public.address NOT NULL,
-    b public.hugeint NOT NULL,
-    scale public.hugeint NOT NULL
-);
-
-
---
--- Name: liquity_events_p_updated; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.liquity_events_p_updated (
-    id integer NOT NULL,
-    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    block_hash public.hash NOT NULL,
-    transaction_hash public.hash NOT NULL,
-    block_number integer NOT NULL,
-    emitter_addr public.address NOT NULL,
-    p public.hugeint NOT NULL
-);
-
-
---
--- Name: florin_stability_pool_apr_1; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.florin_stability_pool_apr_1 AS
- WITH pools AS (
-         SELECT florin_stability_pool_accounting_1.stability_pool
-           FROM public.florin_stability_pool_accounting_1
-        UNION
-         SELECT liquity_events_b_updated.emitter_addr
-           FROM public.liquity_events_b_updated
-        UNION
-         SELECT liquity_events_stability_pool_bold_balance_updated.emitter_addr
-           FROM public.liquity_events_stability_pool_bold_balance_updated
-        ), latest AS (
-         SELECT DISTINCT ON (florin_stability_pool_accounting_1.stability_pool) florin_stability_pool_accounting_1.stability_pool,
-            florin_stability_pool_accounting_1.block_number,
-            florin_stability_pool_accounting_1.block_hash,
-            florin_stability_pool_accounting_1.p,
-            florin_stability_pool_accounting_1.scale,
-            florin_stability_pool_accounting_1.b,
-            florin_stability_pool_accounting_1.total_deposits,
-            florin_stability_pool_accounting_1.pending_yield
-           FROM public.florin_stability_pool_accounting_1
-          ORDER BY florin_stability_pool_accounting_1.stability_pool, florin_stability_pool_accounting_1.block_number DESC
-        ), state AS (
-         SELECT pools.stability_pool,
-            s.block_number,
-            s.block_hash,
-            s.p,
-            s.scale,
-            h.block_timestamp AS as_of_timestamp,
-            (h.block_timestamp - pace.block_timestamp) AS pace_seconds,
-            checkpoint.block_number AS next_indexed_block,
-            ((s.b)::numeric +
-                CASE
-                    WHEN (((s.total_deposits)::numeric > (0)::numeric) AND ((s.pending_yield)::numeric > (0)::numeric)) THEN div(((s.p)::numeric * (s.pending_yield)::numeric), (s.total_deposits)::numeric)
-                    ELSE (0)::numeric
-                END) AS effective_b
-           FROM ((((pools
-             LEFT JOIN latest s USING (stability_pool))
-             LEFT JOIN public.florin_chain_blocks_1 h ON (((h.block_number = s.block_number) AND ((h.block_hash)::bpchar = (s.block_hash)::bpchar))))
-             LEFT JOIN public.florin_chain_blocks_1 pace ON ((pace.block_number = (s.block_number - 100000))))
-             LEFT JOIN public.florin_ingestor_checkpointing_1 checkpoint ON ((checkpoint.id = 1)))
-        ), windows AS (
-         SELECT s.stability_pool,
-            s.block_number,
-            s.block_hash,
-            s.p,
-            s.scale,
-            s.as_of_timestamp,
-            s.pace_seconds,
-            s.next_indexed_block,
-            s.effective_b,
-            w.window_seconds,
-            GREATEST((0)::numeric, ((s.block_number)::numeric - div(((((w.window_seconds)::numeric * (100000)::numeric) + (s.pace_seconds)::numeric) - (1)::numeric), (NULLIF(s.pace_seconds, 0))::numeric))) AS start_block,
-            GREATEST((0)::numeric, ((s.block_number)::numeric - div(((((691200)::numeric * (100000)::numeric) + (s.pace_seconds)::numeric) - (1)::numeric), (NULLIF(s.pace_seconds, 0))::numeric))) AS from_block
-           FROM (state s
-             CROSS JOIN ( VALUES (86400), (604800)) w(window_seconds))
-        ), baselines AS (
-         SELECT w.stability_pool,
-            w.block_number,
-            w.block_hash,
-            w.p,
-            w.scale,
-            w.as_of_timestamp,
-            w.pace_seconds,
-            w.next_indexed_block,
-            w.effective_b,
-            w.window_seconds,
-            w.start_block,
-            w.from_block,
-            baseline.b AS baseline_b,
-            baseline.scale AS baseline_scale,
-            baseline.block_number AS baseline_block,
-            baseline.block_hash AS baseline_hash,
-            ((baseline.block_number)::numeric <= w.start_block) AS full_window,
-            h.block_timestamp AS baseline_timestamp,
-                CASE
-                    WHEN (NOT (EXISTS ( SELECT 1
-                       FROM public.liquity_events_p_updated e
-                      WHERE (((e.emitter_addr)::bpchar = (w.stability_pool)::bpchar) AND (((e.block_number)::numeric >= w.from_block) AND (e.block_number <= w.block_number)))))) THEN w.p
-                    ELSE starting_p.p
-                END AS baseline_p
-           FROM (((windows w
-             LEFT JOIN LATERAL ( SELECT e.b,
-                    e.scale,
-                    e.block_number,
-                    e.block_hash
-                   FROM public.liquity_events_b_updated e
-                  WHERE (((e.emitter_addr)::bpchar = (w.stability_pool)::bpchar) AND (((e.block_number)::numeric >= w.from_block) AND (e.block_number <= w.block_number)))
-                  ORDER BY ((e.block_number)::numeric <= w.start_block) DESC,
-                        CASE
-                            WHEN ((e.block_number)::numeric <= w.start_block) THEN e.block_number
-                            ELSE NULL::integer
-                        END DESC,
-                        CASE
-                            WHEN ((e.block_number)::numeric <= w.start_block) THEN e.id
-                            ELSE NULL::integer
-                        END DESC, e.block_number, e.id
-                 LIMIT 1) baseline ON (true))
-             LEFT JOIN public.florin_chain_blocks_1 h ON (((h.block_number = baseline.block_number) AND ((h.block_hash)::bpchar = (baseline.block_hash)::bpchar))))
-             LEFT JOIN LATERAL ( SELECT e.p
-                   FROM public.liquity_events_p_updated e
-                  WHERE (((e.emitter_addr)::bpchar = (w.stability_pool)::bpchar) AND (((e.block_number)::numeric >= w.from_block) AND (e.block_number <= baseline.block_number)))
-                  ORDER BY e.block_number DESC, e.id DESC
-                 LIMIT 1) starting_p ON (true))
-        ), checked AS (
-         SELECT baselines.stability_pool,
-            baselines.block_number,
-            baselines.block_hash,
-            baselines.p,
-            baselines.scale,
-            baselines.as_of_timestamp,
-            baselines.pace_seconds,
-            baselines.next_indexed_block,
-            baselines.effective_b,
-            baselines.window_seconds,
-            baselines.start_block,
-            baselines.from_block,
-            baselines.baseline_b,
-            baselines.baseline_scale,
-            baselines.baseline_block,
-            baselines.baseline_hash,
-            baselines.full_window,
-            baselines.baseline_timestamp,
-            baselines.baseline_p,
-            (baselines.as_of_timestamp - baselines.baseline_timestamp) AS elapsed_seconds,
-                CASE
-                    WHEN (baselines.block_number IS NULL) THEN 'missing_snapshot'::text
-                    WHEN ((baselines.next_indexed_block IS NULL) OR (baselines.next_indexed_block <= baselines.block_number)) THEN 'events_not_indexed'::text
-                    WHEN (baselines.block_number <= 100000) THEN 'insufficient_chain_history'::text
-                    WHEN (baselines.pace_seconds IS NULL) THEN 'missing_pace_block'::text
-                    WHEN (baselines.pace_seconds <= 0) THEN 'invalid_block_pace'::text
-                    WHEN (baselines.baseline_block IS NULL) THEN 'missing_baseline'::text
-                    WHEN ((baselines.baseline_scale)::numeric <> (baselines.scale)::numeric) THEN 'scale_changed'::text
-                    WHEN (baselines.baseline_p IS NULL) THEN 'unknown_baseline_p'::text
-                    WHEN (baselines.baseline_timestamp IS NULL) THEN 'missing_baseline_timestamp'::text
-                    WHEN (((baselines.baseline_p)::numeric <= (0)::numeric) OR (baselines.as_of_timestamp <= baselines.baseline_timestamp) OR (baselines.effective_b < (baselines.baseline_b)::numeric)) THEN 'invalid_return'::text
-                    WHEN ((NOT baselines.full_window) AND ((baselines.as_of_timestamp - baselines.baseline_timestamp) < (baselines.window_seconds / 2))) THEN 'insufficient_history'::text
-                    ELSE 'ok'::text
-                END AS status
-           FROM baselines
-        ), returns AS (
-         SELECT checked.stability_pool,
-            checked.block_number,
-            checked.block_hash,
-            checked.p,
-            checked.scale,
-            checked.as_of_timestamp,
-            checked.pace_seconds,
-            checked.next_indexed_block,
-            checked.effective_b,
-            checked.window_seconds,
-            checked.start_block,
-            checked.from_block,
-            checked.baseline_b,
-            checked.baseline_scale,
-            checked.baseline_block,
-            checked.baseline_hash,
-            checked.full_window,
-            checked.baseline_timestamp,
-            checked.baseline_p,
-            checked.elapsed_seconds,
-            checked.status,
-                CASE
-                    WHEN (checked.status = 'ok'::text) THEN (((div(((checked.effective_b - (checked.baseline_b)::numeric) * ('1000000000000'::bigint)::numeric), NULLIF((checked.baseline_p)::numeric, (0)::numeric)) * (31536000)::numeric) / ('1000000000000'::bigint)::numeric) / (NULLIF(checked.elapsed_seconds, 0))::numeric)
-                    ELSE NULL::numeric
-                END AS apr
-           FROM checked
-        )
- SELECT stability_pool,
-    block_number AS as_of_block,
-    block_hash AS as_of_block_hash,
-    as_of_timestamp,
-    max(apr) FILTER (WHERE (window_seconds = 86400)) AS apr_24h,
-    max(apr) FILTER (WHERE (window_seconds = 604800)) AS apr_7d,
-    max(baseline_timestamp) FILTER (WHERE (window_seconds = 86400)) AS baseline_24h_timestamp,
-    max(baseline_timestamp) FILTER (WHERE (window_seconds = 604800)) AS baseline_7d_timestamp,
-    max(status) FILTER (WHERE (window_seconds = 86400)) AS status_24h,
-    max(status) FILTER (WHERE (window_seconds = 604800)) AS status_7d
-   FROM returns
-  GROUP BY stability_pool, block_number, block_hash, as_of_timestamp;
-
-
---
--- Name: florin_stability_pool_apr_history_1; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.florin_stability_pool_apr_history_1 (
-    id bigint NOT NULL,
-    recorded_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
-    stability_pool public.address NOT NULL,
-    as_of_block bigint,
-    as_of_block_hash public.hash,
-    as_of_timestamp bigint,
-    apr_24h numeric,
-    apr_7d numeric,
-    baseline_24h_timestamp bigint,
-    baseline_7d_timestamp bigint,
-    status_24h text NOT NULL,
-    status_7d text NOT NULL
-);
-
-
---
--- Name: COLUMN florin_stability_pool_apr_history_1.apr_24h; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.florin_stability_pool_apr_history_1.apr_24h IS 'Annualised decimal fraction, not a percentage: 0.05 means 5%. NULL means unavailable.';
-
-
---
--- Name: COLUMN florin_stability_pool_apr_history_1.apr_7d; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.florin_stability_pool_apr_history_1.apr_7d IS 'Annualised decimal fraction, not a percentage: 0.05 means 5%. NULL means unavailable.';
-
-
---
--- Name: florin_stability_pool_apr_history_1_id_seq; Type: SEQUENCE; Schema: public; Owner: -
---
-
-CREATE SEQUENCE public.florin_stability_pool_apr_history_1_id_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
---
--- Name: florin_stability_pool_apr_history_1_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
---
-
-ALTER SEQUENCE public.florin_stability_pool_apr_history_1_id_seq OWNED BY public.florin_stability_pool_apr_history_1.id;
-
-
---
 -- Name: liquity_events_active_pool_address_added; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -1606,6 +1336,22 @@ CREATE SEQUENCE public.liquity_events_add_manager_updated_testnet_v1_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_add_manager_updated_testnet_v1_id_seq OWNED BY public.liquity_events_add_manager_updated_testnet_v1.id;
+
+
+--
+-- Name: liquity_events_b_updated; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_b_updated (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    b public.hugeint NOT NULL,
+    scale public.hugeint NOT NULL
+);
 
 
 --
@@ -3549,6 +3295,21 @@ ALTER SEQUENCE public.liquity_events_ownership_transferred_testnet_v1_id_seq OWN
 
 
 --
+-- Name: liquity_events_p_updated; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_p_updated (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    p public.hugeint NOT NULL
+);
+
+
+--
 -- Name: liquity_events_p_updated_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -5089,6 +4850,13 @@ ALTER TABLE ONLY public.accounts_sender_keys_1 ALTER COLUMN id SET DEFAULT nextv
 
 
 --
+-- Name: florin_apr_recorded_1 id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.florin_apr_recorded_1 ALTER COLUMN id SET DEFAULT nextval('public.florin_apr_recorded_1_id_seq'::regclass);
+
+
+--
 -- Name: florin_faucet_amounts_sent_1 id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5107,13 +4875,6 @@ ALTER TABLE ONLY public.florin_ingestor_checkpointing_1 ALTER COLUMN id SET DEFA
 --
 
 ALTER TABLE ONLY public.florin_ingestor_checkpointing_1_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.florin_ingestor_checkpointing_1_testnet_v1_id_seq'::regclass);
-
-
---
--- Name: florin_stability_pool_apr_history_1 id; Type: DEFAULT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.florin_stability_pool_apr_history_1 ALTER COLUMN id SET DEFAULT nextval('public.florin_stability_pool_apr_history_1_id_seq'::regclass);
 
 
 --
@@ -5967,19 +5728,11 @@ ALTER TABLE ONLY public.accounts_sender_keys_1
 
 
 --
--- Name: florin_chain_blocks_1 florin_chain_blocks_1_block_number_block_hash_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: florin_apr_recorded_1 florin_apr_recorded_1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.florin_chain_blocks_1
-    ADD CONSTRAINT florin_chain_blocks_1_block_number_block_hash_key UNIQUE (block_number, block_hash);
-
-
---
--- Name: florin_chain_blocks_1 florin_chain_blocks_1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.florin_chain_blocks_1
-    ADD CONSTRAINT florin_chain_blocks_1_pkey PRIMARY KEY (block_number);
+ALTER TABLE ONLY public.florin_apr_recorded_1
+    ADD CONSTRAINT florin_apr_recorded_1_pkey PRIMARY KEY (id);
 
 
 --
@@ -6020,22 +5773,6 @@ ALTER TABLE ONLY public.florin_ingestor_checkpointing_1_testnet_v1
 
 ALTER TABLE ONLY public.florin_migrations
     ADD CONSTRAINT florin_migrations_pkey PRIMARY KEY (version);
-
-
---
--- Name: florin_stability_pool_accounting_1 florin_stability_pool_accounting_1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.florin_stability_pool_accounting_1
-    ADD CONSTRAINT florin_stability_pool_accounting_1_pkey PRIMARY KEY (stability_pool, block_number);
-
-
---
--- Name: florin_stability_pool_apr_history_1 florin_stability_pool_apr_history_1_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.florin_stability_pool_apr_history_1
-    ADD CONSTRAINT florin_stability_pool_apr_history_1_pkey PRIMARY KEY (id);
 
 
 --
@@ -6954,17 +6691,17 @@ CREATE UNIQUE INDEX accounts_secrets_nonces_2_eoa_addr_nonce_idx ON public.accou
 
 
 --
+-- Name: florin_apr_recorded_1_stability_pool_active_pool_idx; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX florin_apr_recorded_1_stability_pool_active_pool_idx ON public.florin_apr_recorded_1 USING btree (stability_pool, active_pool);
+
+
+--
 -- Name: florin_faucet_amounts_sent_1_recipient_2hour; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE UNIQUE INDEX florin_faucet_amounts_sent_1_recipient_2hour ON public.florin_faucet_amounts_sent_1 USING btree (recipient, ((date_trunc('day'::text, created_by) + ('02:00:00'::interval * (floor((EXTRACT(hour FROM created_by) / (2)::numeric)))::double precision))));
-
-
---
--- Name: florin_stability_pool_apr_history_1_latest_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX florin_stability_pool_apr_history_1_latest_idx ON public.florin_stability_pool_apr_history_1 USING btree (stability_pool, id DESC);
 
 
 --
@@ -6982,18 +6719,10 @@ CREATE INDEX liquity_events_p_updated_pool_block_id_idx ON public.liquity_events
 
 
 --
--- Name: florin_stability_pool_accounting_1 florin_stability_pool_accounting_1_block_number_block_hash_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.florin_stability_pool_accounting_1
-    ADD CONSTRAINT florin_stability_pool_accounting_1_block_number_block_hash_fkey FOREIGN KEY (block_number, block_hash) REFERENCES public.florin_chain_blocks_1(block_number, block_hash) ON DELETE CASCADE;
-
-
---
 -- PostgreSQL database dump complete
 --
 
-\unrestrict u82MA4UfaMyVnL84zaKAOce3YMpnSV4GZt7WPCV6UBytk51q8zL4Ntat01bogWz
+\unrestrict xpERqXmqhFYfCyepurA4S1HZWJgfBP9RdHutPE9hijXp3m3qwo4QMLtav7379ah
 
 
 --
@@ -7005,4 +6734,5 @@ INSERT INTO public.florin_migrations (version) VALUES
     ('1789985084'),
     ('1790683508'),
     ('1794481872'),
-    ('1794483397');
+    ('1794483397'),
+    ('1794496177');

@@ -15,4 +15,5 @@ pkg/
 .tmp
 /graphql
 ingestor
-/florin-yield-cron
+florin-interest
+

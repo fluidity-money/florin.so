@@ -10,7 +10,7 @@ FILES_GO := $(shell find cmd lib go.mod go.sum -type f)
 
 build: cli
 
-CLIS := florin-ingestor florin-graph florin-yield-cron
+CLIS := florin-ingestor florin-graph florin-interest
 
 UNITS := florin-graph.service florin-graph.socket florin-ingestor.service
 
@@ -19,8 +19,8 @@ cli: ${CLIS}
 florin-ingestor: ${FILES_GO} $(shell find cmd/ingestor -type f)
 	@go build -o florin-ingestor ./cmd/ingestor
 
-florin-yield-cron: ${FILES_GO}
-	@go build -o florin-yield-cron ./cmd/yield-cron
+florin-interest: ${FILES_GO}
+	@go build -o florin-interest ./cmd/interest
 
 florin-graph: ${FILES_GO}
 	@go build -o florin-graph ./cmd/graphql

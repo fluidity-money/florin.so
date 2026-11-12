@@ -1,0 +1,13 @@
+[Unit]
+Description=Florin interest cron service for %i
+
+[Service]
+Type=simple
+User=florin
+Group=fluidity_apps
+EnvironmentFile=/etc/fluidity-apps/%i.conf
+EnvironmentFile=/etc/fluidity-apps/florin-interest-%i-spy.conf
+ExecStart=/usr/local/bin/florin-interest
+
+[Install]
+WantedBy=timers.target
