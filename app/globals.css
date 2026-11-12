@@ -2484,15 +2484,6 @@ input:focus-visible {
   min-height: 26px;
 }
 
-.mgmt__title {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink);
-}
-
 .mgmt__hint {
   margin: 0;
   font-size: 12px;

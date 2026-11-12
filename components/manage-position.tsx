@@ -227,6 +227,42 @@ function Seg<T extends string>({
   );
 }
 
+// One action at a time, like Earn. The middle tab is Leverage on a Multiply
+// position, which moves its debt through the zapper instead.
+type ManageTab = 'collateral' | 'debt' | 'rate';
+
+function ManageTabs({
+  tab,
+  multiply,
+  onChange,
+}: {
+  tab: ManageTab;
+  multiply: boolean;
+  onChange: (tab: ManageTab) => void;
+}) {
+  const label: Record<ManageTab, string> = {
+    collateral: 'Collateral',
+    debt: multiply ? 'Leverage' : 'Debt',
+    rate: 'Interest rate',
+  };
+  return (
+    <div className="pool-tabs" role="tablist" aria-label="Position action">
+      {(['collateral', 'debt', 'rate'] as const).map((option) => (
+        <button
+          key={option}
+          type="button"
+          role="tab"
+          className={tab === option ? 'pool-tabs__tab pool-tabs__tab--on' : 'pool-tabs__tab'}
+          aria-selected={tab === option}
+          onClick={() => onChange(option)}
+        >
+          {label[option]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function PositionNotice({
   title,
   children,
@@ -476,6 +512,7 @@ function PositionEditor({
   const [rate, setRate] = useState(position.rate);
   const [rateEdited, setRateEdited] = useState(false);
 
+  const [tab, setTab] = useState<ManageTab>('collateral');
   const [collMode, setCollMode] = useState<CollMode>('deposit');
   const [debtMode, setDebtMode] = useState<DebtMode>('repay');
   const [collStr, setCollStr] = useState('');
@@ -1088,12 +1125,26 @@ function PositionEditor({
         </span>
       </div>
 
-      {/* Collateral. The heading carries the mode switch, so the card below is
-          only ever the amount being moved. */}
+      <ManageTabs
+        tab={tab}
+        multiply={isMultiply}
+        onChange={(next) => {
+          if (next === tab) return;
+          captureEvent('transaction_mode_changed', { context: 'manage_tab', mode: next });
+          setTab(next);
+          // Drafts from another tab would otherwise linger in the preview.
+          setCollStr('');
+          setDebtStr('');
+          setLeverBps(null);
+          setRateEdited(false);
+        }}
+      />
+
+      {/* Collateral. The tab names it, so the head is only the mode switch. */}
+      {tab === 'collateral' && (
       <section className="mgmt">
         <div className="mgmt__head">
           <div className="mgmt__headline">
-            <h2 className="mgmt__title">Collateral</h2>
             <Seg
               value={collMode}
               onChange={(v) => {
@@ -1175,17 +1226,17 @@ function PositionEditor({
             : collMode === 'deposit' ? 'Deposit SPY' : 'Withdraw SPY'}
         </Button>
       </section>
+      )}
 
       {/* Leverage, in place of Debt for a Multiply position. Its holder thinks
           in exposure, not FUSD: the zapper borrows to buy SPY or sells SPY to
           repay, so the multiple moves and the equity stays the same. */}
-      {isMultiply && (
+      {tab === 'debt' && isMultiply && (
         <section className="mgmt">
           <div className="mgmt__head">
             <div className="mgmt__headline">
-              <h2 className="mgmt__title">Leverage</h2>
               <span className="mgmt__now">
-                Now <b>{currentLeverBps === null ? '—' : `${(currentLeverBps / 10_000).toFixed(2)}x`}</b>
+                Now <b>{currentLeverBps === null ? '—' : `${(Math.round(currentLeverBps / 1_000) / 10).toFixed(1)}x`}</b>
               </span>
             </div>
             <p className="mgmt__hint">
@@ -1240,11 +1291,10 @@ function PositionEditor({
       )}
 
       {/* Debt */}
-      {!isMultiply && (
+      {tab === 'debt' && !isMultiply && (
       <section className="mgmt">
         <div className="mgmt__head">
           <div className="mgmt__headline">
-            <h2 className="mgmt__title">Debt</h2>
             <Seg
               value={debtMode}
               onChange={(v) => {
@@ -1346,11 +1396,9 @@ function PositionEditor({
       )}
 
       {/* Rate */}
+      {tab === 'rate' && (
       <section className="mgmt">
         <div className="mgmt__head">
-          <div className="mgmt__headline">
-            <h2 className="mgmt__title">Interest rate</h2>
-          </div>
           <p className="mgmt__hint">
             Lower rates cost less to hold, but are redeemed first. The market average is{' '}
             {marketAverageRate === null ? '—' : pct(marketAverageRate * 100, 2)}.
@@ -1419,6 +1467,7 @@ function PositionEditor({
           </ul>
         </details>
       </section>
+      )}
 
       {txError && (
         <div className="swap__error" role="alert">
