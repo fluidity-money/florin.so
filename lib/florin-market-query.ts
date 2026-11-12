@@ -1,4 +1,4 @@
-export const FLORIN_GRAPH_URL = 'https://graph.superposition.so/florin';
+export const FLORIN_GRAPH_URL = 'https://graph.superposition.so/robinhood-testnet/florin';
 
 export const MARKET_QUERY = `
   query Markets {

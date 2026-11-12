@@ -24,7 +24,6 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
-	"github.com/99designs/gqlgen/graphql/playground"
 
 	"github.com/coreos/go-systemd/v22/activation"
 
@@ -33,9 +32,6 @@ import (
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
-
-// HttpUnixSocket that we listen on using a socket.
-const HttpUnixSocket = "/run/florin.so/http.sock"
 
 const (
 	// EnvTimescaleUri to use as the database for private key loading
@@ -235,8 +231,7 @@ func main() {
 	srv.Use(extension.AutomaticPersistedQuery{
 		Cache: lru.New[string](100),
 	})
-	http.Handle("/florin/playground", playground.Handler("GraphQL playground", "/florin"))
-	http.Handle("/florin", middleware{srv, db})
+	http.Handle("", middleware{srv, db})
 	l, err := activation.Listeners()
 	if err != nil {
 		log.Fatalf("listeners: %v", err)
