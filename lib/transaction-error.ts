@@ -2,6 +2,7 @@ export type TransactionFailureStage =
   | 'connecting'
   | 'switching'
   | 'preparing'
+  | 'signing-permit'
   | 'wrapping'
   | 'approving-weth'
   | 'approving'
@@ -100,7 +101,7 @@ export function describeTransactionError(
 
   if (details.code === '4001' || /user (rejected|denied)|rejected the request|request rejected/.test(searchable)) {
     return {
-      title: 'Transaction cancelled.',
+      title: stage === 'signing-permit' ? 'Permit signature cancelled.' : 'Transaction cancelled.',
       explanation: 'You rejected the request in your wallet. No transaction was submitted.',
       technicalDetails,
       code: details.code,
@@ -111,7 +112,7 @@ export function describeTransactionError(
   if (/insufficient funds|exceeds balance|not enough funds/.test(searchable)) {
     return {
       title: 'Not enough ETH.',
-      explanation: 'Your wallet needs up to 0.001 ETH to wrap into WETH for liquidator compensation, plus ETH for network fees.',
+      explanation: 'Your wallet needs 0.001 ETH for liquidator compensation, plus ETH for network fees.',
       technicalDetails,
       code: details.code,
       stage,

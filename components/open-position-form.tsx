@@ -42,16 +42,17 @@ import useFeature from '../hooks/useFeature';
 import { captureEvent } from '../lib/analytics';
 import {
   borrowerOperationsAbi,
+  gasCompZapperAbi,
+  prepareCollateralPermit,
+  collateralPermitParams,
   CONTRACTS,
   erc20Abi,
   getApproxHintBatched,
   LIQUIDATOR_COMPENSATION_WETH,
   randomOwnerIndex,
   requiredSpyApproval,
-  requiredWethWrap,
   ROBINHOOD_TESTNET_CHAIN_ID,
   sortedTrovesAbi,
-  wethAbi,
   MIN_DEBT,
 } from '../lib/borrow-contract';
 
@@ -60,7 +61,7 @@ import { quoteOpening, requireOpeningQuote, reviewOpeningRefresh, validateOpenin
 const publicClient = createPublicClient({ chain: robinhoodTestnet, transport: http() });
 
 
-type TxStage = 'idle' | 'switching' | 'wrapping' | 'approving-weth' | 'approving' | 'opening' | 'confirming';
+type TxStage = 'idle' | 'switching' | 'preparing' | 'signing-permit' | 'opening' | 'confirming';
 
 const LOAN_TOKENS = ['FUSD', 'USDG'] as const;
 type LoanToken = (typeof LOAN_TOKENS)[number];
@@ -260,7 +261,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       await requireAuthorizedAccount(wallet.provider, account);
       failureStage = 'preparing';
       const reviewed = requireOpeningQuote(openingQuote);
-      // Re-read before approvals, and again after all approval/hint work. Never
+      // Re-read before signing, and again after all signature/hint work. Never
       // silently alter the principal, even when the newly available Max changes.
       const refreshOpening = async () => {
         const fresh = await quoteOpening(publicClient, collateralWei, borrowedWei, rateWei);
@@ -271,27 +272,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       const requiredApproval = requiredSpyApproval(collateralWei);
       const directStatePromise = enableAccounts
         ? Promise.resolve(null)
-        : Promise.all([
-          publicClient.readContract({
-            address: CONTRACTS.spyToken,
-            abi: erc20Abi,
-            functionName: 'allowance',
-            args: [account, CONTRACTS.borrowerOperations],
-          }),
-          publicClient.readContract({
-            address: CONTRACTS.weth,
-            abi: wethAbi,
-            functionName: 'balanceOf',
-            args: [account],
-          }),
-          publicClient.readContract({
-            address: CONTRACTS.weth,
-            abi: wethAbi,
-            functionName: 'allowance',
-            args: [account, CONTRACTS.borrowerOperations],
-          }),
-          publicClient.getBalance({ address: account }),
-        ]);
+        : publicClient.getBalance({ address: account });
       const [balance, troveCount, directState] = await Promise.all([
         publicClient.readContract({
           address: CONTRACTS.spyToken,
@@ -382,67 +363,17 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         return;
       }
 
-      if (!directState) throw new Error('Direct wallet state was not loaded.');
-      const [allowance, wethBalance, wethAllowance, nativeBalance] = directState;
+      if (directState === null) throw new Error('Direct wallet state was not loaded.');
+      if (directState < LIQUIDATOR_COMPENSATION_WETH) {
+        throw new Error(`Not enough funds. You need ${formatUnits(LIQUIDATOR_COMPENSATION_WETH, 18)} ETH plus network fees to fund the liquidator compensation.`);
+      }
       const walletClient = createWalletClient({
         account,
         chain: robinhoodTestnet,
         transport: custom(wallet.provider),
       });
 
-      const wethToWrap = requiredWethWrap(wethBalance);
-      if (wethToWrap > 0n) {
-        if (nativeBalance < wethToWrap) {
-          throw new Error(`Not enough funds. You need ${formatUnits(wethToWrap, 18)} ETH plus network fees to fund the liquidator compensation.`);
-        }
-        failureStage = 'wrapping';
-        setStage('wrapping');
-        const wrap = await publicClient.simulateContract({
-          account,
-          address: CONTRACTS.weth,
-          abi: wethAbi,
-          functionName: 'deposit',
-          value: wethToWrap,
-        });
-        const wrapHash = await walletClient.writeContract(wrap.request);
-        transactionHash = wrapHash;
-        setTxHash(wrapHash);
-        setStage('confirming');
-        const receipt = await publicClient.waitForTransactionReceipt({
-          hash: wrapHash,
-          onReplaced: (replacement) => {
-            transactionHash = replacement.transaction.hash;
-            setTxHash(transactionHash);
-          },
-        });
-        if (receipt.status !== 'success') throw new Error('The ETH wrapping transaction reverted.');
-        transactionHash = null;
-      }
-
-      if (wethAllowance < LIQUIDATOR_COMPENSATION_WETH) {
-        failureStage = 'approving-weth';
-        setStage('approving-weth');
-        const approval = await publicClient.simulateContract({
-          account,
-          address: CONTRACTS.weth,
-          abi: wethAbi,
-          functionName: 'approve',
-          args: [CONTRACTS.borrowerOperations, LIQUIDATOR_COMPENSATION_WETH],
-        });
-        const approvalHash = await walletClient.writeContract(approval.request);
-        transactionHash = approvalHash;
-        setTxHash(approvalHash);
-        setStage('confirming');
-        const receipt = await publicClient.waitForTransactionReceipt({
-          hash: approvalHash,
-          onReplaced: (replacement) => {
-            transactionHash = replacement.transaction.hash;
-            setTxHash(transactionHash);
-          },
-        });
-        if (receipt.status !== 'success') throw new Error('The WETH approval transaction reverted.');
-        transactionHash = null;
-      }
+      setStage('preparing');
 
       let upperHint = 0n;
       let lowerHint = 0n;
@@ -456,30 +387,16 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         });
       }
 
-      if (allowance < requiredApproval) {
-        failureStage = 'approving';
-        setStage('approving');
-        const approval = await publicClient.simulateContract({
-          account,
-          address: CONTRACTS.spyToken,
-          abi: erc20Abi,
-          functionName: 'approve',
-          args: [CONTRACTS.borrowerOperations, requiredApproval],
-        });
-        const approvalHash = await walletClient.writeContract(approval.request);
-        transactionHash = approvalHash;
-        setTxHash(approvalHash);
-        setStage('confirming');
-        const receipt = await publicClient.waitForTransactionReceipt({
-          hash: approvalHash,
-          onReplaced: (replacement) => {
-            transactionHash = replacement.transaction.hash;
-            setTxHash(transactionHash);
-          },
-        });
-        if (receipt.status !== 'success') throw new Error('The SPY approval transaction reverted.');
-        transactionHash = null;
-      }
+      const typedPermit = await prepareCollateralPermit(publicClient, account, collateralWei);
+      await requireAuthorizedAccount(wallet.provider, account);
+      failureStage = 'signing-permit';
+      setStage('signing-permit');
+      // Rejection is final: never fall back to approvals or another opening path.
+      const signature = await walletClient.signTypedData(typedPermit);
+      const permit = collateralPermitParams(collateralWei, typedPermit.message.deadline, signature);
+      failureStage = 'preparing';
+      setStage('preparing');
+      await requireAuthorizedAccount(wallet.provider, account);
 
       const feeLimit = await refreshOpening();
       failureStage = 'opening';
@@ -487,21 +404,21 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       const ownerIndex = randomOwnerIndex();
       const simulation = await publicClient.simulateContract({
         account,
-        address: CONTRACTS.borrowerOperations,
-        abi: borrowerOperationsAbi,
-        functionName: 'openTrove',
+        address: CONTRACTS.gasCompZapper,
+        abi: [...gasCompZapperAbi, ...borrowerOperationsAbi],
+        functionName: 'openTroveWithRawETHPermit',
+        value: LIQUIDATOR_COMPENSATION_WETH,
         args: [
-          account,
-          ownerIndex,
-          collateralWei,
-          borrowedWei,
-          upperHint,
-          lowerHint,
-          rateWei,
-          feeLimit,
-          zeroAddress,
-          zeroAddress,
-          zeroAddress,
+          permit,
+          {
+            owner: account, ownerIndex, collAmount: collateralWei, boldAmount: borrowedWei,
+            upperHint, lowerHint, annualInterestRate: rateWei, batchManager: zeroAddress,
+            maxUpfrontFee: feeLimit,
+            // These are zapper-local permissions. BO always registers the zapper;
+            // owner calls to BO still receive withdrawals directly (owner != manager).
+            // A zero remove manager requires a zero receiver, not the owner address.
+            addManager: zeroAddress, removeManager: zeroAddress, receiver: zeroAddress,
+          },
         ],
       });
       const updateMarkets = prepareMarketAction();
@@ -570,17 +487,15 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
     ? 'Connect wallet to continue'
     : stage === 'switching'
       ? 'Switching network…'
-      : stage === 'wrapping'
-        ? 'Wrap ETH in wallet…'
-        : stage === 'approving-weth'
-          ? 'Approve WETH in wallet…'
-          : stage === 'approving'
-            ? 'Approve SPY in wallet…'
-            : stage === 'opening'
-              ? 'Confirm position in wallet…'
-              : stage === 'confirming'
-                ? 'Waiting for confirmation…'
-                : 'Mint FUSD →';
+      : stage === 'preparing'
+        ? 'Preparing position…'
+        : stage === 'signing-permit'
+          ? 'Sign SPY permit in wallet…'
+          : stage === 'opening'
+            ? 'Confirm position in wallet…'
+            : stage === 'confirming'
+              ? 'Waiting for confirmation…'
+              : 'Mint FUSD →';
   const submitLabel = usdgSelected ? 'Borrow USDG' : buttonLabel;
 
   return (
@@ -790,7 +705,9 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       </details>
       <details className="swap__note">
         <summary>What happens when you open a position?</summary>
-        <p>Your wallet wraps up to 0.001 ETH into WETH and approves it for liquidator compensation. It separately approves the exact SPY collateral, then opens the position and mints FUSD.</p>
+        <p>{enableAccounts
+          ? 'Your account service opens the position with your SPY collateral and mints FUSD.'
+          : 'Sign a permit for the exact SPY collateral, then confirm one transaction with 0.001 ETH for liquidator compensation, plus network fees. The zapper wraps that ETH, deposits your SPY, and mints FUSD. No separate approval or wrapping transactions are needed.'}</p>
         <p>Max includes the upfront fee and the live branch collateral requirement. It is a boundary, not a guarantee, because price and accrued debt can change before execution. If your amount no longer fits, you must review it before submitting.</p>
       </details>
     </div>

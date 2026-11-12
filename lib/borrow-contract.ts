@@ -1,4 +1,4 @@
-import { parseAbi, parseUnits, type Address, type PublicClient } from 'viem';
+import { hashDomain, parseAbi, parseSignature, parseUnits, type Address, type Hex, type PublicClient } from 'viem';
 
 export const ROBINHOOD_TESTNET_CHAIN_ID = 46_630;
 export const TOKEN_DECIMALS = 18;
@@ -9,8 +9,10 @@ export const LIQUIDATOR_COMPENSATION_WETH = 1_000_000_000_000_000n;
 export const MIN_FUSD_IN_STABILITY_POOL = 10n ** 18n;
 
 // florin-contracts/contracts/addresses/46630.json, SPY branch (index 0).
+// gasCompZapper is the user-supplied deployment, checked against live branch wiring.
 // base is the branch AddressesRegistry; spyPriceFeed is the branch protocol price feed.
 export const CONTRACTS = {
+  gasCompZapper: '0x90910002956b3C881B74910F5f144b6a73dCcFbe',
   spyToken: '0x8823b40A23387Df76E127744FFB38b26eB012A5c',
   metadataNft: '0xd2e22b2a1ec0b287cb550e92255694aaa0b6e133',
   base: '0xd48655f1fc1a6648246cc9802c6ee5190c93fec0',
@@ -36,6 +38,79 @@ export const erc20Abi = parseAbi([
   'function allowance(address owner, address spender) view returns (uint256)',
   'function approve(address spender, uint256 amount) returns (bool)',
 ]);
+
+// Handwritten from GasCompZapper / IZapper. Compensation is native ETH, not SPY.
+export const gasCompZapperAbi = parseAbi([
+  'function openTroveWithRawETHPermit((uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s) permit, (address owner, uint256 ownerIndex, uint256 collAmount, uint256 boldAmount, uint256 upperHint, uint256 lowerHint, uint256 annualInterestRate, address batchManager, uint256 maxUpfrontFee, address addManager, address removeManager, address receiver) params) payable returns (uint256)',
+  'function collToken() view returns (address)',
+  'function borrowerOperations() view returns (address)',
+  'function WETH() view returns (address)',
+]);
+
+export const collateralPermitAbi = parseAbi([
+  'function nonces(address owner) view returns (uint256)',
+  'function DOMAIN_SEPARATOR() view returns (bytes32)',
+  'function eip712Domain() view returns (bytes1 fields, string name, string version, uint256 chainId, address verifyingContract, bytes32 salt, uint256[] extensions)',
+]);
+
+export const permitTypes = {
+  Permit: [
+    { name: 'owner', type: 'address' },
+    { name: 'spender', type: 'address' },
+    { name: 'value', type: 'uint256' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'deadline', type: 'uint256' },
+  ],
+} as const;
+
+export async function prepareCollateralPermit(
+  client: Pick<PublicClient, 'readContract' | 'getBlock' | 'getChainId'>,
+  owner: Address,
+  value: bigint,
+) {
+  if (value <= 0n) throw new Error('Enter SPY collateral.');
+  if (await client.getChainId() !== ROBINHOOD_TESTNET_CHAIN_ID) throw new Error('Wrong permit network.');
+  const block = await client.getBlock();
+  const token = { address: CONTRACTS.spyToken, abi: collateralPermitAbi, blockNumber: block.number } as const;
+  const zapper = { address: CONTRACTS.gasCompZapper, abi: gasCompZapperAbi, blockNumber: block.number } as const;
+  const [metadata, separator, nonce, collateral, borrowerOperations, weth] = await Promise.all([
+    client.readContract({ ...token, functionName: 'eip712Domain' }),
+    client.readContract({ ...token, functionName: 'DOMAIN_SEPARATOR' }),
+    client.readContract({ ...token, functionName: 'nonces', args: [owner] }),
+    client.readContract({ ...zapper, functionName: 'collToken' }),
+    client.readContract({ ...zapper, functionName: 'borrowerOperations' }),
+    client.readContract({ ...zapper, functionName: 'WETH' }),
+  ]);
+  if (collateral.toLowerCase() !== CONTRACTS.spyToken.toLowerCase()
+    || borrowerOperations.toLowerCase() !== CONTRACTS.borrowerOperations.toLowerCase()
+    || weth.toLowerCase() !== CONTRACTS.weth.toLowerCase()) {
+    throw new Error('Unsupported GasCompZapper deployment.');
+  }
+  const [fields, name, version, chainId, verifyingContract, , extensions] = metadata;
+  if (fields !== '0x0f' || extensions.length !== 0
+    || chainId !== BigInt(ROBINHOOD_TESTNET_CHAIN_ID)
+    || verifyingContract.toLowerCase() !== CONTRACTS.spyToken.toLowerCase()) {
+    throw new Error('Unsupported SPY permit domain.');
+  }
+  const domain = { name, version, chainId, verifyingContract };
+  const domainTypes = { EIP712Domain: [
+    { name: 'name', type: 'string' }, { name: 'version', type: 'string' },
+    { name: 'chainId', type: 'uint256' }, { name: 'verifyingContract', type: 'address' },
+  ] } as const;
+  if (hashDomain({ domain, types: domainTypes }).toLowerCase() !== separator.toLowerCase()) {
+    throw new Error('SPY permit domain separator mismatch.');
+  }
+  return {
+    domain, types: permitTypes, primaryType: 'Permit' as const,
+    message: { owner, spender: CONTRACTS.gasCompZapper, value, nonce, deadline: block.timestamp + 1_200n },
+  };
+}
+
+export function collateralPermitParams(value: bigint, deadline: bigint, signature: Hex) {
+  const { r, s, yParity } = parseSignature(signature);
+  if (yParity !== 0 && yParity !== 1) throw new Error('Unsupported permit signature.');
+  return { value, deadline, v: 27 + yParity, r, s };
+}
 
 export const stabilityPoolAbi = parseAbi([
   'function getTotalBoldDeposits() view returns (uint256)',

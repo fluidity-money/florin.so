@@ -37,14 +37,15 @@ test('mint page uses the live market average without inventing queue depth', () 
   assert.doesNotMatch(open, /Redeemable before you|queueAhead|RATE_BOOK_TOTAL/);
 });
 
-test('mint flow wraps ETH and approves WETH for liquidator compensation', () => {
+test('mint flow signs SPY permit and sends native compensation in one zapper transaction', () => {
   const open = read('components/open-position-form.tsx');
 
-  assert.match(open, /functionName: 'deposit'/);
-  assert.match(open, /LIQUIDATOR_COMPENSATION_WETH/);
-  assert.match(open, /CONTRACTS\.weth/);
-  assert.doesNotMatch(open, /value: LIQUIDATOR_COMPENSATION_ETH/);
-  assert.match(open, /wraps up to 0\.001 ETH into WETH/);
+  assert.match(open, /functionName: 'openTroveWithRawETHPermit'/);
+  assert.match(open, /value: LIQUIDATOR_COMPENSATION_WETH/);
+  assert.match(open, /CONTRACTS\.gasCompZapper/);
+  assert.match(open, /walletClient.signTypedData\(typedPermit\)/);
+  assert.doesNotMatch(open, /functionName: '(approve|deposit|openTrove)'/);
+  assert.match(open, /one transaction with 0\.001 ETH/);
   assert.doesNotMatch(open, /0\.001 SPY gas-compensation deposit/);
 });
 
