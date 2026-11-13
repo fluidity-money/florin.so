@@ -293,11 +293,22 @@ CROSS JOIN florin_fusd_outstanding_1 fusd`).Scan(
 
 // EarnRewards is the resolver for the earnRewards field.
 func (r *queryResolver) EarnRewards(ctx context.Context) ([]*model.EarnRewards, error) {
-	var poolSizeRaw, apr7d, apr24h, coverageRaw string
+	// The APRs follow Liquity (api.liquity.org, fetchV2Stats.ts). Each row in
+	// florin_apr_recorded_1 is written hourly by florin-interest and is already
+	// Liquity's 1 day APR: interest at current rates plus the last 24 hours of
+	// upfront fees, annualised, as a fraction.
+	//
+	// - 24h is the newest row, so it is current rather than smoothed. A row
+	//   older than 3 hours means the recorder stopped, and 0 (shown as a dash)
+	//   is better than a stale figure.
+	// - 7d is the average of the last 7 daily figures.
+	//
+	// Both are scaled by 1e18 for formatPercent, like the other percentages.
+	var poolSizeRaw, apr7dRaw, apr24hRaw, coverageRaw string
 	err := r.Db.QueryRowContext(ctx, `
 SELECT
 	pool.amount::text,
-	COALESCE((
+	(COALESCE((
 		SELECT AVG(daily.apr)
 		FROM (
 			SELECT AVG(apr) AS apr
@@ -306,13 +317,15 @@ SELECT
 				AND created_by <= LOCALTIMESTAMP
 			GROUP BY created_by::DATE
 		) daily
-	), 0)::text,
-	COALESCE((
-		SELECT AVG(apr)
+	), 0) * 1e18)::text,
+	(COALESCE((
+		SELECT apr
 		FROM florin_apr_recorded_1
-		WHERE created_by >= LOCALTIMESTAMP - INTERVAL '24 hours'
+		WHERE created_by >= LOCALTIMESTAMP - INTERVAL '3 hours'
 			AND created_by <= LOCALTIMESTAMP
-	), 0)::text,
+		ORDER BY created_by DESC
+		LIMIT 1
+	), 0) * 1e18)::text,
 	CASE
 		WHEN fusd.amount > 0 THEN pool.amount * 1000000000000000000 / fusd.amount
 		ELSE 0
@@ -320,12 +333,20 @@ SELECT
 FROM florin_stability_pool_1 pool
 CROSS JOIN florin_fusd_outstanding_1 fusd`).Scan(
 		&poolSizeRaw,
-		&apr7d,
-		&apr24h,
+		&apr7dRaw,
+		&apr24hRaw,
 		&coverageRaw,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("query earn rewards: %w", err)
+	}
+	apr7d, err := formatPercent(apr7dRaw)
+	if err != nil {
+		return nil, fmt.Errorf("format stability pool 7d APR: %w", err)
+	}
+	apr24h, err := formatPercent(apr24hRaw)
+	if err != nil {
+		return nil, fmt.Errorf("format stability pool 24h APR: %w", err)
 	}
 	poolSize, err := formatAmount(poolSizeRaw)
 	if err != nil {
