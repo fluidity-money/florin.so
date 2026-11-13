@@ -10,7 +10,8 @@ export const MARKET_QUERY = `
     }
     earnRewards {
       collateral { name }
-      apr
+      apr24hAvg
+      apr7dAvg
       poolSize
       coverage
     }

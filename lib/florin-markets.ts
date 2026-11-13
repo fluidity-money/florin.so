@@ -7,7 +7,10 @@ export interface BorrowDetails {
 
 export interface EarnRewards {
   collateral: { name: string };
-  apr: string;
+  // Liquity-style pool APRs: the last 24 hours, and the average of the last
+  // seven daily figures.
+  apr24hAvg: string;
+  apr7dAvg: string;
   poolSize: string;
   coverage: string;
 }
@@ -51,7 +54,8 @@ export function isFlorinMarkets(value: unknown): value is FlorinMarkets {
     value.earnRewards.every(
       (rewards) =>
         hasCollateral(rewards) &&
-        typeof rewards.apr === 'string' &&
+        typeof rewards.apr24hAvg === 'string' &&
+        typeof rewards.apr7dAvg === 'string' &&
         typeof rewards.poolSize === 'string' &&
         typeof rewards.coverage === 'string',
     )
@@ -92,4 +96,17 @@ export function parseDisplayPercent(value: string | undefined): number | null {
   if (!value) return null;
   const parsed = Number.parseFloat(value.replace('%', ''));
   return Number.isFinite(parsed) ? parsed / 100 : null;
+}
+
+// The graph's APRs arrive either as display strings ("195.23%") or as bare
+// fractions ("1.9522" for 195.22%). Both read the same here. Zero means the
+// graph has no history for that window yet, so it shows as a dash.
+export function formatApr(value: string | undefined): string {
+  if (!value) return '—';
+  const trimmed = value.trim();
+  const fraction = trimmed.endsWith('%')
+    ? Number.parseFloat(trimmed) / 100
+    : Number.parseFloat(trimmed);
+  if (!Number.isFinite(fraction) || fraction <= 0) return '—';
+  return `${(fraction * 100).toFixed(2)}%`;
 }

@@ -15,14 +15,15 @@ test('server-rendered market data uses the Next data cache', () => {
   const markets = read('components/markets.tsx');
   const home = read('app/page.tsx');
 
-  assert.match(query, /https:\/\/graph\.superposition\.so\/florin/);
+  assert.match(query, /https:\/\/graph\.superposition\.so\/robinhood-testnet\/florin/);
   for (const field of [
     'borrowDetails',
     'avgRatePa',
     'deposited',
     'debtIssued',
     'earnRewards',
-    'apr',
+    'apr24hAvg',
+    'apr7dAvg',
     'poolSize',
     'coverage',
   ]) {
@@ -47,7 +48,7 @@ test('browser refreshes directly from Florin GraphQL and persists the latest dat
   assert.match(hook, /body:\s*JSON\.stringify\(\{\s*query:\s*MARKET_QUERY\s*\}\)/);
   assert.doesNotMatch(hook, /cache:\s*'no-store'/);
   assert.match(hook, /refetchOnMount:\s*'always'/);
-  assert.match(query, /https:\/\/graph\.superposition\.so\/florin/);
+  assert.match(query, /https:\/\/graph\.superposition\.so\/robinhood-testnet\/florin/);
   assert.doesNotMatch(hook, /\/api\/florin-markets/);
   assert.equal(
     existsSync(new URL('../app/api/florin-markets/route.ts', import.meta.url)),

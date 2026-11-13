@@ -13,9 +13,8 @@ import {
 } from 'viem';
 import { Button } from './ui';
 import { Token, TokenIcon } from './token-icon';
-import { parseDisplayPercent, spyMarket, type FlorinMarkets } from '../lib/florin-markets';
+import { formatApr, parseDisplayPercent, spyMarket, type FlorinMarkets } from '../lib/florin-markets';
 import { money, pct } from '../lib/format';
-import { usePoolApr } from '../lib/use-pool-apr';
 import { useWallet } from './wallet/wallet';
 import { useFlorinMarkets, useMarketAction } from '../lib/use-florin-markets';
 import { robinhoodPublicClient } from '../lib/robinhood-client';
@@ -188,7 +187,6 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
     },
   });
 
-  const realised = usePoolApr();
   const amount = useMemo(() => parseToken(amountStr), [amountStr]);
   const rewardsMode = mode === 'claim' || mode === 'compound';
   const amountMode = mode === 'withdraw' ? 'withdraw' : 'deposit';
@@ -467,13 +465,13 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
             </span>
           </div>
           <div className="pool__aprs">
-            {/* What a deposit actually earned over the last day and the last
-                week, from borrower interest and upfront fees. */}
-            <span title="What a deposit earned over the last 24 hours, annualised">
-              APR <b>{realised.apr24h === null ? '—' : pct(realised.apr24h * 100, 2)}</b>
+            {/* Liquity's method: borrower interest at current rates plus the
+                last 24 hours of upfront fees, and the 7 day average of that. */}
+            <span title="Borrower interest at current rates plus the last 24 hours of upfront fees, annualised">
+              APR <b>{formatApr(rewards?.apr24hAvg)}</b>
             </span>
-            <span className="pool__apr-sub" title="What a deposit earned over the last 7 days, annualised. Shown once the pool has enough history.">
-              7d APR <b>{realised.apr7d === null ? '—' : pct(realised.apr7d * 100, 2)}</b>
+            <span className="pool__apr-sub" title="Average of the last 7 daily APRs">
+              7d APR <b>{formatApr(rewards?.apr7dAvg)}</b>
             </span>
           </div>
         </div>

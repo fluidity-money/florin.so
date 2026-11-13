@@ -1,10 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import type { FlorinMarkets } from '../lib/florin-markets';
+import { formatApr, type FlorinMarkets } from '../lib/florin-markets';
 import { useFlorinMarkets } from '../lib/use-florin-markets';
-import { usePoolApr } from '../lib/use-pool-apr';
-import { pct } from '../lib/format';
 import { Table } from './ui';
 import { Token } from './token-icon';
 
@@ -35,11 +33,6 @@ const unavailableRow = [
 
 export function MarketsClient({ initialData }: { initialData: FlorinMarkets }) {
   const markets = useFlorinMarkets(initialData);
-  // The SPY pool shows the same realised 24h APR as the Earn page. The graph's
-  // figure stands in until it loads, or for a pool it does not cover.
-  const realised = usePoolApr();
-  const poolApr = (collateral: string, fallback: string) =>
-    collateral === 'SPY' && realised.apr24h !== null ? pct(realised.apr24h * 100, 2) : fallback;
 
   const borrowRows = markets.borrowDetails.map((details) => [
     <Collateral name={details.collateral.name} key="asset" />,
@@ -51,7 +44,7 @@ export function MarketsClient({ initialData }: { initialData: FlorinMarkets }) {
 
   const earnRows = markets.earnRewards.map((rewards) => [
     <Collateral name={rewards.collateral.name} key="asset" />,
-    <span className="mono" key="apr">{poolApr(rewards.collateral.name, rewards.apr)}</span>,
+    <span className="mono" key="apr">{formatApr(rewards.apr24hAvg)}</span>,
     <span className="mono" key="pool">{withUnit(rewards.poolSize, 'FUSD')}</span>,
     <span className="mono" key="coverage">{rewards.coverage}</span>,
     <Link className="market__cta" href="/stability" key="action">Earn →</Link>,
