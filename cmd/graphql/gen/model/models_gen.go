@@ -37,9 +37,12 @@ type CreateAccountExec struct {
 // Earn rewards that we display in the UI.
 type EarnRewards struct {
 	Collateral *Collateral `json:"collateral"`
-	Apr        string      `json:"apr"`
-	PoolSize   string      `json:"poolSize"`
-	Coverage   string      `json:"coverage"`
+	// Average of the last 7 days for the earn rewards and the stability pool.
+	Apr7dAvg string `json:"apr7dAvg"`
+	// Average of the last 24 hours APR for the stability pool rewards.
+	Apr24hAvg string `json:"apr24hAvg"`
+	PoolSize  string `json:"poolSize"`
+	Coverage  string `json:"coverage"`
 }
 
 type FlorinOpenPosition struct {

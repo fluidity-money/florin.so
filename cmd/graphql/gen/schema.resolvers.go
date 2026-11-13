@@ -293,14 +293,25 @@ CROSS JOIN florin_fusd_outstanding_1 fusd`).Scan(
 
 // EarnRewards is the resolver for the earnRewards field.
 func (r *queryResolver) EarnRewards(ctx context.Context) ([]*model.EarnRewards, error) {
-	var poolSizeRaw, aprRaw, coverageRaw string
+	var poolSizeRaw, apr7d, apr24h, coverageRaw string
 	err := r.Db.QueryRowContext(ctx, `
 SELECT
 	pool.amount::text,
 	COALESCE((
-		SELECT SUM(position.debt * position.annual_interest_rate) * 75
-			/ NULLIF(pool.amount * 100, 0)
-		FROM florin_outstanding_positions_1 position
+		SELECT AVG(daily.apr)
+		FROM (
+			SELECT AVG(apr) AS apr
+			FROM florin_apr_recorded_1
+			WHERE created_by >= CURRENT_DATE - INTERVAL '6 days'
+				AND created_by <= LOCALTIMESTAMP
+			GROUP BY created_by::DATE
+		) daily
+	), 0)::text,
+	COALESCE((
+		SELECT AVG(apr)
+		FROM florin_apr_recorded_1
+		WHERE created_by >= LOCALTIMESTAMP - INTERVAL '24 hours'
+			AND created_by <= LOCALTIMESTAMP
 	), 0)::text,
 	CASE
 		WHEN fusd.amount > 0 THEN pool.amount * 1000000000000000000 / fusd.amount
@@ -309,7 +320,8 @@ SELECT
 FROM florin_stability_pool_1 pool
 CROSS JOIN florin_fusd_outstanding_1 fusd`).Scan(
 		&poolSizeRaw,
-		&aprRaw,
+		&apr7d,
+		&apr24h,
 		&coverageRaw,
 	)
 	if err != nil {
@@ -319,17 +331,14 @@ CROSS JOIN florin_fusd_outstanding_1 fusd`).Scan(
 	if err != nil {
 		return nil, fmt.Errorf("format stability pool size: %w", err)
 	}
-	apr, err := formatPercent(aprRaw)
-	if err != nil {
-		return nil, fmt.Errorf("format stability pool APR: %w", err)
-	}
 	coverage, err := formatPercent(coverageRaw)
 	if err != nil {
 		return nil, fmt.Errorf("format stability pool coverage: %w", err)
 	}
 	return []*model.EarnRewards{{
 		Collateral: &model.Collateral{Name: "SPY"},
-		Apr:        apr,
+		Apr7dAvg:   apr7d,
+		Apr24hAvg:  apr24h,
 		PoolSize:   poolSize,
 		Coverage:   coverage,
 	}}, nil
@@ -393,8 +402,8 @@ ORDER BY block_number DESC, trove_id`, normalizedOwner)
 
 // StabilityPoolApr is the resolver for the stabilityPoolApr field.
 func (r *queryResolver) StabilityPoolApr(ctx context.Context) ([]string, error) {
-	rows, err := r.Db.Query(`
-SELECT AVG(apr)::TEXT AS apr
+	rows, err := r.Db.QueryContext(ctx, `
+SELECT (AVG(apr) * 1e18)::text AS apr
 FROM florin_apr_recorded_1
 WHERE created_by >= CURRENT_DATE - INTERVAL '29 days'
 	AND created_by < CURRENT_DATE + INTERVAL '1 day'
@@ -411,12 +420,20 @@ ORDER BY created_by::DATE ASC`,
 	pcts := make([]string, 30)
 	var count int
 	for ; rows.Next(); count++ {
-		if err := rows.Scan(&pcts[count]); err != nil {
+		var pct string
+		if err := rows.Scan(&pct); err != nil {
 			slog.Error("Failed to scan percentage",
 				"err", err,
 			)
 			return nil, fmt.Errorf("scan percentage")
 		}
+		pcts[count], err = formatPercent(pct)
+		if err != nil {
+			return nil, fmt.Errorf("format stability pool APR: %w", err)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate stability pool APR: %w", err)
 	}
 	return pcts[:count], nil
 }

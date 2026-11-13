@@ -53,7 +53,8 @@ type ComplexityRoot struct {
 	}
 
 	EarnRewards struct {
-		Apr        func(childComplexity int) int
+		Apr24hAvg  func(childComplexity int) int
+		Apr7dAvg   func(childComplexity int) int
 		Collateral func(childComplexity int) int
 		Coverage   func(childComplexity int) int
 		PoolSize   func(childComplexity int) int
@@ -165,12 +166,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.CreateAccountExec.Secret(childComplexity), true
 
-	case "EarnRewards.apr":
-		if e.ComplexityRoot.EarnRewards.Apr == nil {
+	case "EarnRewards.apr24hAvg":
+		if e.ComplexityRoot.EarnRewards.Apr24hAvg == nil {
 			break
 		}
 
-		return e.ComplexityRoot.EarnRewards.Apr(childComplexity), true
+		return e.ComplexityRoot.EarnRewards.Apr24hAvg(childComplexity), true
+	case "EarnRewards.apr7dAvg":
+		if e.ComplexityRoot.EarnRewards.Apr7dAvg == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EarnRewards.Apr7dAvg(childComplexity), true
 	case "EarnRewards.collateral":
 		if e.ComplexityRoot.EarnRewards.Collateral == nil {
 			break
@@ -451,7 +458,14 @@ Earn rewards that we display in the UI.
 """
 type EarnRewards {
   collateral: Collateral!,
-  apr: Percent!,
+  """
+  Average of the last 7 days for the earn rewards and the stability pool.
+  """
+  apr7dAvg: Percent!,
+  """
+  Average of the last 24 hours APR for the stability pool rewards.
+  """
+  apr24hAvg: Percent!,
   poolSize: Amount!,
   coverage: Percent!
 }
@@ -482,7 +496,7 @@ type Query {
   """
   The stability pool APR for the SPY asset for the last 30 days.
   """
-  stabilityPoolApr: [String!]
+  stabilityPoolApr: [Percent!]
 }
 
 type CreateAccountExec {
@@ -585,8 +599,10 @@ func (ec *executionContext) childFields_EarnRewards(ctx context.Context, field g
 	switch field.Name {
 	case "collateral":
 		return ec.fieldContext_EarnRewards_collateral(ctx, field)
-	case "apr":
-		return ec.fieldContext_EarnRewards_apr(ctx, field)
+	case "apr7dAvg":
+		return ec.fieldContext_EarnRewards_apr7dAvg(ctx, field)
+	case "apr24hAvg":
+		return ec.fieldContext_EarnRewards_apr24hAvg(ctx, field)
 	case "poolSize":
 		return ec.fieldContext_EarnRewards_poolSize(ctx, field)
 	case "coverage":
@@ -1091,16 +1107,16 @@ func (ec *executionContext) fieldContext_EarnRewards_collateral(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _EarnRewards_apr(ctx context.Context, field graphql.CollectedField, obj *model.EarnRewards) (ret graphql.Marshaler) {
+func (ec *executionContext) _EarnRewards_apr7dAvg(ctx context.Context, field graphql.CollectedField, obj *model.EarnRewards) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
 		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return ec.fieldContext_EarnRewards_apr(ctx, field)
+			return ec.fieldContext_EarnRewards_apr7dAvg(ctx, field)
 		},
 		func(ctx context.Context) (any, error) {
-			return obj.Apr, nil
+			return obj.Apr7dAvg, nil
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
@@ -1110,7 +1126,30 @@ func (ec *executionContext) _EarnRewards_apr(ctx context.Context, field graphql.
 		true,
 	)
 }
-func (ec *executionContext) fieldContext_EarnRewards_apr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_EarnRewards_apr7dAvg(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	return graphql.NewScalarFieldContext("EarnRewards", field, false, false, errors.New("field of type Percent does not have child fields"))
+}
+
+func (ec *executionContext) _EarnRewards_apr24hAvg(ctx context.Context, field graphql.CollectedField, obj *model.EarnRewards) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return ec.fieldContext_EarnRewards_apr24hAvg(ctx, field)
+		},
+		func(ctx context.Context) (any, error) {
+			return obj.Apr24hAvg, nil
+		},
+		nil,
+		func(ctx context.Context, selections ast.SelectionSet, v string) graphql.Marshaler {
+			return ec.marshalNPercent2string(ctx, selections, v)
+		},
+		true,
+		true,
+	)
+}
+func (ec *executionContext) fieldContext_EarnRewards_apr24hAvg(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	return graphql.NewScalarFieldContext("EarnRewards", field, false, false, errors.New("field of type Percent does not have child fields"))
 }
 
@@ -1576,14 +1615,14 @@ func (ec *executionContext) _Query_stabilityPoolApr(ctx context.Context, field g
 		},
 		nil,
 		func(ctx context.Context, selections ast.SelectionSet, v []string) graphql.Marshaler {
-			return ec.marshalOString2ᚕstringᚄ(ctx, selections, v)
+			return ec.marshalOPercent2ᚕstringᚄ(ctx, selections, v)
 		},
 		true,
 		false,
 	)
 }
 func (ec *executionContext) fieldContext_Query_stabilityPoolApr(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	return graphql.NewScalarFieldContext("Query", field, true, true, errors.New("field of type String does not have child fields"))
+	return graphql.NewScalarFieldContext("Query", field, true, true, errors.New("field of type Percent does not have child fields"))
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -3096,8 +3135,13 @@ func (ec *executionContext) _EarnRewards(ctx context.Context, sel ast.SelectionS
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "apr":
-			out.Values[i] = ec._EarnRewards_apr(ctx, field, obj)
+		case "apr7dAvg":
+			out.Values[i] = ec._EarnRewards_apr7dAvg(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "apr24hAvg":
+			out.Values[i] = ec._EarnRewards_apr24hAvg(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -4274,15 +4318,7 @@ func (ec *executionContext) marshalOFlorinOpenPositionResult2ᚖgithubᚗcomᚋf
 	return ec._FlorinOpenPositionResult(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOPermit2ᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐPermit(ctx context.Context, v any) (*model.Permit, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputPermit(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
+func (ec *executionContext) unmarshalOPercent2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -4291,7 +4327,7 @@ func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v
 	res := make([]string, len(vSlice))
 	for i := range vSlice {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNString2string(ctx, vSlice[i])
+		res[i], err = ec.unmarshalNPercent2string(ctx, vSlice[i])
 		if err != nil {
 			return nil, err
 		}
@@ -4299,13 +4335,13 @@ func (ec *executionContext) unmarshalOString2ᚕstringᚄ(ctx context.Context, v
 	return res, nil
 }
 
-func (ec *executionContext) marshalOString2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
+func (ec *executionContext) marshalOPercent2ᚕstringᚄ(ctx context.Context, sel ast.SelectionSet, v []string) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	ret := make(graphql.Array, len(v))
 	for i := range v {
-		ret[i] = ec.marshalNString2string(ctx, sel, v[i])
+		ret[i] = ec.marshalNPercent2string(ctx, sel, v[i])
 	}
 
 	for _, e := range ret {
@@ -4315,6 +4351,14 @@ func (ec *executionContext) marshalOString2ᚕstringᚄ(ctx context.Context, sel
 	}
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalOPermit2ᚖgithubᚗcomᚋfluidityᚑmoneyᚋflorinᚗsoᚋcmdᚋgraphqlᚋgenᚋmodelᚐPermit(ctx context.Context, v any) (*model.Permit, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputPermit(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOString2ᚖstring(ctx context.Context, v any) (*string, error) {

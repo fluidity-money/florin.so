@@ -63,7 +63,14 @@ Earn rewards that we display in the UI.
 """
 type EarnRewards {
   collateral: Collateral!,
-  apr: Percent!,
+  """
+  Average of the last 7 days for the earn rewards and the stability pool.
+  """
+  apr7dAvg: Percent!,
+  """
+  Average of the last 24 hours APR for the stability pool rewards.
+  """
+  apr24hAvg: Percent!,
   poolSize: Amount!,
   coverage: Percent!
 }
@@ -94,7 +101,7 @@ type Query {
   """
   The stability pool APR for the SPY asset for the last 30 days.
   """
-  stabilityPoolApr: [String!]
+  stabilityPoolApr: [Percent!]
 }
 
 type CreateAccountExec {
