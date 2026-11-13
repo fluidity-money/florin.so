@@ -2204,6 +2204,59 @@ input:focus-visible {
   color: var(--sp-biscay);
 }
 
+.loan-token-toggle {
+	padding: 0;
+	border: 0;
+	border-radius: 4px;
+	background: transparent;
+	font: inherit;
+	letter-spacing: inherit;
+	cursor: pointer;
+	text-decoration: underline dotted;
+	text-underline-offset: 0.15em;
+}
+
+.loan-token-toggle:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 4px;
+}
+
+.loan-token-toggle:disabled {
+	cursor: not-allowed;
+	opacity: 0.6;
+}
+
+.loan-token-toggle__window {
+	display: block;
+	height: 1.25em;
+	overflow: hidden;
+}
+
+.loan-token-toggle__reel {
+	display: block;
+}
+
+.loan-token-toggle__reel .loan-token-toggle__row {
+	display: flex;
+	height: 1.25em;
+	line-height: 1.25;
+}
+
+.loan-token-toggle__reel--intro {
+	animation: loan-token-roll 1.2s cubic-bezier(0.15, 0.6, 0.3, 1) both;
+}
+
+@keyframes loan-token-roll {
+	from { transform: translateY(0); }
+	to { transform: translateY(-7.5em); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.loan-token-toggle__reel--intro {
+		animation-duration: 0s;
+	}
+}
+
 .swap__field {
   display: flex;
   flex-direction: column;

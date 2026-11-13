@@ -16,6 +16,7 @@ import { robinhoodTestnet } from '@reown/appkit/networks';
 import { Button } from './ui';
 import { Token, TokenIcon } from './token-icon';
 import { TokenSelect } from './token-select';
+import { LoanTokenToggle } from './loan-token-toggle';
 import { money, pct, xnum } from '../lib/format';
 import { DEBT_SUGGESTIONS, liquidationRisk, redemptionRisk as redemptionRiskFor, type RiskLevel } from '../lib/protocol-math';
 import {
@@ -127,6 +128,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   // USDG is offered ahead of support for it: picking it shows the loan in USDG
   // and holds the submit button disabled until borrowing USDG is wired up.
   const [loanToken, setLoanToken] = useState<LoanToken>('FUSD');
+	const [loanTokenIntro, setLoanTokenIntro] = useState(true);
   const usdgSelected = loanToken === 'USDG';
   const [stage, setStage] = useState<TxStage>('idle');
   const [error, setError] = useState<TransactionErrorDescription | null>(null);
@@ -215,6 +217,13 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       .map((amount) => ({ amount, risk: liquidationRisk(amount / collateralUsd, maxLtv) }))
     : [];
   const pending = stage !== 'idle';
+
+	function selectLoanToken(symbol: LoanToken) {
+		if (pending) return;
+		setLoanTokenIntro(false);
+		if (symbol !== loanToken) captureEvent('loan_token_selected', { context: 'open_position', asset: symbol });
+		setLoanToken(symbol);
+	}
 
 	// Collateral Max changes the quote key. Wait for that collateral's live
 	// fee-inclusive capacity, then fill once; never follow subsequent price updates.
@@ -523,7 +532,13 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
     <div className="swap">
       <h1 className="swap__title">
         <span>Borrow</span>
-        <span className="swap__pair"><TokenIcon symbol={loanToken} size={30} /><span className="swap__tok">{loanToken}</span></span>
+				<LoanTokenToggle
+					value={loanToken}
+					intro={loanTokenIntro}
+					disabled={pending}
+					onChange={selectLoanToken}
+					onIntroEnd={() => setLoanTokenIntro(false)}
+				/>
         <span>with</span>
         <span className="swap__pair"><TokenIcon symbol="SPY" size={30} /><span className="swap__tok">SPY</span></span>
       </h1>
@@ -595,10 +610,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
             options={LOAN_TOKENS}
             value={loanToken}
             label="Token to borrow"
-            onChange={(symbol) => {
-              if (symbol !== loanToken) captureEvent('loan_token_selected', { context: 'open_position', asset: symbol });
-              setLoanToken(symbol);
-            }}
+				onChange={selectLoanToken}
           />
         </div>
         <div className="swap__foot">
