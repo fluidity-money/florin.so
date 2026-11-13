@@ -301,7 +301,8 @@ func (r *queryResolver) EarnRewards(ctx context.Context) ([]*model.EarnRewards, 
 	// - 24h is the newest row, so it is current rather than smoothed. A row
 	//   older than 3 hours means the recorder stopped, and 0 (shown as a dash)
 	//   is better than a stale figure.
-	// - 7d is the average of the last 7 daily figures.
+	// - 7d is the average of the last 7 daily figures, one per day like
+	//   Liquity: the last row of each day, so today's is the newest row.
 	//
 	// Both are scaled by 1e18 for formatPercent, like the other percentages.
 	var poolSizeRaw, apr7dRaw, apr24hRaw, coverageRaw string
@@ -311,11 +312,11 @@ SELECT
 	(COALESCE((
 		SELECT AVG(daily.apr)
 		FROM (
-			SELECT AVG(apr) AS apr
+			SELECT DISTINCT ON (created_by::DATE) apr
 			FROM florin_apr_recorded_1
 			WHERE created_by >= CURRENT_DATE - INTERVAL '6 days'
 				AND created_by <= LOCALTIMESTAMP
-			GROUP BY created_by::DATE
+			ORDER BY created_by::DATE, created_by DESC
 		) daily
 	), 0) * 1e18)::text,
 	(COALESCE((
