@@ -109,7 +109,8 @@ test('open-position risk calculations use the validated price returned by fetchP
   const opening = read('lib/opening-capacity.ts');
   assert.match(opening, /functionName:\s*'fetchPrice'/);
   assert.match(opening, /validatedOraclePrice\(oracle.result\)/);
-  assert.match(open, /openingQuote\.isError\s*\?\s*'unavailable'\s*:\s*'loading…'/);
+	assert.match(open, /openingState\.isError \|\| openingState\.data\s*\?\s*'unavailable'\s*:\s*'loading…'/);
+	assert.match(open, /const priceReady = stateReady/);
   assert.match(open, /Live opening limits or the oracle are unavailable/);
   assert.doesNotMatch(open, /functionName:\s*'lastGoodPrice'/);
 });

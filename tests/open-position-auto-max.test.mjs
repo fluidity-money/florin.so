@@ -8,13 +8,13 @@ const capacity = readFileSync(new URL('../lib/opening-capacity.ts', import.meta.
 const formatBody = capacity.match(/export function formatOpeningMax\(amount: bigint\) \{([\s\S]*?)\n\}/)[1];
 const formatOpeningMax = new Function('amount', 'OPENING_STEP', formatBody);
 const clickBody = source.match(/aria-label="Use maximum SPY collateral"[\s\S]*?onClick=\{\(\) => \{([\s\S]*?)\n\s*\}\}/)[1];
-const effectBody = source.match(/useEffect\(\(\) => \{([\s\S]*?)\n\s*\}, \[autoMaxLoan/)[1];
+const effectBody = source.match(/useEffect\(\(\) => \{(\s*if \(!autoMaxLoan\)[\s\S]*?)\n\s*\}, \[autoMaxLoan/)[1];
 
 // Execute the actual component handlers with controlled state, not a duplicate implementation.
 function harness(overrides = {}) {
 	const state = {
 		autoMaxLoan: null, pending: false, wallet: { connected: true }, account: 'wallet-a',
-		collateralWei: 0n, debtStr: '', openingQuote: { isError: false },
+		collateralWei: 0n, debtStr: '', openingQuote: { isError: false }, openingState: { isError: false },
 		quoteReady: false, maxBorrowWei: 123450000000000000000n,
 		chainState: { data: { balance: 1234567890123456789n }, isError: false },
 		...overrides,
@@ -77,7 +77,7 @@ test('unavailable collateral Max does not request an autofill', () => {
 test('pending autofill is cancelled by user input, wallet changes, errors or transactions', () => {
 	for (const overrides of [
 		{ debtStr: '25' }, { account: 'wallet-b' }, { wallet: { connected: false } },
-		{ collateralWei: 2n }, { openingQuote: { isError: true } }, { pending: true },
+		{ collateralWei: 2n }, { openingQuote: { isError: true } }, { openingState: { isError: true } }, { pending: true },
 	]) {
 		const { state, effect } = harness({
 			autoMaxLoan: { account: 'wallet-a', collateral: 1n }, collateralWei: 1n,

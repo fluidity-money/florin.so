@@ -44,7 +44,10 @@ export async function readOpeningState(client: Client): Promise<OpeningState> {
   ]);
   const state = { blockNumber, blockHash: block.hash, readAt, price: validatedOraclePrice(oracle.result), mcr, ccr, collateral, debt, feeDebt: recorded + interest, weightedDebt };
   openingDebtCapacity(state, 0n); // Reject invalid parameters even before an amount is entered.
-  return state;
+	// Validate the snapshot before publishing it independently of an amount quote.
+	const canonical = await client.getBlock({ blockNumber });
+	if (canonical.hash !== state.blockHash) throw new Error('Opening block changed. Refresh and review.');
+	return requireOpeningQuote({ isError: false, data: state });
 }
 
 export function openingDebtCapacity(state: Pick<OpeningState, 'price' | 'mcr' | 'ccr' | 'collateral' | 'debt'>, deposit: bigint) {
@@ -116,7 +119,12 @@ export function requireOpeningQuote<T extends { readAt: number }>(query: { data?
 }
 
 export async function quoteOpening(client: Client, deposit: bigint, principal: bigint, rate: bigint, includeMax = true) {
-  const state = await readOpeningState(client);
+	// Submission always takes this uncached path, even when the UI snapshot is fresh.
+	return quoteOpeningFromState(client, await readOpeningState(client), deposit, principal, rate, includeMax);
+}
+
+export async function quoteOpeningFromState(client: Client, state: OpeningState, deposit: bigint, principal: bigint, rate: bigint, includeMax = true) {
+	requireOpeningQuote({ isError: false, data: state });
   const capacity = openingDebtCapacity(state, deposit);
   const predict = (amount: bigint) => client.readContract({ address: CONTRACTS.hintHelpers, abi: hintHelpersAbi, functionName: 'predictOpenTroveUpfrontFee', args: [0n, amount, rate], blockNumber: state.blockNumber });
   const [fee, maxPrincipal] = await Promise.all([

@@ -57,7 +57,7 @@ import {
   MIN_DEBT,
 } from '../lib/borrow-contract';
 
-import { quoteOpening, requireOpeningQuote, reviewOpeningRefresh, validateOpeningAmount, formatOpeningMax } from '../lib/opening-capacity';
+import { OPENING_MAX_AGE_MS, readOpeningState, quoteOpeningFromState, quoteOpening, requireOpeningQuote, reviewOpeningRefresh, validateOpeningAmount, formatOpeningMax } from '../lib/opening-capacity';
 
 const publicClient = createPublicClient({ chain: robinhoodTestnet, transport: http() });
 
@@ -152,15 +152,37 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   const rateWei = BigInt(Math.round(rate * 1e18));
 
   const queryClient = useQueryClient();
-  const openingKey = ['opening-capacity', collateralWei.toString(), borrowedWei.toString(), rateWei.toString()];
-  const openingQuote = useQuery({
-    queryKey: openingKey,
-    refetchInterval: 15_000,
-    retry: false,
-    queryFn: () => quoteOpening(publicClient, collateralWei, borrowedWei, rateWei),
-  });
-  let quoteReady = false;
-  try { requireOpeningQuote(openingQuote); quoteReady = true; } catch { /* fail closed */ }
+	const openingStateKey = ['opening-state', ROBINHOOD_TESTNET_CHAIN_ID, CONTRACTS.borrowerOperations, CONTRACTS.spyPriceFeed];
+	const openingState = useQuery({
+		queryKey: openingStateKey,
+		queryFn: () => readOpeningState(publicClient),
+		staleTime: 15_000,
+		refetchInterval: 15_000,
+		retry: false,
+	});
+	// Expire eligibility even if a refresh hangs and no other render occurs.
+	const [, expireOpeningState] = useState(0);
+	useEffect(() => {
+		if (!openingState.data) return;
+		const timer = setTimeout(() => {
+			expireOpeningState(value => value + 1);
+			void openingState.refetch({ cancelRefetch: false });
+		}, Math.max(0, openingState.data.readAt + OPENING_MAX_AGE_MS + 1 - Date.now()));
+		return () => clearTimeout(timer);
+	}, [openingState.data, openingState.refetch]);
+	let stateReady = false;
+	try { requireOpeningQuote(openingState); stateReady = true; } catch { /* fail closed */ }
+	const openingKey = ['opening-capacity', ROBINHOOD_TESTNET_CHAIN_ID, CONTRACTS.borrowerOperations,
+		openingState.data?.blockHash, openingState.data?.readAt,
+		collateralWei.toString(), borrowedWei.toString(), rateWei.toString()];
+	const openingQuote = useQuery({
+		queryKey: openingKey,
+		enabled: stateReady,
+		retry: false,
+		queryFn: () => quoteOpeningFromState(publicClient, requireOpeningQuote(openingState), collateralWei, borrowedWei, rateWei),
+	});
+	let quoteReady = false;
+	try { requireOpeningQuote(openingState); requireOpeningQuote(openingQuote); quoteReady = true; } catch { /* fail closed */ }
   const quote = openingQuote.data;
 
   // Balance and allowance are the parts that genuinely need an address.
@@ -187,10 +209,10 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
     },
   });
 
-  const priceReady = quoteReady;
+	const priceReady = stateReady;
   const chainReady = Boolean(chainState.data) && quoteReady;
   const feeReady = quoteReady;
-  const spyPrice = quote ? Number(formatUnits(quote.price, 18)) : 0;
+	const spyPrice = openingState.data ? Number(formatUnits(openingState.data.price, 18)) : 0;
   const spy = Math.max(0, xnum(spyStr));
   const borrow = Math.max(0, xnum(debtStr));
   const fee = Number(formatUnits(quote?.fee ?? 0n, 18));
@@ -231,7 +253,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 		if (!autoMaxLoan) return;
 		if (pending || !wallet.connected || account !== autoMaxLoan.account
 			|| collateralWei !== autoMaxLoan.collateral || debtStr.trim() !== ''
-			|| openingQuote.isError) {
+			|| openingQuote.isError || openingState.isError) {
 			setAutoMaxLoan(null);
 			return;
 		}
@@ -239,7 +261,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 		setAutoMaxLoan(null);
 		if (maxBorrowWei > 0n) setDebtStr(formatOpeningMax(maxBorrowWei));
 	}, [autoMaxLoan, pending, wallet.connected, account, collateralWei, debtStr,
-		openingQuote.isError, quoteReady, maxBorrowWei]);
+		openingQuote.isError, openingState.isError, quoteReady, maxBorrowWei]);
 
   const walletBalance = chainState.data ? Number(formatUnits(chainState.data.balance, 18)) : 0;
   const protocolError = quoteReady && quote ? validateOpeningAmount(collateralWei, borrowedWei, rateWei, quote.fee, quote.capacity) : null;
@@ -290,12 +312,14 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       await ensureRobinhoodTestnet(wallet.provider);
       await requireAuthorizedAccount(wallet.provider, account);
       failureStage = 'preparing';
+			requireOpeningQuote(openingState);
       const reviewed = requireOpeningQuote(openingQuote);
       // Re-read before signing, and again after all signature/hint work. Never
       // silently alter the principal, even when the newly available Max changes.
       const refreshOpening = async () => {
         const fresh = await quoteOpening(publicClient, collateralWei, borrowedWei, rateWei);
-        queryClient.setQueryData(openingKey, fresh);
+				// Publish under the snapshot key: never put a new block's quote under an old block's key.
+				queryClient.setQueryData(openingStateKey, fresh);
         return reviewOpeningRefresh(reviewed, fresh, collateralWei, borrowedWei, rateWei);
       };
       await refreshOpening();
@@ -546,7 +570,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       <div className="swap__field">
         <span className="swap__label">Collateral</span>
         <div className="swap__row">
-          <input disabled={pending} className="swap__amount" inputMode="decimal" placeholder="0.00" value={spyStr}
+					<input autoFocus disabled={pending} className="swap__amount" inputMode="decimal" placeholder="0.00" value={spyStr}
             onChange={(event) => {
               markFormStarted('collateral');
 							setAutoMaxLoan(null);
@@ -577,7 +601,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       </div>
       <div className="swap__meta">
         <span>
-          Oracle price <b>{priceReady ? `$${money(spyPrice)}` : openingQuote.isError ? 'unavailable' : 'loading…'}</b>{' '}
+					Oracle price <b>{priceReady ? `$${money(spyPrice)}` : openingState.isError || openingState.data ? 'unavailable' : 'loading…'}</b>{' '}
           {priceReady && <><i className="swap__dot swap__dot--ok" /> onchain</>}
         </span>
         <span>Max LTV <b>{quoteReady ? pct(100 / minimumRatio, 1) : '−'}</b></span>
@@ -599,6 +623,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
             onClick={() => {
               captureEvent('max_amount_selected', { context: 'open_position', asset: loanToken });
               try {
+								requireOpeningQuote(openingState);
                 const current = requireOpeningQuote(openingQuote);
                 setDebtStr(formatOpeningMax(current.maxPrincipal));
               } catch (cause) { reportError(cause, 'preparing'); }
@@ -700,7 +725,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       )}
       {insufficientSpy && <p className="warn">Your wallet does not have enough testnet SPY for the collateral.</p>}
       {chainState.isError && <p className="warn">Could not read the Robinhood testnet contracts. Try again before submitting.</p>}
-      {openingQuote.isError && <p className="warn">Live opening limits or the oracle are unavailable. Refresh before submitting.</p>}
+			{(openingQuote.isError || openingState.isError) && <p className="warn">Live opening limits or the oracle are unavailable. Refresh before submitting.</p>}
       {error && (
         <div className="swap__error" role="alert">
           <p className="warn">{error.title}</p>
