@@ -394,9 +394,7 @@ ORDER BY block_number DESC, trove_id`, normalizedOwner)
 // StabilityPoolApr is the resolver for the stabilityPoolApr field.
 func (r *queryResolver) StabilityPoolApr(ctx context.Context) ([]string, error) {
 	rows, err := r.Db.Query(`
-SELECT
-	created_by::DATE AS day,
-	AVG(apr)::TEXT AS apr
+SELECT AVG(apr)::TEXT AS apr
 FROM florin_apr_recorded_1
 WHERE created_by >= CURRENT_DATE - INTERVAL '29 days'
 	AND created_by < CURRENT_DATE + INTERVAL '1 day'

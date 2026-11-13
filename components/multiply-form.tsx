@@ -393,6 +393,18 @@ export function MultiplyForm({ initialMarkets }: { initialMarkets: FlorinMarkets
         <div className="swap__row">
           <input className="swap__amount" inputMode="decimal" placeholder="0.00" value={depositStr}
             onChange={(event) => setDepositStr(event.target.value)} aria-label="SPY deposit" />
+			<button
+				type="button"
+				className="swap__max"
+				aria-label="Use maximum SPY deposit"
+				disabled={pending || !wallet.connected || !account || !chainState.data || chainState.isError || chainState.data.balance <= 0n}
+				onClick={() => {
+					if (pending || !wallet.connected || !account || !chainState.data || chainState.isError || chainState.data.balance <= 0n) return;
+					setDepositStr(formatUnits(chainState.data.balance, 18));
+				}}
+			>
+				Max
+			</button>
           <span className="swap__pill"><Token symbol="SPY" size={18} /></span>
         </div>
         <span className="swap__usd">
