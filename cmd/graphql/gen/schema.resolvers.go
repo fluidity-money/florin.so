@@ -399,7 +399,7 @@ FROM florin_apr_recorded_1
 WHERE created_by >= CURRENT_DATE - INTERVAL '29 days'
 	AND created_by < CURRENT_DATE + INTERVAL '1 day'
 GROUP BY created_by::DATE
-ORDER BY day ASC`,
+ORDER BY created_by::DATE ASC`,
 	)
 	if err != nil {
 		slog.Error("Failed to scan apr percentages",

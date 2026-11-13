@@ -94,7 +94,7 @@ const TAB_LABEL: Record<Tab, string> = {
 function Tabs({ tab, onChange }: { tab: Tab; onChange: (tab: Tab) => void }) {
   return (
     <div className="pool-tabs" role="tablist" aria-label="Stability Pool action">
-      {(['update', 'claim', 'compound'] as const).map((option) => (
+			{(['update', 'compound', 'claim'] as const).map((option) => (
         <button
           key={option}
           type="button"

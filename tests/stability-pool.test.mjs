@@ -23,6 +23,10 @@ test('stability page can deposit and withdraw FUSD', () => {
   assert.match(stability, /Withdraw FUSD/);
 });
 
+test('earn tabs show Compound before Claim rewards', () => {
+	assert.match(stability, /\['update', 'compound', 'claim'\] as const/);
+});
+
 test('stability page can claim FUSD and SPY rewards', () => {
   assert.match(stability, /functionName: 'claimAllCollGains'/);
   assert.match(stability, /Claim rewards/);
