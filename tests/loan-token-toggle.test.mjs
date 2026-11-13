@@ -34,6 +34,25 @@ test('intro is an aria-hidden seven-row reel ending on FUSD without selecting an
 	assert.match(html, /aria-hidden="true"/);
 });
 
+test('PostHog spin flag defaults off and only gates the decorative intro', () => {
+	assert.match(form, /const enableLoanTokenSpin = useFeature\('enable-loan-token-spin', false\)/);
+	const expression = form.match(/intro=\{([^}]+)\}/)[1];
+	const intro = new Function('enableLoanTokenSpin', 'loanTokenIntro', `return ${expression}`);
+	for (const enabled of [undefined, false, true]) {
+		for (const eligible of [false, true]) {
+			const changes = [];
+			const tree = LoanTokenToggle({ ...props, intro: intro(enabled, eligible), onChange: token => changes.push(token) });
+			assert.equal(renderToStaticMarkup(tree).includes('reel--intro'), enabled === true && eligible);
+			tree.props.onClick();
+			assert.deepEqual(changes, ['USDG']);
+		}
+	}
+	// Flag loading or disabling cannot force animation; completion/selection stays final.
+	assert.equal(Boolean(intro(false, true)), false);
+	assert.equal(intro(true, true), true);
+	assert.equal(intro(true, false), false);
+});
+
 test('explicit toggles work in both directions, but never while pending', () => {
 	for (const value of ['FUSD', 'USDG']) {
 		for (const disabled of [false, true]) {

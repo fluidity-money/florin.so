@@ -112,6 +112,7 @@ async function ensureRobinhoodTestnet(provider: NonNullable<ReturnType<typeof us
 export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMarkets }) {
   const wallet = useWallet();
   const enableAccounts = useFeature('enable-accounts');
+	const enableLoanTokenSpin = useFeature('enable-loan-token-spin', false);
   const { createAccountFlorinOpenPosition } = useAccount();
   const markets = useFlorinMarkets(initialMarkets);
   const prepareMarketAction = useMarketAction();
@@ -558,7 +559,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         <span>Borrow</span>
 				<LoanTokenToggle
 					value={loanToken}
-					intro={loanTokenIntro}
+					intro={enableLoanTokenSpin && loanTokenIntro}
 					disabled={pending}
 					onChange={selectLoanToken}
 					onIntroEnd={() => setLoanTokenIntro(false)}
