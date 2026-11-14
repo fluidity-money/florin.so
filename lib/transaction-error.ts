@@ -14,6 +14,7 @@ export type TransactionErrorDescription = {
   explanation: string;
   technicalDetails: string;
   code?: string;
+  reason?: string;
   stage: TransactionFailureStage;
 };
 
@@ -36,6 +37,7 @@ const CONTRACT_REASON_EXPLANATIONS: Record<string, string> = {
   TroveExists: 'A position with the generated identifier already exists. Retrying will generate a new identifier.',
   NewOracleFailureDetected: 'The SPY price oracle reported a new failure, so the protocol refused to open a position.',
   IsShutDown: 'The protocol is currently shut down and is not accepting new positions.',
+  StockPaused: 'SPY trading is paused, so the protocol does not accept new positions. Try again when SPY trading resumes.',
 };
 
 function clean(value: string): string {
@@ -138,6 +140,7 @@ export function describeTransactionError(
         : `The contract rejected the ${action}. No position was opened. Check the technical details below and try again.`,
       technicalDetails,
       code: details.code,
+      reason,
       stage,
     };
   }

@@ -217,6 +217,7 @@ export const borrowerOperationsAbi = parseAbi([
   'error InterestRateTooHigh()',
   'error NewOracleFailureDetected()',
   'error IsShutDown()',
+  'error StockPaused()',
   'error ZeroAdjustment()',
   'error CollWithdrawalTooHigh()',
   'error NotEnoughBoldBalance()',
@@ -226,6 +227,7 @@ export const borrowerOperationsAbi = parseAbi([
 
 export const priceFeedAbi = parseAbi([
   'function fetchPrice() returns (uint256 price, bool newOracleFailure)',
+  'function isStockPaused() view returns (bool)',
 ]);
 
 export function validatedOraclePrice(result: readonly [bigint, boolean]): bigint {
