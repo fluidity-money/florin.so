@@ -226,6 +226,9 @@ export const borrowerOperationsAbi = parseAbi([
 
 export const priceFeedAbi = parseAbi([
   'function fetchPrice() returns (uint256 price, bool newOracleFailure)',
+  // True outside NYSE trading hours (nights, weekends, holidays) or while
+  // the SPY token itself is paused.
+  'function isStockPaused() view returns (bool)',
 ]);
 
 export function validatedOraclePrice(result: readonly [bigint, boolean]): bigint {

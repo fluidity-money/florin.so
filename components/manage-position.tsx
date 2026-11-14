@@ -15,6 +15,8 @@ import { Button, RatioBar } from './ui';
 import { Token, TokenIcon } from './token-icon';
 import { money, pct, xnum } from '../lib/format';
 import { useWallet } from './wallet/wallet';
+import { MarketClosedNotice } from './market-closed-notice';
+import { useMarketClosed } from '../lib/use-market-hours';
 import { useOpenPositions } from '../lib/use-open-positions';
 import type { FlorinPosition } from '../lib/florin-positions';
 import { positionKey, selectPosition } from '../lib/position-navigation';
@@ -438,6 +440,7 @@ function PositionEditor({
   const [closeChoice, setCloseChoice] = useState<CloseKind>('closeFromCollateral');
   const multiplyTroves = useMultiplyTroves(positions);
   const isMultiply = multiplyTroves.has(position.troveId);
+  const marketClosed = useMarketClosed();
   // Only a Multiply position can repay from its own collateral.
   const closeKind: CloseKind = isMultiply ? closeChoice : 'close';
 
@@ -1057,6 +1060,9 @@ function PositionEditor({
           instead, through the zapper. */}
       {tab === 'update' && (
         <>
+          {marketClosed && (
+            <MarketClosedNotice paused={isMultiply ? 'Withdrawing SPY and changing leverage are' : 'Withdrawing SPY and borrowing more are'} />
+          )}
           <section className="mgmt">
             <div className="mgmt__head">
               <div className="mgmt__headline">

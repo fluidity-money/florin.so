@@ -25,6 +25,19 @@ type ErrorDetails = {
 };
 
 const MAX_DETAIL_LENGTH = 1_200;
+
+// Florin follows NYSE hours. Outside them BorrowerOperations reverts with
+// StockPaused() (0x1a21f1f2) and TroveManager with StockMarketPaused()
+// (0x68832e02). Wallets often only report the selector, so match both forms.
+export const MARKET_CLOSED_TITLE = 'US markets are closed.';
+export const MARKET_CLOSED_EXPLANATION =
+  'Florin follows NYSE trading hours, so opening positions, borrowing more and withdrawing collateral are paused while the market is closed, including weekends and holidays. They resume when the NYSE opens, 9:30 ET on trading days. Adding collateral, repaying and Earn still work.';
+
+export function isMarketClosedError(error: unknown): boolean {
+  const details = collectErrorDetails(error);
+  const searchable = [...details.messages, ...details.reasons].join(' ').toLowerCase();
+  return /stockpaused|stockmarketpaused|0x1a21f1f2|0x68832e02/.test(searchable);
+}
 const CONTRACT_REASON_EXPLANATIONS: Record<string, string> = {
   ICRBelowMCR: 'The position’s collateral ratio is below the protocol minimum. Add more SPY or borrow less FUSD.',
   ICRBelowMCRPlusBCR: 'The position needs a larger collateral buffer. Add more SPY or borrow less FUSD.',
@@ -113,6 +126,16 @@ export function describeTransactionError(
     return {
       title: 'Not enough ETH.',
       explanation: 'Your wallet needs 0.001 ETH for liquidator compensation, plus ETH for network fees.',
+      technicalDetails,
+      code: details.code,
+      stage,
+    };
+  }
+
+  if (/stockpaused|stockmarketpaused|0x1a21f1f2|0x68832e02/.test(searchable)) {
+    return {
+      title: MARKET_CLOSED_TITLE,
+      explanation: `${MARKET_CLOSED_EXPLANATION} Nothing was changed.`,
       technicalDetails,
       code: details.code,
       stage,

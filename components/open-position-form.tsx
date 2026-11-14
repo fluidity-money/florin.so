@@ -33,6 +33,8 @@ import {
   type TransactionFailureStage,
 } from '../lib/transaction-error';
 import { useWallet } from './wallet/wallet';
+import { MarketClosedNotice } from './market-closed-notice';
+import { useMarketClosed } from '../lib/use-market-hours';
 import Link from 'next/link';
 import { pendingPositions, positionsFromReceipt } from '../lib/pending-positions';
 import { managePositionHref } from '../lib/position-navigation';
@@ -111,6 +113,7 @@ async function ensureRobinhoodTestnet(provider: NonNullable<ReturnType<typeof us
 
 export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMarkets }) {
   const wallet = useWallet();
+  const marketClosed = useMarketClosed();
   const enableAccounts = useFeature('enable-accounts');
 	const enableLoanTokenSpin = useFeature('enable-loan-token-spin', false);
   const { createAccountFlorinOpenPosition } = useAccount();
@@ -476,9 +479,14 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
           },
         ],
       });
+      // About 2% of opens on testnet ran out of gas at the wallet's own
+      // estimate: the zapper's gas use moves with the hints and pool state
+      // between estimate and inclusion. Unused gas is refunded, so a 30%
+      // margin costs the user nothing.
+      const gasEstimate = await publicClient.estimateContractGas(simulation.request);
       const updateMarkets = prepareMarketAction();
       let replacementInvalid = false;
-      const hash = await walletClient.writeContract(simulation.request);
+      const hash = await walletClient.writeContract({ ...simulation.request, gas: (gasEstimate * 13n) / 10n });
       transactionHash = hash;
       setTxHash(hash);
       failureStage = 'confirming';
@@ -745,9 +753,10 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         </p>
       )}
 
+      {marketClosed && <MarketClosedNotice paused="Opening positions is" />}
       <Button
         variant="primary"
-        disabled={usdgSelected || (wallet.connected && (!active || Boolean(protocolError) || unsafe || insufficientSpy || pending || !chainReady || !feeReady || chainState.isError || openingQuote.isError))}
+        disabled={usdgSelected || (wallet.connected && (marketClosed || !active || Boolean(protocolError) || unsafe || insufficientSpy || pending || !chainReady || !feeReady || chainState.isError || openingQuote.isError))}
         onClick={() => {
           if (!usdgSelected) void openTrove();
         }}

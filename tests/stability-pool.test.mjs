@@ -17,7 +17,8 @@ test('stability page reads the connected wallet position and rewards', () => {
 test('stability page can deposit and withdraw FUSD', () => {
   assert.match(stability, /functionName: 'provideToSP'/);
   assert.match(stability, /functionName: 'withdrawFromSP'/);
-  assert.match(stability, /functionName: 'approve'/);
+  // Deposits need no FUSD approval; the pool pulls through sendToPool.
+  assert.doesNotMatch(stability, /functionName: 'approve'/);
   assert.match(stability, /CONTRACTS\.stabilityPool/);
   assert.match(stability, /Deposit FUSD/);
   assert.match(stability, /Withdraw FUSD/);

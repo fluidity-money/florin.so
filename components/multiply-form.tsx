@@ -19,6 +19,9 @@ import { Button } from './ui';
 import { Token, TokenIcon } from './token-icon';
 import { LeverageField, MAX_LTV } from './leverage-field';
 import { useWallet } from './wallet/wallet';
+import { MarketClosedNotice } from './market-closed-notice';
+import { useMarketClosed } from '../lib/use-market-hours';
+import { isMarketClosedError, MARKET_CLOSED_EXPLANATION, MARKET_CLOSED_TITLE } from '../lib/transaction-error';
 import Link from 'next/link';
 import { pendingPositions, positionsFromReceipt } from '../lib/pending-positions';
 import { managePositionHref } from '../lib/position-navigation';
@@ -87,6 +90,7 @@ async function ensureRobinhoodTestnet(provider: NonNullable<ReturnType<typeof us
 }
 
 function errorMessage(error: unknown): string {
+  if (isMarketClosedError(error)) return `${MARKET_CLOSED_TITLE} ${MARKET_CLOSED_EXPLANATION}`;
   if (error instanceof Error) {
     return (error as Error & { shortMessage?: string }).shortMessage ?? error.message;
   }
@@ -97,6 +101,7 @@ export function MultiplyForm({ initialMarkets }: { initialMarkets: FlorinMarkets
   const markets = useFlorinMarkets(initialMarkets);
   const marketAverageRate = parseDisplayPercent(spyMarket(markets).borrow?.avgRatePa);
   const wallet = useWallet();
+  const marketClosed = useMarketClosed();
   const account = wallet.address as Address | null;
   const zapperAddress = CONTRACTS.leverageZapper;
   const exchangeAddress = CONTRACTS.exchange;
@@ -488,9 +493,10 @@ export function MultiplyForm({ initialMarkets }: { initialMarkets: FlorinMarkets
         <p className="swap__usd"><a href={`${robinhoodTestnet.blockExplorers.default.url}/tx/${txHash}`} target="_blank" rel="noreferrer">View pending transaction ↗</a></p>
       )}
 
+      {marketClosed && <MarketClosedNotice paused="Opening Multiply positions is" />}
       <Button
         variant="primary"
-        disabled={wallet.connected && (!zapperConfigured || !active || unsafe || belowMinimumDebt || insufficientSpy || insufficientEth || pending || invalidData)}
+        disabled={wallet.connected && (marketClosed || !zapperConfigured || !active || unsafe || belowMinimumDebt || insufficientSpy || insufficientEth || pending || invalidData)}
         onClick={() => void openMultiplyPosition()}
       >
         {buttonLabel}

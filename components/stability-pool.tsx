@@ -269,18 +269,14 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
       });
 
       if (action === 'deposit') {
-        const [walletBalance, allowance, currentTotalDeposits] = await Promise.all([
+        // No FUSD approval: the pool pulls deposits through FUSD's own
+        // sendToPool, so an approval would only cost the user a transaction.
+        const [walletBalance, currentTotalDeposits] = await Promise.all([
           robinhoodPublicClient.readContract({
             address: CONTRACTS.boldToken,
             abi: erc20Abi,
             functionName: 'balanceOf',
             args: [account],
-          }),
-          robinhoodPublicClient.readContract({
-            address: CONTRACTS.boldToken,
-            abi: erc20Abi,
-            functionName: 'allowance',
-            args: [account, CONTRACTS.stabilityPool],
           }),
           robinhoodPublicClient.readContract({
             address: CONTRACTS.stabilityPool,
@@ -295,18 +291,6 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
           currentTotalDeposits,
         );
         if (invalid) throw new Error(invalid);
-
-        if (allowance < amount) {
-          setStage('approving');
-          const approval = await robinhoodPublicClient.simulateContract({
-            account,
-            address: CONTRACTS.boldToken,
-            abi: erc20Abi,
-            functionName: 'approve',
-            args: [CONTRACTS.stabilityPool, amount],
-          });
-          await waitForReceipt(await walletClient.writeContract(approval.request));
-        }
 
         setTxHash(null);
         setStage('submitting');
