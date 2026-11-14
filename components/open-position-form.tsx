@@ -57,7 +57,7 @@ import {
   MIN_DEBT,
 } from '../lib/borrow-contract';
 
-import { OPENING_MAX_AGE_MS, readOpeningState, quoteOpeningFromState, quoteOpening, requireOpeningQuote, reviewOpeningRefresh, validateOpeningAmount, formatOpeningMax } from '../lib/opening-capacity';
+import { OPENING_MAX_AGE_MS, readOpeningState, quoteOpeningFromState, quoteOpening, requireOpeningQuote, reviewOpeningRefresh, validateOpeningAmount, formatOpeningMax, STOCK_PAUSED_MESSAGE } from '../lib/opening-capacity';
 
 const publicClient = createPublicClient({ chain: robinhoodTestnet, transport: http() });
 
@@ -211,6 +211,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   });
 
 	const priceReady = stateReady;
+	const stockPaused = openingState.data?.stockPaused === true;
   const chainReady = Boolean(chainState.data) && quoteReady;
   const feeReady = quoteReady;
 	const spyPrice = openingState.data ? Number(formatUnits(openingState.data.price, 18)) : 0;
@@ -279,6 +280,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       failure_stage: description.stage,
       error_title: description.title,
       error_code: description.code,
+      error_reason: description.reason,
       chain_id: ROBINHOOD_TESTNET_CHAIN_ID,
       wallet_kind: wallet.kind,
       had_transaction: transactionHash !== null,
@@ -295,7 +297,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       }
       return;
     }
-    if (pending || protocolError || unsafe || insufficientSpy || !quoteReady || chainState.isError) return;
+    if (pending || stockPaused || protocolError || unsafe || insufficientSpy || !quoteReady || chainState.isError) return;
 
     captureEvent('position_open_requested', {
       chain_id: ROBINHOOD_TESTNET_CHAIN_ID,
@@ -720,6 +722,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         )}
       </div>
 
+      {stockPaused && <p className="warn">{STOCK_PAUSED_MESSAGE}</p>}
       {protocolError && active && <p className="warn">{protocolError}</p>}
       {quoteReady && collateralWei > 0n && maxBorrowWei === 0n && (
         <p className="warn">No opening amount at cent precision meets the minimum debt and current collateral limits. Increase your collateral.</p>
@@ -747,7 +750,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 
       <Button
         variant="primary"
-        disabled={usdgSelected || (wallet.connected && (!active || Boolean(protocolError) || unsafe || insufficientSpy || pending || !chainReady || !feeReady || chainState.isError || openingQuote.isError))}
+        disabled={usdgSelected || (wallet.connected && (stockPaused || !active || Boolean(protocolError) || unsafe || insufficientSpy || pending || !chainReady || !feeReady || chainState.isError || openingQuote.isError))}
         onClick={() => {
           if (!usdgSelected) void openTrove();
         }}

@@ -5,6 +5,7 @@ const WAD = 10n ** 18n;
 export const OPENING_STEP = 10n ** 16n; // Max fills cents; manual input can retain wei precision.
 const UINT256_MAX = (1n << 256n) - 1n;
 export const OPENING_MAX_AGE_MS = 30_000;
+export const STOCK_PAUSED_MESSAGE = 'SPY trading is paused, so the protocol does not accept new positions. Try again when SPY trading resumes.';
 const branchAbi = parseAbi([
   'function MCR() view returns (uint256)',
   'function CCR() view returns (uint256)',
@@ -22,7 +23,7 @@ type Client = Pick<PublicClient, 'getBlock' | 'readContract' | 'simulateContract
 export type OpeningState = {
   blockNumber: bigint; blockHash: string; readAt: number;
   price: bigint; mcr: bigint; ccr: bigint; collateral: bigint; debt: bigint;
-  feeDebt: bigint; weightedDebt: bigint;
+  feeDebt: bigint; weightedDebt: bigint; stockPaused: boolean;
 };
 
 export async function readOpeningState(client: Client): Promise<OpeningState> {
@@ -32,9 +33,11 @@ export async function readOpeningState(client: Client): Promise<OpeningState> {
   const blockNumber = block.number;
   const read = <N extends 'MCR' | 'CCR' | 'getEntireBranchColl' | 'getEntireBranchDebt' | 'activePool' | 'hasBeenShutDown'>(functionName: N) =>
     client.readContract({ address: CONTRACTS.borrowerOperations, abi: branchAbi, functionName, blockNumber });
-  const [oracle, mcr, ccr, collateral, debt, pool, shutDown] = await Promise.all([
+  const [oracle, mcr, ccr, collateral, debt, pool, shutDown, stockPaused] = await Promise.all([
     client.simulateContract({ address: CONTRACTS.spyPriceFeed, abi: priceFeedAbi, functionName: 'fetchPrice', blockNumber }),
     read('MCR'), read('CCR'), read('getEntireBranchColl'), read('getEntireBranchDebt'), read('activePool'), read('hasBeenShutDown'),
+    // TroveManager reverts with StockPaused() while this is true.
+    client.readContract({ address: CONTRACTS.spyPriceFeed, abi: priceFeedAbi, functionName: 'isStockPaused', blockNumber }),
   ]);
   if (shutDown) throw new Error('This borrowing branch is shut down.');
   const [recorded, interest, weightedDebt] = await Promise.all([
@@ -42,7 +45,7 @@ export async function readOpeningState(client: Client): Promise<OpeningState> {
     client.readContract({ address: pool, abi: poolAbi, functionName: 'calcPendingAggInterest', blockNumber }),
     client.readContract({ address: pool, abi: poolAbi, functionName: 'aggWeightedDebtSum', blockNumber }),
   ]);
-  const state = { blockNumber, blockHash: block.hash, readAt, price: validatedOraclePrice(oracle.result), mcr, ccr, collateral, debt, feeDebt: recorded + interest, weightedDebt };
+  const state = { blockNumber, blockHash: block.hash, readAt, price: validatedOraclePrice(oracle.result), mcr, ccr, collateral, debt, feeDebt: recorded + interest, weightedDebt, stockPaused };
   openingDebtCapacity(state, 0n); // Reject invalid parameters even before an amount is entered.
 	// Validate the snapshot before publishing it independently of an amount quote.
 	const canonical = await client.getBlock({ blockNumber });
@@ -137,7 +140,8 @@ export async function quoteOpeningFromState(client: Client, state: OpeningState,
   return requireOpeningQuote({ isError: false, data: { ...state, capacity, fee, maxPrincipal } });
 }
 
-export function reviewOpeningRefresh(previous: { capacity: bigint; fee: bigint }, fresh: { capacity: bigint; fee: bigint }, deposit: bigint, principal: bigint, rate: bigint) {
+export function reviewOpeningRefresh(previous: { capacity: bigint; fee: bigint }, fresh: { capacity: bigint; fee: bigint; stockPaused?: boolean }, deposit: bigint, principal: bigint, rate: bigint) {
+  if (fresh.stockPaused) throw new Error(STOCK_PAUSED_MESSAGE);
   const error = validateOpeningAmount(deposit, principal, rate, fresh.fee, fresh.capacity);
   if (error) throw new Error(error);
   // Harmless capacity changes must not force endless retries as interest accrues.
