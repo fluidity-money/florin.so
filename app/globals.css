@@ -967,6 +967,75 @@ input:focus-visible {
   color: var(--ink);
 }
 
+.language-selector {
+	position: relative;
+	flex-shrink: 0;
+}
+
+.language-selector__trigger {
+	display: grid;
+	place-items: center;
+	width: 44px;
+	height: 44px;
+	padding: 0;
+	border: 1px solid transparent;
+	border-radius: 50%;
+	background: transparent;
+	color: var(--ink);
+	cursor: pointer;
+}
+
+.language-selector__trigger:hover {
+	border-color: var(--ink);
+}
+
+.language-selector__popup {
+	position: absolute;
+	top: calc(100% + 8px);
+	left: 0;
+	z-index: 50;
+	width: 180px;
+	padding: 12px;
+	border: 1px solid var(--ink);
+	border-radius: 16px;
+	background: var(--paper);
+	color: var(--ink);
+	box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+}
+
+.language-selector__title {
+	margin: 0 0 8px;
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.language-selector__option {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	min-height: 44px;
+	padding: 8px 12px;
+	border: 1px solid var(--ink);
+	border-radius: 8px;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	font-size: 14px;
+	cursor: pointer;
+}
+
+.language-selector__option:hover {
+	background: var(--ink);
+	color: var(--paper);
+}
+
+.language-selector__trigger:focus-visible,
+.language-selector__option:focus-visible {
+	outline: 2px solid var(--ink);
+	outline-offset: 3px;
+}
+
 /* Buttons and product surfaces */
 .btn {
   min-height: 44px;

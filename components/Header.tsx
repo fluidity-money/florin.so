@@ -7,6 +7,7 @@ import { useAppKit, useAppKitNetworkCore } from '@reown/appkit/react';
 import { robinhoodTestnet } from '@reown/appkit/networks';
 import { useWallet } from './wallet/wallet';
 import { Button } from './ui';
+import { LanguageSelector } from './language-selector';
 import { captureEvent } from '../lib/analytics';
 
 const NAV = [
@@ -111,6 +112,7 @@ export function Header() {
                    address stays a plain chip rather than a dead button. */
                 <span className="addr-chip">{w.short}</span>)}
           {walletError && <span className="addr-chip">Wallet unavailable</span>}
+			<LanguageSelector />
           <Button
             variant={w.connected ? 'ghost' : 'primary'}
             onClick={() => void toggleWallet()}

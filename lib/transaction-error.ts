@@ -1,3 +1,18 @@
+import marketPausePeriods from '../public/market-pause-periods.json';
+
+// Display-only calendar: the price feed remains authoritative for pause state.
+// ISO timestamps include UTC offsets; periods are [start, end).
+export function getMarketPauseReason(now = Date.now()): string | undefined {
+	return marketPausePeriods.find(period =>
+		Date.parse(period.start) <= now && now < Date.parse(period.end)
+	)?.reason;
+}
+
+export function getMarketClosedExplanation(now = Date.now()): string {
+	const reason = getMarketPauseReason(now);
+	return `${reason ? `${reason} ` : ''}${MARKET_CLOSED_EXPLANATION}`;
+}
+
 export type TransactionFailureStage =
   | 'connecting'
   | 'switching'
@@ -26,12 +41,12 @@ type ErrorDetails = {
 
 const MAX_DETAIL_LENGTH = 1_200;
 
-// Florin follows NYSE hours. Outside them BorrowerOperations reverts with
+// During a market pause BorrowerOperations reverts with
 // StockPaused() (0x1a21f1f2) and TroveManager with StockMarketPaused()
 // (0x68832e02). Wallets often only report the selector, so match both forms.
-export const MARKET_CLOSED_TITLE = 'US markets are closed.';
+export const MARKET_CLOSED_TITLE = 'Market is paused.';
 export const MARKET_CLOSED_EXPLANATION =
-  'Florin follows NYSE trading hours, so opening positions, borrowing more and withdrawing collateral are paused while the market is closed, including weekends and holidays. They resume when the NYSE opens, 9:30 ET on trading days. Adding collateral, repaying and Earn still work.';
+  'Opening positions, borrowing more and withdrawing collateral are currently paused. These actions resume when the on-chain market pause is lifted.';
 
 export function isMarketClosedError(error: unknown): boolean {
   const details = collectErrorDetails(error);
@@ -135,7 +150,7 @@ export function describeTransactionError(
   if (/stockpaused|stockmarketpaused|0x1a21f1f2|0x68832e02/.test(searchable)) {
     return {
       title: MARKET_CLOSED_TITLE,
-      explanation: `${MARKET_CLOSED_EXPLANATION} Nothing was changed.`,
+      explanation: `${getMarketClosedExplanation()} Nothing was changed.`,
       technicalDetails,
       code: details.code,
       stage,
