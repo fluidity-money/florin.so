@@ -38,7 +38,7 @@ const MODE_LABEL: Record<Mode, string> = {
   claim: 'Claim',
   compound: 'Compound',
 };
-type TxStage = 'idle' | 'switching' | 'approving' | 'submitting' | 'confirming';
+type TxStage = 'idle' | 'switching' | 'submitting' | 'confirming';
 
 function parseToken(value: string): bigint {
   if (!value.trim()) return 0n;
@@ -269,9 +269,9 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
       });
 
       if (action === 'deposit') {
-        // No FUSD approval: the pool pulls deposits through FUSD's own
-        // sendToPool, so an approval would only cost the user a transaction.
-        const [walletBalance, currentTotalDeposits] = await Promise.all([
+				// No FUSD approval: the pool pulls deposits through FUSD's own
+				// sendToPool, so an approval would only cost the user a transaction.
+				const [walletBalance, currentTotalDeposits] = await Promise.all([
           robinhoodPublicClient.readContract({
             address: CONTRACTS.boldToken,
             abi: erc20Abi,
@@ -292,7 +292,7 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
         );
         if (invalid) throw new Error(invalid);
 
-        setTxHash(null);
+				setTxHash(null);
         setStage('submitting');
         const simulation = await robinhoodPublicClient.simulateContract({
           account,
@@ -409,9 +409,7 @@ export function StabilityPool({ initialMarkets }: { initialMarkets: FlorinMarket
     ? 'Connect wallet to continue'
     : stage === 'switching'
       ? 'Switching network…'
-      : stage === 'approving'
-        ? 'Approve FUSD in wallet…'
-        : stage === 'submitting'
+			: stage === 'submitting'
           ? 'Confirm in wallet…'
           : stage === 'confirming'
             ? 'Waiting for confirmation…'
