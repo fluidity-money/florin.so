@@ -67,12 +67,13 @@ export async function prepareCollateralPermit(
   client: Pick<PublicClient, 'readContract' | 'getBlock' | 'getChainId'>,
   owner: Address,
   value: bigint,
+	spender: Address = CONTRACTS.gasCompZapper,
 ) {
   if (value <= 0n) throw new Error('Enter SPY collateral.');
   if (await client.getChainId() !== ROBINHOOD_TESTNET_CHAIN_ID) throw new Error('Wrong permit network.');
   const block = await client.getBlock();
   const token = { address: CONTRACTS.spyToken, abi: collateralPermitAbi, blockNumber: block.number } as const;
-  const zapper = { address: CONTRACTS.gasCompZapper, abi: gasCompZapperAbi, blockNumber: block.number } as const;
+	const zapper = { address: spender, abi: gasCompZapperAbi, blockNumber: block.number } as const;
   const [metadata, separator, nonce, collateral, borrowerOperations, weth] = await Promise.all([
     client.readContract({ ...token, functionName: 'eip712Domain' }),
     client.readContract({ ...token, functionName: 'DOMAIN_SEPARATOR' }),
@@ -102,7 +103,7 @@ export async function prepareCollateralPermit(
   }
   return {
     domain, types: permitTypes, primaryType: 'Permit' as const,
-    message: { owner, spender: CONTRACTS.gasCompZapper, value, nonce, deadline: block.timestamp + 1_200n },
+		message: { owner, spender, value, nonce, deadline: block.timestamp + 1_200n },
   };
 }
 

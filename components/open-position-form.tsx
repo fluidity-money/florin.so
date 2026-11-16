@@ -60,6 +60,7 @@ import {
 } from '../lib/borrow-contract';
 
 import { OPENING_MAX_AGE_MS, readOpeningState, quoteOpeningFromState, quoteOpening, requireOpeningQuote, reviewOpeningRefresh, validateOpeningAmount, formatOpeningMax } from '../lib/opening-capacity';
+import { USDG_ZAPPER, usdgZapperAbi, readUsdgOpeningState, quoteUsdgOpening, parseUsdgAmount, usdgPrincipal, validateUsdgSwap, type BorrowState } from '../lib/usdg-borrow';
 
 const publicClient = createPublicClient({ chain: robinhoodTestnet, transport: http() });
 
@@ -126,8 +127,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   const [spyStr, setSpyStr] = useState('');
   const [debtStr, setDebtStr] = useState('');
   const [rate, setRate] = useState(DEFAULT_RATE);
-  // USDG is offered ahead of support for it: picking it shows the loan in USDG
-  // and holds the submit button disabled until borrowing USDG is wired up.
+
   const [loanToken, setLoanToken] = useState<LoanToken>('FUSD');
 	const [loanTokenIntro, setLoanTokenIntro] = useState(true);
   const usdgSelected = loanToken === 'USDG';
@@ -149,14 +149,14 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   }
 
   const collateralWei = useMemo(() => parseToken(spyStr), [spyStr]);
-  const borrowedWei = useMemo(() => parseToken(debtStr), [debtStr]);
-  const rateWei = BigInt(Math.round(rate * 1e18));
+
+	const rateWei = usdgSelected ? parseUnits(rate.toFixed(4), 18) : BigInt(Math.round(rate * 1e18));
 
   const queryClient = useQueryClient();
-	const openingStateKey = ['opening-state', ROBINHOOD_TESTNET_CHAIN_ID, CONTRACTS.borrowerOperations, CONTRACTS.spyPriceFeed];
-	const openingState = useQuery({
+	const openingStateKey = ['opening-state', ROBINHOOD_TESTNET_CHAIN_ID, CONTRACTS.borrowerOperations, CONTRACTS.spyPriceFeed, loanToken, usdgSelected ? USDG_ZAPPER : CONTRACTS.gasCompZapper];
+	const openingState = useQuery<BorrowState>({
 		queryKey: openingStateKey,
-		queryFn: () => readOpeningState(publicClient),
+		queryFn: () => usdgSelected ? readUsdgOpeningState(publicClient) : readOpeningState(publicClient),
 		staleTime: 15_000,
 		refetchInterval: 15_000,
 		retry: false,
@@ -173,17 +173,34 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 	}, [openingState.data, openingState.refetch]);
 	let stateReady = false;
 	try { requireOpeningQuote(openingState); stateReady = true; } catch { /* fail closed */ }
+	const swap = openingState.data?.swap;
+	let outputWei = 0n;
+	let borrowedWei = usdgSelected ? 0n : parseToken(debtStr);
+	let amountError: string | null = null;
+	let swapError: string | null = null;
+	if (usdgSelected && swap) {
+		try {
+			outputWei = parseUsdgAmount(debtStr, swap.decimals);
+			borrowedWei = usdgPrincipal(outputWei, swap);
+		} catch (cause) { amountError = (cause as Error).message; }
+		if (!amountError) {
+			try { validateUsdgSwap(borrowedWei, outputWei, swap); }
+			catch (cause) { swapError = (cause as Error).message; }
+		}
+	}
 	const openingKey = ['opening-capacity', ROBINHOOD_TESTNET_CHAIN_ID, CONTRACTS.borrowerOperations,
 		openingState.data?.blockHash, openingState.data?.readAt,
-		collateralWei.toString(), borrowedWei.toString(), rateWei.toString()];
+		loanToken, USDG_ZAPPER, collateralWei.toString(), borrowedWei.toString(), outputWei.toString(), rateWei.toString()];
 	const openingQuote = useQuery({
 		queryKey: openingKey,
-		enabled: stateReady,
+		enabled: stateReady && !amountError && rateWei > 0n,
 		retry: false,
-		queryFn: () => quoteOpeningFromState(publicClient, requireOpeningQuote(openingState), collateralWei, borrowedWei, rateWei),
+		queryFn: async () => usdgSelected
+			? quoteUsdgOpening(publicClient, requireOpeningQuote(openingState), collateralWei, outputWei, rateWei)
+			: { ...await quoteOpeningFromState(publicClient, requireOpeningQuote(openingState), collateralWei, borrowedWei, rateWei), maxUsdg: 0n },
 	});
 	let quoteReady = false;
-	try { requireOpeningQuote(openingState); requireOpeningQuote(openingQuote); quoteReady = true; } catch { /* fail closed */ }
+	try { requireOpeningQuote(openingState); requireOpeningQuote(openingQuote); quoteReady = !amountError && rateWei > 0n; } catch { /* fail closed */ }
   const quote = openingQuote.data;
 
   // Balance and allowance are the parts that genuinely need an address.
@@ -217,11 +234,12 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   const spy = Math.max(0, xnum(spyStr));
   const borrow = Math.max(0, xnum(debtStr));
   const fee = Number(formatUnits(quote?.fee ?? 0n, 18));
-  const totalDebt = borrow + fee;
+	const totalDebt = Number(formatUnits(borrowedWei, 18)) + fee;
   const collateralUsd = spy * spyPrice;
   const collateralRatio = totalDebt > 0 ? collateralUsd / totalDebt : 0;
   const ltv = collateralUsd > 0 ? totalDebt / collateralUsd : 0;
-  const maxBorrowWei = quote?.maxPrincipal ?? 0n;
+	const maxBorrowWei = (usdgSelected ? quote?.maxUsdg : quote?.maxPrincipal) ?? 0n;
+	const formatLoanMax = (amount: bigint) => usdgSelected && swap ? formatUnits(amount, swap.decimals) : formatOpeningMax(amount);
   const minimumRatio = quote ? Number(formatUnits(quote.mcr, 18)) : MIN_COLLATERAL_RATIO;
   const liquidationPrice = spy > 0 && totalDebt > 0 ? minimumRatio * totalDebt / spy : 0;
   const annualInterest = totalDebt * rate;
@@ -233,7 +251,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   // Three loan sizes for this collateral, one per risk band, each rounded down
   // to a whole FUSD. Anything under the protocol minimum debt is left out.
   const minDebt = Number(formatUnits(MIN_DEBT, 18));
-  const debtSuggestions = quoteReady && collateralUsd > 0 && maxBorrowWei > 0n
+  const debtSuggestions = !usdgSelected && quoteReady && collateralUsd > 0 && maxBorrowWei > 0n
     ? DEBT_SUGGESTIONS
       .map((share) => Math.floor(Number(formatUnits(maxBorrowWei, 18)) * share))
       .filter((amount) => amount >= minDebt)
@@ -249,7 +267,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 	}
 
   const walletBalance = chainState.data ? Number(formatUnits(chainState.data.balance, 18)) : 0;
-  const protocolError = quoteReady && quote ? validateOpeningAmount(collateralWei, borrowedWei, rateWei, quote.fee, quote.capacity) : null;
+	const protocolError = amountError ?? swapError ?? (quoteReady && quote ? validateOpeningAmount(collateralWei, borrowedWei, rateWei, quote.fee, quote.capacity) : null);
   const insufficientSpy = chainState.data
     ? chainState.data.balance < requiredSpyApproval(collateralWei)
     : false;
@@ -303,14 +321,24 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       // Re-read before signing, and again after all signature/hint work. Never
       // silently alter the principal, even when the newly available Max changes.
       const refreshOpening = async () => {
-        const fresh = await quoteOpening(publicClient, collateralWei, borrowedWei, rateWei);
+				let fresh: Awaited<ReturnType<typeof quoteOpening>> & Pick<BorrowState, 'swap'>;
+				if (usdgSelected) {
+					const snapshot = await readUsdgOpeningState(publicClient);
+					queryClient.setQueryData(openingStateKey, snapshot);
+					if (!snapshot.swap || !swap || snapshot.swap.decimals !== swap.decimals) throw new Error('USDG configuration changed. Review before submitting.');
+					// Keep the reviewed principal, even when a refreshed price is favorable.
+					validateUsdgSwap(borrowedWei, outputWei, snapshot.swap);
+					fresh = { ...await quoteOpeningFromState(publicClient, snapshot, collateralWei, borrowedWei, rateWei, false), swap: snapshot.swap };
+				} else {
+					fresh = await quoteOpening(publicClient, collateralWei, borrowedWei, rateWei);
+				}
 				// Publish under the snapshot key: never put a new block's quote under an old block's key.
 				queryClient.setQueryData(openingStateKey, fresh);
         return reviewOpeningRefresh(reviewed, fresh, collateralWei, borrowedWei, rateWei);
       };
       await refreshOpening();
       const requiredApproval = requiredSpyApproval(collateralWei);
-      const directStatePromise = enableAccounts
+      const directStatePromise = enableAccounts && !usdgSelected
         ? Promise.resolve(null)
         : publicClient.getBalance({ address: account });
       const [balance, troveCount, directState] = await Promise.all([
@@ -332,7 +360,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         throw new Error(`You need ${formatUnits(requiredApproval, 18)} SPY for this position.`);
       }
 
-      if (enableAccounts) {
+      if (enableAccounts && !usdgSelected) {
         let upperHint = 0n;
         let lowerHint = 0n;
         if (troveCount > 0n) {
@@ -427,7 +455,8 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         });
       }
 
-      const typedPermit = await prepareCollateralPermit(publicClient, account, collateralWei);
+			const typedPermit = await prepareCollateralPermit(publicClient, account, collateralWei, usdgSelected ? USDG_ZAPPER : CONTRACTS.gasCompZapper);
+			if (usdgSelected) await refreshOpening();
       await requireAuthorizedAccount(wallet.provider, account);
       failureStage = 'signing-permit';
       setStage('signing-permit');
@@ -442,7 +471,16 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       failureStage = 'opening';
       setStage('opening');
       const ownerIndex = randomOwnerIndex();
-      const simulation = await publicClient.simulateContract({
+			const swapParams = {
+				owner: account, ownerIndex, collAmount: collateralWei, boldAmount: borrowedWei, usdgAmount: outputWei,
+				upperHint, lowerHint, annualInterestRate: rateWei, batchManager: zeroAddress,
+				maxUpfrontFee: feeLimit, addManager: zeroAddress, removeManager: zeroAddress, receiver: zeroAddress,
+			};
+			const simulation = usdgSelected ? await publicClient.simulateContract({
+				account, address: USDG_ZAPPER, abi: [...usdgZapperAbi, ...borrowerOperationsAbi],
+				functionName: 'openTroveWithRawETHPermitSwap', value: LIQUIDATOR_COMPENSATION_WETH,
+				args: [permit, swapParams],
+			}) : await publicClient.simulateContract({
         account,
         address: CONTRACTS.gasCompZapper,
         abi: [...gasCompZapperAbi, ...borrowerOperationsAbi],
@@ -465,10 +503,18 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       // estimate: the zapper's gas use moves with the hints and pool state
       // between estimate and inclusion. Unused gas is refunded, so a 30%
       // margin costs the user nothing.
-      const gasEstimate = await publicClient.estimateContractGas(simulation.request);
+			const request = simulation.request;
+			const gasEstimate = request.functionName === 'openTroveWithRawETHPermitSwap'
+				? await publicClient.estimateContractGas(request)
+				: await publicClient.estimateContractGas(request);
+			if (usdgSelected) await refreshOpening();
       const updateMarkets = prepareMarketAction();
       let replacementInvalid = false;
-      const hash = await walletClient.writeContract({ ...simulation.request, gas: (gasEstimate * 13n) / 10n });
+			await requireAuthorizedAccount(wallet.provider, account);
+			const gas = (gasEstimate * 13n) / 10n;
+			const hash = request.functionName === 'openTroveWithRawETHPermitSwap'
+				? await walletClient.writeContract({ ...request, gas })
+				: await walletClient.writeContract({ ...request, gas });
       transactionHash = hash;
       setTxHash(hash);
       failureStage = 'confirming';
@@ -509,8 +555,8 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       <div className="swap">
         <div className="swap__done">
           <span className="swap__done-mark" aria-hidden="true">✓</span>
-          <h2>FUSD minted</h2>
-          <p>{money(borrow, 2)} FUSD was minted against {money(spy, 4)} SPY.</p>
+					<h2>{usdgSelected ? 'USDG borrowed' : 'FUSD minted'}</h2>
+					<p>{usdgSelected ? `At least ${debtStr} USDG was received. Your debt and repayments are in FUSD.` : `${money(borrow, 2)} FUSD was minted against ${money(spy, 4)} SPY.`}</p>
           <Link className="btn btn--primary" href="/stability">Earn with position →</Link>
           {openedPosition && openedPosition.owner.toLowerCase() === wallet.address?.toLowerCase() && (
             <Link className="btn btn--primary" href={managePositionHref(openedPosition)}>Manage position →</Link>
@@ -540,8 +586,8 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
             ? 'Confirm position in wallet…'
             : stage === 'confirming'
               ? 'Waiting for confirmation…'
-              : 'Mint FUSD →';
-  const submitLabel = rate === 0 ? '0% interest rate positions — coming soon' : usdgSelected ? 'Borrow USDG' : buttonLabel;
+							: usdgSelected ? 'Borrow USDG →' : 'Mint FUSD →';
+	const submitLabel = rate === 0 ? '0% interest rate positions — coming soon' : buttonLabel;
 
   return (
     <div className="swap">
@@ -613,7 +659,8 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
               try {
 								requireOpeningQuote(openingState);
                 const current = requireOpeningQuote(openingQuote);
-                setDebtStr(formatOpeningMax(current.maxPrincipal));
+								if (pending || !quoteReady) return;
+								setDebtStr(formatLoanMax(usdgSelected ? current.maxUsdg : current.maxPrincipal));
               } catch (cause) { reportError(cause, 'preparing'); }
             }}
           >
@@ -628,7 +675,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         </div>
         <div className="swap__foot">
           <span className="swap__usd">
-            ${money(borrow)} received{fee > 0 ? ` · ${money(totalDebt)} debt including ${money(fee)} upfront interest` : ''}
+						{usdgSelected ? (quoteReady ? `At least ${formatUnits(outputWei, swap!.decimals)} USDG received · ${formatUnits(borrowedWei, 18)} FUSD principal · ${money(totalDebt)} FUSD debt including ${money(fee)} FUSD upfront interest` : 'USDG quote unavailable · debt and repayments are in FUSD') : <>${money(borrow)} received{fee > 0 ? ` · ${money(totalDebt)} debt including ${money(fee)} upfront interest` : ''}</>}
           </span>
           {debtSuggestions.length > 0 && (
             <span className="swap__suggest" role="group" aria-label="Suggested loan amounts">
@@ -663,13 +710,13 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         ) : (
           <span className="risk-tag"><i className="swap__dot" /> Liquidation risk</span>
         )}
-        <span>Current max borrow <b>{quoteReady && spy > 0 ? `${formatOpeningMax(maxBorrowWei)} FUSD` : '−'}</b></span>
+				<span>Current max borrow <b>{quoteReady && spy > 0 ? `${formatLoanMax(maxBorrowWei)} ${loanToken}` : '−'}</b></span>
       </div>
       <div className="swap__meta swap__meta--right">
-        <span>Liquidation price <b>{active ? `$${money(liquidationPrice)}` : '−'}</b></span>
+        <span>Liquidation price <b>{active && (!usdgSelected || quoteReady) ? `$${money(liquidationPrice)}` : '−'}</b></span>
       </div>
       <div className="swap__meta swap__meta--right">
-        <span>LTV <b>{active ? pct(ltv * 100, 1) : '−'}</b>{active && <em> ({pct(collateralRatio * 100, 0)} CR)</em>}</span>
+        <span>LTV <b>{active && (!usdgSelected || quoteReady) ? pct(ltv * 100, 1) : '−'}</b>{active && (!usdgSelected || quoteReady) && <em> ({pct(collateralRatio * 100, 0)} CR)</em>}</span>
       </div>
 
       <div className="swap__field swap__field--rate">
@@ -697,7 +744,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 						)}
 					</div>
         </div>
-        <span className="swap__usd">${money(annualInterest)} {loanToken} / year</span>
+				<span className="swap__usd">{usdgSelected && !quoteReady ? '−' : money(annualInterest)} FUSD / year</span>
       </div>
       {/* The right-hand slot used to show a redemption-queue amount:
           the debt sitting on cheaper rates, and so ahead of this position in
@@ -718,8 +765,10 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       </div>
 
       {protocolError && active && rate !== 0 && <p className="warn">{protocolError}</p>}
+			{usdgSelected && amountError && !active && <p className="warn">{amountError}</p>}
+			{usdgSelected && (openingState.error || openingQuote.error) && <p className="warn" role="alert">{(openingState.error || openingQuote.error)?.message}</p>}
       {quoteReady && collateralWei > 0n && maxBorrowWei === 0n && (
-        <p className="warn">No opening amount at cent precision meets the minimum debt and current collateral limits. Increase your collateral.</p>
+				<p className="warn">{usdgSelected ? 'No USDG output meets the minimum FUSD debt, collateral limits and available exchange liquidity.' : 'No opening amount at cent precision meets the minimum debt and current collateral limits. Increase your collateral.'}</p>
       )}
       {insufficientSpy && <p className="warn">Your wallet does not have enough testnet SPY for the collateral.</p>}
       {chainState.isError && <p className="warn">Could not read the Robinhood testnet contracts. Try again before submitting.</p>}
@@ -745,9 +794,9 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       {marketClosed && <MarketClosedNotice paused="Opening positions is" />}
       <Button
         variant="primary"
-        disabled={usdgSelected || rate === 0 || (wallet.connected && (marketClosed || !active || Boolean(protocolError) || unsafe || insufficientSpy || pending || !chainReady || !feeReady || chainState.isError || openingQuote.isError))}
+        disabled={rate === 0 || (wallet.connected && (marketClosed || !active || Boolean(protocolError) || unsafe || insufficientSpy || pending || !chainReady || !feeReady || chainState.isError || openingQuote.isError))}
         onClick={() => {
-          if (!usdgSelected) void openTrove();
+					void openTrove();
         }}
       >
         {submitLabel}
@@ -767,7 +816,8 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       </details>
       <details className="swap__note">
         <summary>What happens when you open a position?</summary>
-        <p>{enableAccounts
+				{usdgSelected && <p>USDG uses the direct wallet zapper, never the account service. Sign a SPY permit and supply 0.001 ETH plus network fees. The position borrows FUSD and swaps it for at least your requested USDG. Debt, interest, liquidation risk and repayments remain in FUSD. Favorable swap proceeds are forwarded by the replacement zapper; USDG repayment is not supported.</p>}
+        <p>{enableAccounts && !usdgSelected
           ? 'Your account service opens the position with your SPY collateral and mints FUSD.'
           : 'Sign a permit for the exact SPY collateral, then confirm one transaction with 0.001 ETH for liquidator compensation, plus network fees. The zapper wraps that ETH, deposits your SPY, and mints FUSD. No separate approval or wrapping transactions are needed.'}</p>
         <p>Max includes the upfront fee and the live branch collateral requirement. It is a boundary, not a guarantee, because price and accrued debt can change before execution. If your amount no longer fits, you must review it before submitting.</p>
