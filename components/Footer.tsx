@@ -89,6 +89,14 @@ export function Footer() {
           </a>
           <RisksDialog variant="link" label="Risks" />
           <VersionStamp />
+			<a
+				className="site-footer__link"
+				href="https://status.florin.so"
+				target="_blank"
+				rel="noopener noreferrer"
+			>
+				Status
+			</a>
         </div>
 
         <div className="site-footer__end">
