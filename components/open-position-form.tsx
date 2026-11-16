@@ -125,10 +125,6 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   const account = wallet.address as Address | null;
   const [spyStr, setSpyStr] = useState('');
   const [debtStr, setDebtStr] = useState('');
-	const [autoMaxLoan, setAutoMaxLoan] = useState<{
-		account: Address | null;
-		collateral: bigint;
-	} | null>(null);
   const [rate, setRate] = useState(DEFAULT_RATE);
   // USDG is offered ahead of support for it: picking it shows the loan in USDG
   // and holds the submit button disabled until borrowing USDG is wired up.
@@ -251,22 +247,6 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 		if (symbol !== loanToken) captureEvent('loan_token_selected', { context: 'open_position', asset: symbol });
 		setLoanToken(symbol);
 	}
-
-	// Collateral Max changes the quote key. Wait for that collateral's live
-	// fee-inclusive capacity, then fill once; never follow subsequent price updates.
-	useEffect(() => {
-		if (!autoMaxLoan) return;
-		if (pending || !wallet.connected || account !== autoMaxLoan.account
-			|| collateralWei !== autoMaxLoan.collateral || debtStr.trim() !== ''
-			|| openingQuote.isError || openingState.isError) {
-			setAutoMaxLoan(null);
-			return;
-		}
-		if (!quoteReady) return;
-		setAutoMaxLoan(null);
-		if (maxBorrowWei > 0n) setDebtStr(formatOpeningMax(maxBorrowWei));
-	}, [autoMaxLoan, pending, wallet.connected, account, collateralWei, debtStr,
-		openingQuote.isError, openingState.isError, quoteReady, maxBorrowWei]);
 
   const walletBalance = chainState.data ? Number(formatUnits(chainState.data.balance, 18)) : 0;
   const protocolError = quoteReady && quote ? validateOpeningAmount(collateralWei, borrowedWei, rateWei, quote.fee, quote.capacity) : null;
@@ -584,7 +564,6 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 					<input autoFocus disabled={pending} className="swap__amount" inputMode="decimal" placeholder="0.00" value={spyStr}
             onChange={(event) => {
               markFormStarted('collateral');
-							setAutoMaxLoan(null);
               setSpyStr(event.target.value);
             }} aria-label="SPY collateral" />
           <button
@@ -596,10 +575,9 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
               if (pending || !wallet.connected || !chainState.data || chainState.isError || chainState.data.balance <= 0n) return;
               markFormStarted('collateral');
               captureEvent('max_amount_selected', { context: 'open_position', asset: 'SPY' });
+              // Collateral only. The loan stays the user's choice, typed or
+              // picked from the risk-coloured suggestions.
               setSpyStr(formatUnits(chainState.data.balance, 18));
-							setAutoMaxLoan(debtStr.trim() === ''
-								? { account, collateral: chainState.data.balance }
-								: null);
             }}
           >
             Max
@@ -624,7 +602,6 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
           <input disabled={pending} className="swap__amount" inputMode="decimal" placeholder="10.00" value={debtStr}
             onChange={(event) => {
               markFormStarted('borrow_amount');
-							setAutoMaxLoan(null);
               setDebtStr(event.target.value.replaceAll(',', ''));
             }} aria-label={`${loanToken} to borrow`} />
           <button
