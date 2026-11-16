@@ -2416,6 +2416,43 @@ input:focus-visible {
   min-width: 0;
 }
 
+.swap__row--opening-rate {
+	align-items: flex-start;
+}
+
+/* Keep the zero-rate marker anchored to the slider's minimum, not the readout. */
+.swap__rate-control {
+	flex: 1;
+	min-width: 0;
+	align-self: flex-start;
+}
+
+.swap__rate-control .swap__slider {
+	display: block;
+	width: 100%;
+	margin: 12px 0 0;
+}
+
+.swap__zero-rate {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	gap: 4px;
+	margin-top: 6px;
+	color: var(--gray-2);
+	font-size: 11px;
+	line-height: 1.4;
+}
+
+.swap__zero-rate-caret {
+	width: 0;
+	height: 0;
+	margin-left: 3px;
+	border-left: 5px solid transparent;
+	border-right: 5px solid transparent;
+	border-bottom: 5px solid currentColor;
+}
+
 /* ---- manage: position picker -------------------------------------------------- */
 
 /* Shown only when a wallet holds more than one position. A native <select> can

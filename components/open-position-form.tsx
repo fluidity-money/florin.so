@@ -116,6 +116,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   const marketClosed = useMarketClosed();
   const enableAccounts = useFeature('enable-accounts');
 	const enableLoanTokenSpin = useFeature('enable-loan-token-spin', false);
+	const enableZeroPercentCaret = useFeature('enable-0-percent-caret', false);
   const { createAccountFlorinOpenPosition } = useAccount();
   const markets = useFlorinMarkets(initialMarkets);
   const prepareMarketAction = useMarketAction();
@@ -289,6 +290,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
   }
 
   async function openTrove() {
+		if (rate === 0) return;
     if (!wallet.connected || !account || !wallet.provider) {
       setError(null);
       try {
@@ -559,7 +561,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
             : stage === 'confirming'
               ? 'Waiting for confirmation…'
               : 'Mint FUSD →';
-  const submitLabel = usdgSelected ? 'Borrow USDG' : buttonLabel;
+  const submitLabel = rate === 0 ? '0% interest rate positions — coming soon' : usdgSelected ? 'Borrow USDG' : buttonLabel;
 
   return (
     <div className="swap">
@@ -700,13 +702,23 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
             {marketAverageRate !== null && <em> (avg. {pct(marketAverageRate * 100, 2)})</em>}
           </span>
         </div>
-        <div className="swap__row">
+        <div className="swap__row swap__row--opening-rate">
           <span className="swap__amount swap__amount--rate">{pct(rate * 100, 2)}</span>
-          <input disabled={pending} className="slider swap__slider" type="range" min={MIN_RATE} max={MAX_RATE} step={0.0025}
-            value={rate} onChange={(event) => {
-              markFormStarted('interest_rate');
-              setRate(parseFloat(event.target.value));
-            }} aria-label="Interest rate" />
+					<div className="swap__rate-control">
+						<input disabled={pending} className="slider swap__slider" type="range" min={0} max={MAX_RATE} step={0.0025}
+							value={rate} onChange={(event) => {
+								markFormStarted('interest_rate');
+								const nextRate = parseFloat(event.target.value);
+								// Skip unsupported positive rates below the protocol minimum in either direction.
+								setRate(nextRate > 0 && nextRate < MIN_RATE ? (rate === 0 ? MIN_RATE : 0) : nextRate);
+							}} aria-label="Interest rate" aria-describedby={enableZeroPercentCaret ? 'zero-interest-rate-note' : undefined} />
+						{enableZeroPercentCaret && (
+							<span className="swap__zero-rate" id="zero-interest-rate-note">
+								<span className="swap__zero-rate-caret" aria-hidden="true" />
+								0% interest rate positions
+							</span>
+						)}
+					</div>
         </div>
         <span className="swap__usd">${money(annualInterest)} {loanToken} / year</span>
       </div>
@@ -728,7 +740,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         )}
       </div>
 
-      {protocolError && active && <p className="warn">{protocolError}</p>}
+      {protocolError && active && rate !== 0 && <p className="warn">{protocolError}</p>}
       {quoteReady && collateralWei > 0n && maxBorrowWei === 0n && (
         <p className="warn">No opening amount at cent precision meets the minimum debt and current collateral limits. Increase your collateral.</p>
       )}
@@ -756,7 +768,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
       {marketClosed && <MarketClosedNotice paused="Opening positions is" />}
       <Button
         variant="primary"
-        disabled={usdgSelected || (wallet.connected && (marketClosed || !active || Boolean(protocolError) || unsafe || insufficientSpy || pending || !chainReady || !feeReady || chainState.isError || openingQuote.isError))}
+        disabled={usdgSelected || rate === 0 || (wallet.connected && (marketClosed || !active || Boolean(protocolError) || unsafe || insufficientSpy || pending || !chainReady || !feeReady || chainState.isError || openingQuote.isError))}
         onClick={() => {
           if (!usdgSelected) void openTrove();
         }}

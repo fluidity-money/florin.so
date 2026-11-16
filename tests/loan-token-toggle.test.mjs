@@ -88,6 +88,31 @@ test('both controls share selection; even reselecting FUSD cancels intro without
 	assert.match(form, /if \(!usdgSelected\) void openTrove\(\)/);
 });
 
+test('zero interest is a labelled preview that cannot open a position', async () => {
+	assert.match(form, /min=\{0\} max=\{MAX_RATE\}/);
+	assert.match(form, /useFeature\('enable-0-percent-caret', false\)/);
+	assert.match(form, /\{enableZeroPercentCaret && \(\s*<span className="swap__zero-rate"/);
+	const description = new Function('enableZeroPercentCaret', `return ${form.match(/aria-describedby=\{([^}]+)\}/)[1]}`);
+	for (const enabled of [false, undefined, true]) {
+		assert.equal(description(enabled), enabled ? 'zero-interest-rate-note' : undefined);
+	}
+	assert.match(form, /className="swap__zero-rate-caret" aria-hidden="true"/);
+	assert.match(form, /0% interest rate positions/);
+	assert.match(form, /disabled=\{usdgSelected \|\| rate === 0 \|\|/);
+	const label = new Function('rate', 'usdgSelected', 'buttonLabel', `return ${form.match(/const submitLabel = (.*);/)[1]}`);
+	assert.match(label(0, false, 'Mint FUSD'), /coming soon/);
+	assert.match(label(0, true, 'Mint FUSD'), /coming soon/);
+	assert.equal(label(0.005, false, 'Mint FUSD'), 'Mint FUSD');
+	// Execute the actual early guard without providing a wallet: it must return before accessing one.
+	const guard = form.match(/async function openTrove\(\) \{([\s\S]*?)if \(!wallet.connected/)[1];
+	await new Function('rate', `return (async () => { ${guard} throw new Error('guard bypassed'); })()`)(0);
+	const selection = new Function('nextRate', 'rate', 'MIN_RATE', `return ${form.match(/setRate\((nextRate >[^;]+)\);/)[1]}`);
+	assert.equal(selection(0.0025, 0, 0.005), 0.005);
+	assert.equal(selection(0.0025, 0.005, 0.005), 0);
+	assert.equal(selection(0, 0.005, 0.005), 0);
+	assert.equal(selection(0.0075, 0.005, 0.005), 0.0075);
+});
+
 test('CSS clips vertical reel, finishes on FUSD, supports reduced motion and keyboard focus', () => {
 	assert.match(css, /loan-token-toggle__window\s*\{[^}]*height: 1\.25em;[^}]*overflow: hidden;/);
 	assert.match(css, /translateY\(-7\.5em\)/);
