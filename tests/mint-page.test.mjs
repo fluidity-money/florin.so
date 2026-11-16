@@ -4,13 +4,15 @@ import test from 'node:test';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('mint page presents the borrowed token only as FUSD', () => {
-  const open = read('components/open-position-form.tsx');
+test('borrow page labels the selected output token while keeping USDG debt in FUSD', () => {
+	const open = read('components/open-position-form.tsx');
 
-  assert.doesNotMatch(open, /BOLD/);
-  assert.match(open, /FUSD minted/);
-  assert.match(open, /aria-label="FUSD to borrow"/);
-  assert.match(open, /Mint FUSD/);
+	assert.doesNotMatch(open, /BOLD/);
+	assert.match(open, /useState<LoanToken>\('FUSD'\)/);
+	assert.match(open, /aria-label=\{`\$\{loanToken\} to borrow`\}/);
+	assert.match(open, /usdgSelected \? 'USDG borrowed' : 'FUSD minted'/);
+	assert.match(open, /usdgSelected \? 'Borrow USDG →' : 'Mint FUSD →'/);
+	assert.match(open, /Your debt and repayments are in FUSD/);
 });
 
 test('mint page shows liquidation price for the proposed position', () => {
@@ -20,12 +22,28 @@ test('mint page shows liquidation price for the proposed position', () => {
   assert.match(open, /Liquidation price/);
 });
 
-test('mint page offers a maximum FUSD amount', () => {
-  const open = read('components/open-position-form.tsx');
-
-  assert.match(open, /className="swap__max"/);
-  assert.match(open, /setDebtStr\(formatOpeningMax\(current.maxPrincipal\)\)/);
-  assert.match(open, />\s*Max\s*</);
+test('borrow Max uses the selected token capacity and requires fresh state and quote', () => {
+	const open = read('components/open-position-form.tsx');
+	const body = open.match(/captureEvent\('max_amount_selected', \{ context: 'open_position', asset: loanToken \}\);([\s\S]*?)\n\s*\}\}/)[1];
+	const run = new Function('usdgSelected', 'pending', 'quoteReady', 'openingState', 'openingQuote', 'requireOpeningQuote', 'formatLoanMax', 'setDebtStr', 'reportError', body);
+	for (const usdg of [false, true]) {
+		for (const scenario of ['ready', 'pending', 'unready', 'state-error', 'quote-error']) {
+			const state = { invalid: scenario === 'state-error' };
+			const quote = { invalid: scenario === 'quote-error', maxPrincipal: 123n, maxUsdg: 456n };
+			const reads = [], values = [], errors = [];
+			run(usdg, scenario === 'pending', scenario !== 'unready', state, quote, value => {
+				reads.push(value);
+				if (value.invalid) throw new Error('stale quote');
+				return value;
+			}, value => value.toString(), value => values.push(value), error => errors.push(error));
+			assert.deepEqual(values, scenario === 'ready' ? [usdg ? '456' : '123'] : []);
+			assert.deepEqual(reads, scenario === 'state-error' ? [state] : [state, quote]);
+			assert.equal(errors.length, scenario.endsWith('-error') ? 1 : 0);
+		}
+	}
+	assert.match(open, /disabled=\{pending \|\| !quoteReady \|\| maxBorrowWei <= 0n\}/);
+	assert.match(open, /usdgSelected && swap \? formatUnits\(amount, swap.decimals\) : formatOpeningMax\(amount\)/);
+	assert.match(open, />\s*Max\s*</);
 });
 
 test('mint page uses the live market average without inventing queue depth', () => {

@@ -84,8 +84,9 @@ test('both controls share selection; even reselecting FUSD cancels intro without
 	}
 	assert.doesNotMatch(body, /setDebtStr|setSpyStr|setAutoMaxLoan/);
 	assert.match(form, /onIntroEnd=\{\(\) => setLoanTokenIntro\(false\)\}/);
-	assert.match(form, /disabled=\{usdgSelected \|\|/);
-	assert.match(form, /if \(!usdgSelected\) void openTrove\(\)/);
+	const submit = form.match(/<Button\s+variant="primary"[\s\S]*?\{submitLabel\}[\s\S]*?<\/Button>/)[0];
+	assert.doesNotMatch(submit, /usdgSelected/);
+	assert.match(submit, /void openTrove\(\)/);
 });
 
 test('zero interest is a labelled preview that cannot open a position', async () => {
@@ -98,7 +99,12 @@ test('zero interest is a labelled preview that cannot open a position', async ()
 	}
 	assert.match(form, /className="swap__zero-rate-caret" aria-hidden="true"/);
 	assert.match(form, /0% interest rate positions/);
-	assert.match(form, /disabled=\{usdgSelected \|\| rate === 0 \|\|/);
+	const disabledExpression = form.match(/disabled=\{(rate === 0[^\n]+)\}/)[1];
+	const disabled = new Function('rate', 'wallet', 'marketClosed', 'active', 'protocolError', 'unsafe', 'insufficientSpy', 'pending', 'chainReady', 'feeReady', 'chainState', 'openingQuote', `return ${disabledExpression}`);
+	for (const connected of [false, true]) {
+		assert.equal(disabled(0, { connected }, false, true, null, false, false, false, true, true, { isError: false }, { isError: false }), true);
+		assert.equal(disabled(0.005, { connected }, false, true, null, false, false, false, true, true, { isError: false }, { isError: false }), false);
+	}
 	const label = new Function('rate', 'usdgSelected', 'buttonLabel', `return ${form.match(/const submitLabel = (.*);/)[1]}`);
 	assert.match(label(0, false, 'Mint FUSD'), /coming soon/);
 	assert.match(label(0, true, 'Mint FUSD'), /coming soon/);

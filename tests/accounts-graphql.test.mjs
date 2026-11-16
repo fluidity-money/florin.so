@@ -25,7 +25,14 @@ test('useAccount signs the account payload and exposes the complete account-posi
 test('opening a position uses the account mutation only behind enable-accounts', () => {
   assert.match(openPosition, /useFeature\('enable-accounts'\)/);
   assert.match(openPosition, /useAccount\(\)/);
-  assert.match(openPosition, /if \(enableAccounts\)/);
+	const accountGate = openPosition.match(/if \((enableAccounts[^)]*)\) \{/);
+	assert.ok(accountGate, 'account-service branch must have an explicit gate');
+	const usesAccountService = new Function('enableAccounts', 'usdgSelected', `return ${accountGate[1]}`);
+	for (const enabled of [false, true]) {
+		for (const usdg of [false, true]) {
+			assert.equal(usesAccountService(enabled, usdg), enabled && !usdg);
+		}
+	}
   assert.match(openPosition, /createAccountFlorinOpenPosition\(\{/);
   assert.match(openPosition, /asset: 'SPY'/);
   assert.match(openPosition, /collateralAmt: collateralWei\.toString\(\)/);

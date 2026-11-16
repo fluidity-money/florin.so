@@ -37,8 +37,14 @@ test('manage position loads live positions for the wallet and handles request st
   const hook = read('lib/use-open-positions.ts');
 
   assert.match(hook, /fetch\(FLORIN_GRAPH_URL/);
-  assert.match(hook, /variables:\s*\{\s*owner\s*\}/);
-  assert.match(hook, /cache:\s*'no-store'/);
+	assert.match(hook, /const wallet = owner\?\.toLowerCase\(\) \?\? null/);
+	assert.match(hook, /method:\s*'POST'/);
+	assert.match(hook, /variables:\s*\{\s*owner:\s*wallet\s*\}/);
+	assert.match(hook, /pendingPositions\.get\(wallet\)/);
+	assert.match(hook, /if \(controller.signal.aborted\) return;\s*pendingPositions.reconcile\(wallet!, indexed, result.extensions\)/);
+	assert.match(hook, /request.owner === wallet \? request : \{ status: 'idle' as const, error: null \}/);
+	assert.match(hook, /setInterval\([\s\S]*?15_000\)/);
+	assert.match(hook, /controller.abort\(\); clearInterval\(timer\)/);
   assert.match(manage, /useOpenPositions\(w\.address\)/);
   assert.match(manage, /Loading position/);
   assert.match(manage, /Unable to load position/);
@@ -50,6 +56,12 @@ test('manage position supports owners with more than one open trove', () => {
   const manage = read('components/manage-position.tsx');
 
   assert.match(manage, /positions\.length\s*>\s*1/);
-  assert.match(manage, /setSelectedTroveId/);
-  assert.match(manage, /Trove #/);
+	assert.match(manage, /const selectionScope = `\$\{w.address\?\.toLowerCase\(\)\}:\$\{requestedPosition\}`/);
+	assert.match(manage, /selectPosition\(positions, selection\?\.scope === selectionScope \? selection.key : requestedPosition\)/);
+	assert.match(manage, /onSelect=\{key => setSelection\(\{ scope: selectionScope, key \}\)\}/);
+	assert.match(manage, /key=\{`\$\{w.address\}:\$\{positionKey\(position\)\}`\}/);
+	assert.match(manage, /key=\{positionKey\(candidate\)\}/);
+	assert.match(manage, /onSelect\(positionKey\(candidate\)\)/);
+	assert.match(manage, /shortTroveId\(position.troveId\)/);
+	assert.match(manage, /Position not available/);
 });
