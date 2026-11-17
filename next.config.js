@@ -1,19 +1,19 @@
 const { execSync } = require('node:child_process');
 const { version } = require('./package.json');
 
-// Short commit for the footer's version stamp. Vercel hands it to the build;
-// anywhere else, ask git. Empty if neither knows, and the footer then shows
-// the version alone.
-function commitSha() {
-  const fromHost = process.env.VERCEL_GIT_COMMIT_SHA;
-  if (fromHost) return fromHost.slice(0, 7);
-  try {
-    return execSync('git rev-parse --short=7 HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
-      .toString()
-      .trim();
-  } catch {
-    return '';
-  }
+// Tag-triggered deployments provide the release tag through GitHub Actions.
+// Locally, only use a tag on HEAD; untagged builds show the package version.
+function releaseTag() {
+	if (process.env.GITHUB_REF_TYPE === 'tag' && process.env.GITHUB_REF_NAME) {
+		return process.env.GITHUB_REF_NAME;
+	}
+	try {
+		return execSync('git describe --tags --exact-match HEAD', { stdio: ['ignore', 'pipe', 'ignore'] })
+			.toString()
+			.trim();
+	} catch {
+		return '';
+	}
 }
 
 /** @type {import('next').NextConfig} */
@@ -22,7 +22,7 @@ const nextConfig = {
   transpilePackages: ['@reown/appkit', '@reown/appkit-adapter-wagmi'],
   env: {
     NEXT_PUBLIC_APP_VERSION: version,
-    NEXT_PUBLIC_COMMIT_SHA: commitSha(),
+		NEXT_PUBLIC_RELEASE_TAG: releaseTag(),
   },
 };
 

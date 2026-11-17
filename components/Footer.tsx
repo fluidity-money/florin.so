@@ -20,25 +20,25 @@ function XLogo() {
 // One FUSD redeems for a dollar of collateral. Shown until FUSD has a market.
 const FUSD_REDEMPTION_USD = 1;
 
-// Which build this is, as version and short commit. The commit links to the
-// change on GitHub, so anyone can see exactly what is deployed.
+// Link the deployed tag to its source on GitHub, with a version-only fallback.
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION;
-const COMMIT_SHA = process.env.NEXT_PUBLIC_COMMIT_SHA;
+const RELEASE_TAG = process.env.NEXT_PUBLIC_RELEASE_TAG;
 
 function VersionStamp() {
-  if (!APP_VERSION) return null;
-  if (!COMMIT_SHA) return <span className="site-footer__version">v{APP_VERSION}</span>;
-  return (
-    <a
-      className="site-footer__version"
-      href={`https://github.com/fluidity-money/florin.so/commit/${COMMIT_SHA}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label={`Version ${APP_VERSION}, commit ${COMMIT_SHA}`}
-    >
-      v{APP_VERSION}-{COMMIT_SHA}
-    </a>
-  );
+	if (!RELEASE_TAG) {
+		return APP_VERSION ? <span className="site-footer__version">v{APP_VERSION}</span> : null;
+	}
+	return (
+		<a
+			className="site-footer__version"
+			href={`https://github.com/fluidity-money/florin.so/tree/${encodeURIComponent(RELEASE_TAG)}`}
+			target="_blank"
+			rel="noopener noreferrer"
+			aria-label={`Release ${RELEASE_TAG}`}
+		>
+			{RELEASE_TAG}
+		</a>
+	);
 }
 
 // Day and night. The thumb's position is drawn from <html data-theme> in CSS,
