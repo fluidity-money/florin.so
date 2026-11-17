@@ -27,7 +27,7 @@ var (
 	troveNFTABI, troveNFTABIErr   = abi.JSON(strings.NewReader(troveNFTABIJSON))
 
 	// ErrABI reports a malformed embedded ABI. It is expected to remain nil.
-	ErrABI = errors.Join(mainABIErr, boldTokenABIErr, troveNFTABIErr)
+	ErrABI = errors.Join(mainABIErr, boldTokenABIErr, troveNFTABIErr, governanceABIErr)
 )
 
 var (
@@ -1279,6 +1279,11 @@ func Topics() []common.Hash {
 type decoder func([]common.Hash, []byte) (any, error)
 
 var decoders = map[common.Hash]decoder{
+	TopicOperationQueued:                  func(t []common.Hash, d []byte) (any, error) { return UnpackOperationQueued(t, d) },
+	TopicOperationExecuted:                func(t []common.Hash, d []byte) (any, error) { return UnpackOperationExecuted(t, d) },
+	TopicOperationCancelled:               func(t []common.Hash, d []byte) (any, error) { return UnpackOperationCancelled(t, d) },
+	TopicStorageWiped:                     func(t []common.Hash, d []byte) (any, error) { return UnpackStorageWiped(t, d) },
+	TopicUpgraded:                         func(t []common.Hash, d []byte) (any, error) { return UnpackUpgraded(t, d) },
 	TopicActivePoolAddressAdded:           func(t []common.Hash, d []byte) (any, error) { return UnpackActivePoolAddressAdded(t, d) },
 	TopicActivePoolAddressChanged:         func(t []common.Hash, d []byte) (any, error) { return UnpackActivePoolAddressChanged(t, d) },
 	TopicActivePoolBoldDebtUpdated:        func(t []common.Hash, d []byte) (any, error) { return UnpackActivePoolBoldDebtUpdated(t, d) },

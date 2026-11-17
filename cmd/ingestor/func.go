@@ -23,6 +23,11 @@ import (
 
 func FilterTopics() []ethCommon.Hash {
 	return []ethCommon.Hash{
+		liquity.TopicOperationQueued,
+		liquity.TopicOperationExecuted,
+		liquity.TopicOperationCancelled,
+		liquity.TopicStorageWiped,
+		liquity.TopicUpgraded,
 		liquity.TopicActivePoolAddressAdded,
 		liquity.TopicActivePoolAddressChanged,
 		liquity.TopicActivePoolBoldDebtUpdated,
