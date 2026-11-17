@@ -71,8 +71,8 @@ jobs:
           --include '*.ts' --include '*.tsx' --include '*.js'
           --include '*.jsx' --include '*.mjs' --include '*.cjs' --include '*.py'
 
-  Deploy-Production:
-    needs: [Test-Npm, Test-Go, Check-Complexity]
+  Deploy-Vercel:
+    needs: [Test-Npm, Check-Complexity]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
