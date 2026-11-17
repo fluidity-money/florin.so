@@ -69,10 +69,9 @@ export function openingFeeLowerBound(principal: bigint, feeDebt: bigint, weighte
   return numerator <= 0n ? 0n : principal * numerator * 7n / (denominator * 365n * WAD);
 }
 
-export async function solveOpeningMax(capacity: bigint, feeDebt: bigint, weightedDebt: bigint, rate: bigint, predict: (principal: bigint) => Promise<bigint>) {
-  if (capacity < 0n || capacity > UINT256_MAX || feeDebt < 0n || weightedDebt < 0n || rate < 1n) throw new Error('Invalid opening solver inputs.');
-  if (capacity < MIN_DEBT) return 0n;
-  let low = 0n;
+// Find the highest cent allowed by the local lower-fee envelope before RPC checks.
+function openingPrincipalUpperBound(capacity: bigint, feeDebt: bigint, weightedDebt: bigint, rate: bigint) {
+	let low = 0n;
   let high = capacity / OPENING_STEP;
   // At most 256 local bigint iterations. Find an upper bound on the highest
   // executable cent, then check actual contract predictions descending from it.
@@ -82,6 +81,13 @@ export async function solveOpeningMax(capacity: bigint, feeDebt: bigint, weighte
     if (principal + openingFeeLowerBound(principal, feeDebt, weightedDebt, rate) <= capacity) low = mid;
     else high = mid - 1n;
   }
+	return low;
+}
+
+export async function solveOpeningMax(capacity: bigint, feeDebt: bigint, weightedDebt: bigint, rate: bigint, predict: (principal: bigint) => Promise<bigint>) {
+	if (capacity < 0n || capacity > UINT256_MAX || feeDebt < 0n || weightedDebt < 0n || rate < 1n) throw new Error('Invalid opening solver inputs.');
+	if (capacity < MIN_DEBT) return 0n;
+	let low = openingPrincipalUpperBound(capacity, feeDebt, weightedDebt, rate);
   // Usually one RPC: the envelope differs by < principal * 7 / (365 * 1e18)
   // wei. Bound pathological magnitudes explicitly; never return an approximation.
   for (let calls = 0; calls < 256 && low > 0n; calls++, low--) {

@@ -19,17 +19,32 @@ export function withMarketCheckpoint(data: FlorinMarkets, extensions: unknown): 
 // Never add deltas to incoming graph totals: those may already include some or
 // all of our transactions even when the checkpoint lower bound still lags.
 export function reconcileMarkets(current: MarketSnapshot | undefined, incoming: MarketSnapshot): MarketSnapshot {
-  const required = BigInt(current?.marketSync?.requiredBlock ?? '0');
-  const previous = BigInt(current?.marketSync?.indexedBlock ?? '0');
+	const sync = current?.marketSync;
+	const required = BigInt(sync?.requiredBlock ?? '0');
+	const previous = BigInt(sync?.indexedBlock ?? '0');
   const floor = required > previous ? required : previous;
   const indexed = incoming.marketSync?.indexedBlock;
   if (floor > 0n && (!indexed || BigInt(indexed) < floor)) return current!;
   return { ...incoming, marketSync: {
     ...incoming.marketSync,
-    requiredBlock: current?.marketSync?.requiredBlock,
-    receipts: current?.marketSync?.receipts,
+		requiredBlock: sync?.requiredBlock,
+		receipts: sync?.receipts,
     pending: false,
   } };
+}
+
+function addMarketAmount(value: string, amount = 0) {
+	const parsed = parseDisplayNumber(value);
+	if (parsed === null || amount === 0) return value;
+	return Math.max(0, parsed + amount).toLocaleString('en-US', {
+		useGrouping: false, maximumFractionDigits: 6,
+	});
+}
+
+function marketIncludesReceipt(sync: MarketSync | undefined, receipt: MarketReceipt) {
+	if (sync?.receipts?.includes(receipt.transactionHash)) return true;
+	const indexed = sync?.indexedBlock;
+	return Boolean(indexed && BigInt(indexed) >= receipt.blockNumber);
 }
 
 export function applyMarketReceipt(
@@ -38,33 +53,26 @@ export function applyMarketReceipt(
   receipt: MarketReceipt,
   delta: MarketDelta,
 ): MarketSnapshot | undefined {
-  if (receipt.status !== 'success' || current?.marketSync?.receipts?.includes(receipt.transactionHash)) return current;
-  const indexed = current?.marketSync?.indexedBlock;
-  if (indexed && BigInt(indexed) >= receipt.blockNumber) return current;
+	const sync = current?.marketSync;
+	if (receipt.status !== 'success' || marketIncludesReceipt(sync, receipt)) return current;
   // Capture before submission, not after a potentially already-indexed response.
   // Multiple confirmations accumulate on the existing optimistic snapshot.
-  const base = current?.marketSync?.pending ? current : before;
+  const base = sync?.pending ? current : before;
   if (!base) return current;
-  const add = (value: string, amount = 0) => {
-    const parsed = parseDisplayNumber(value);
-    return parsed === null || amount === 0 ? value : Math.max(0, parsed + amount).toLocaleString('en-US', {
-      useGrouping: false, maximumFractionDigits: 6,
-    });
-  };
-  const required = BigInt(current?.marketSync?.requiredBlock ?? '0');
+	const required = BigInt(sync?.requiredBlock ?? '0');
   return {
     ...base,
     borrowDetails: base.borrowDetails.map(row => row.collateral.name !== 'SPY' ? row : {
-      ...row, deposited: add(row.deposited, delta.deposited), debtIssued: add(row.debtIssued, delta.debtIssued),
+      ...row, deposited: addMarketAmount(row.deposited, delta.deposited), debtIssued: addMarketAmount(row.debtIssued, delta.debtIssued),
     }),
     earnRewards: base.earnRewards.map(row => row.collateral.name !== 'SPY' ? row : {
-      ...row, poolSize: add(row.poolSize, delta.poolSize),
+      ...row, poolSize: addMarketAmount(row.poolSize, delta.poolSize),
     }),
     marketSync: {
       indexedBlock: base.marketSync?.indexedBlock,
       requiredBlock: String(required > receipt.blockNumber ? required : receipt.blockNumber),
       pending: true,
-      receipts: [...(current?.marketSync?.receipts ?? []), receipt.transactionHash],
+      receipts: [...(sync?.receipts ?? []), receipt.transactionHash],
     },
   };
 }

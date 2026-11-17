@@ -40,7 +40,9 @@ test('opening a position uses the account mutation only behind enable-accounts',
   assert.match(openPosition, /annualInterestRate: rateWei\.toString\(\)/);
   assert.match(openPosition, /ownerIndex: ownerIndex\.toString\(\)/);
   assert.match(openPosition, /maxUpfrontFee: feeLimit\.toString\(\)/);
-  assert.match(openPosition, /receiver: account/);
+  assert.match(openPosition, /const owner = account;/);
+  assert.match(openPosition, /receiver: owner/);
+  assert.match(openPosition, /if \(enableAccounts && !usdgSelected\) \{\s*await openAccountPosition\(\);\s*return;/);
 });
 
 test('account service and authority are documented as public deployment configuration', () => {

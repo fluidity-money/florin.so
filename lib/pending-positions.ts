@@ -45,6 +45,12 @@ type WalletState = {
   watermark: bigint | null;
 };
 
+// A checkpoint or an indexed receipt can advance the watermark, never lower it.
+function advanceWatermark(current: WalletState, block: bigint | null) {
+	if (block === null) return;
+	if (current.watermark === null || block > current.watermark) current.watermark = block;
+}
+
 // Module-scoped, wallet-scoped session cache survives client route navigation.
 // No TTL: elapsed time is not evidence that the indexer has caught up.
 export function createPositionCache() {
@@ -86,10 +92,10 @@ export function createPositionCache() {
       for (const [id, pending] of current.pending) {
         if (indexed.has(id) || (block !== null && block >= pending.block)) {
           current.pending.delete(id);
-          if (current.watermark === null || current.watermark < pending.block) current.watermark = pending.block;
+					advanceWatermark(current, pending.block);
         } else merged.set(id, pending.position);
       }
-      if (block !== null && (current.watermark === null || block > current.watermark)) current.watermark = block;
+			advanceWatermark(current, block);
       current.positions = [...merged.values()];
       notify();
     },
