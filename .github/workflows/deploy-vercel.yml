@@ -53,8 +53,26 @@ jobs:
       - name: Run Go tests
         run: go test ./...
 
+  Check-Complexity:
+    needs: Snyk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install BCA
+        run: python -m pip install big-code-analysis-cli==2.5.1
+      - name: Check code complexity
+        # Use the hook's thresholds and baseline, but propagate every failure.
+        run: >-
+          bca check --config bca.toml --no-summary --no-remediation
+          --include '*.ts' --include '*.tsx' --include '*.js'
+          --include '*.jsx' --include '*.mjs' --include '*.cjs' --include '*.py'
+
   Deploy-Production:
-    needs: [Test-Npm, Test-Go]
+    needs: [Test-Npm, Test-Go, Check-Complexity]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
