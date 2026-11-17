@@ -7,10 +7,61 @@ on:
     tags:
       - 'release-*'
 jobs:
-  Deploy-Production:
+  Snyk:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Snyk CLI
+        run: npm install --global snyk
+      - name: Check dependencies with Snyk
+        run: snyk test --file=package.json --dev
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  Test-Npm:
+    needs: Snyk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Run npm tests
+        run: npm test
+
+  Test-Go:
+    needs: Snyk
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Run Go tests
+        run: go test ./...
+
+  Deploy-Production:
+    needs: [Test-Npm, Test-Go]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
       - name: Pull Vercel Environment Information
