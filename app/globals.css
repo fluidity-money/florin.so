@@ -2840,6 +2840,89 @@ input:focus-visible {
   cursor: default;
 }
 
+/* Borrow reserves the normal quote layout before asynchronous data arrives.
+   Minimums (not fixed heights) keep exceptional values and warnings readable. */
+.swap--borrow .swap__foot {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.swap--borrow .swap__loan-summary {
+	display: grid;
+	line-height: 1.5;
+	overflow-wrap: anywhere;
+}
+
+.swap--borrow .swap__loan-summary > span {
+	min-height: 1.5em;
+}
+
+.swap--borrow .swap__loan-summary > span:last-child {
+	min-height: 3em;
+}
+
+.swap--borrow .swap__suggest {
+	min-height: 25px;
+	align-items: start;
+}
+
+.swap--borrow .swap__meta {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	line-height: 1.5;
+	min-height: calc(3em + 6px);
+	align-items: start;
+}
+
+.swap--borrow .swap__meta > span {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.swap--borrow .swap__meta > span:nth-child(2) {
+	text-align: right;
+}
+
+.swap--borrow .swap__meta--right {
+	grid-template-columns: minmax(0, 1fr);
+	text-align: right;
+	min-height: 1.5em;
+}
+
+.swap--borrow .swap__field > .swap__usd {
+	min-height: 1.5em;
+	line-height: 1.5;
+	overflow-wrap: anywhere;
+}
+
+.swap--borrow .swap__market-average {
+	display: block;
+	line-height: 1.5;
+}
+
+@media (max-width: 540px) {
+	.swap--borrow .swap__field > .swap__usd {
+		min-height: 3em;
+	}
+
+	.swap--borrow .swap__loan-summary > span {
+		min-height: 3em;
+	}
+
+	.swap--borrow .swap__loan-summary > span:last-child {
+		min-height: 4.5em;
+	}
+
+	.swap--borrow .swap__meta {
+		grid-template-columns: minmax(0, 1fr);
+		gap: 0;
+	}
+
+	.swap--borrow .swap__meta > span {
+		min-height: 1.5em;
+	}
+}
+
 .swap__note p {
   margin: 10px 0 0;
   line-height: 1.5;

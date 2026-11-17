@@ -590,7 +590,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 	const submitLabel = rate === 0 ? '0% interest rate positions — coming soon' : buttonLabel;
 
   return (
-    <div className="swap">
+		<div className="swap swap--borrow">
       <h1 className="swap__title">
         <span>Borrow</span>
 				<LoanTokenToggle
@@ -674,11 +674,12 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
           />
         </div>
         <div className="swap__foot">
-          <span className="swap__usd">
-						{usdgSelected ? (quoteReady ? `At least ${formatUnits(outputWei, swap!.decimals)} USDG received · ${formatUnits(borrowedWei, 18)} FUSD principal · ${money(totalDebt)} FUSD debt including ${money(fee)} FUSD upfront interest` : 'USDG quote unavailable · debt and repayments are in FUSD') : <>${money(borrow)} received{fee > 0 ? ` · ${money(totalDebt)} debt including ${money(fee)} upfront interest` : ''}</>}
-          </span>
-          {debtSuggestions.length > 0 && (
-            <span className="swap__suggest" role="group" aria-label="Suggested loan amounts">
+					<div className="swap__usd swap__loan-summary">
+						<span>{usdgSelected ? (quoteReady ? `At least ${formatUnits(outputWei, swap!.decimals)} USDG received` : 'USDG quote unavailable') : `$${money(borrow)} received`}</span>
+						<span>{usdgSelected ? (quoteReady ? `${formatUnits(borrowedWei, 18)} FUSD principal` : 'Debt and repayments are in FUSD') : `${money(borrow)} FUSD principal`}</span>
+						<span>{quoteReady ? `${money(totalDebt)} FUSD debt including ${money(fee)} FUSD upfront interest` : '− FUSD debt including − FUSD upfront interest'}</span>
+					</div>
+					<span className="swap__suggest" role={debtSuggestions.length > 0 ? 'group' : undefined} aria-label={debtSuggestions.length > 0 ? 'Suggested loan amounts' : undefined}>
               {debtSuggestions.map(({ amount, risk }) => (
                 <button
                   key={risk}
@@ -697,8 +698,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
                   {chipAmount(amount)}
                 </button>
               ))}
-            </span>
-          )}
+					</span>
         </div>
       </div>
       <div className="swap__meta">
@@ -723,7 +723,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
         <div className="swap__row">
           <span className="swap__label">
             Set interest rate
-            {marketAverageRate !== null && <em> (avg. {pct(marketAverageRate * 100, 2)})</em>}
+						<em className="swap__market-average">{marketAverageRate !== null ? `(avg. ${pct(marketAverageRate * 100, 2)})` : '(avg. −)'}</em>
           </span>
         </div>
         <div className="swap__row swap__row--opening-rate">
@@ -736,12 +736,10 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 								// Skip unsupported positive rates below the protocol minimum in either direction.
 								setRate(nextRate > 0 && nextRate < MIN_RATE ? (rate === 0 ? MIN_RATE : 0) : nextRate);
 							}} aria-label="Interest rate" aria-describedby={enableZeroPercentCaret ? 'zero-interest-rate-note' : undefined} />
-						{enableZeroPercentCaret && (
-							<span className="swap__zero-rate" id="zero-interest-rate-note">
+							<span className="swap__zero-rate" id="zero-interest-rate-note" aria-hidden={!enableZeroPercentCaret} style={{ visibility: enableZeroPercentCaret ? 'visible' : 'hidden' }}>
 								<span className="swap__zero-rate-caret" aria-hidden="true" />
 								0% interest rate positions
 							</span>
-						)}
 					</div>
         </div>
 				<span className="swap__usd">{usdgSelected && !quoteReady ? '−' : money(annualInterest)} FUSD / year</span>

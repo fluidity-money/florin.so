@@ -92,7 +92,11 @@ test('both controls share selection; even reselecting FUSD cancels intro without
 test('zero interest is a labelled preview that cannot open a position', async () => {
 	assert.match(form, /min=\{0\} max=\{MAX_RATE\}/);
 	assert.match(form, /useFeature\('enable-0-percent-caret', false\)/);
-	assert.match(form, /\{enableZeroPercentCaret && \(\s*<span className="swap__zero-rate"/);
+	assert.match(form, /className="swap__zero-rate"[^>]*aria-hidden=\{!enableZeroPercentCaret\}/);
+	const visibility = new Function('enableZeroPercentCaret', `return ${form.match(/visibility: (enableZeroPercentCaret[^}]+)/)[1]}`);
+	for (const enabled of [false, undefined, true]) {
+		assert.equal(visibility(enabled), enabled ? 'visible' : 'hidden');
+	}
 	const description = new Function('enableZeroPercentCaret', `return ${form.match(/aria-describedby=\{([^}]+)\}/)[1]}`);
 	for (const enabled of [false, undefined, true]) {
 		assert.equal(description(enabled), enabled ? 'zero-interest-rate-note' : undefined);
