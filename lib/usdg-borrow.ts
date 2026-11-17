@@ -30,6 +30,29 @@ export type BorrowState = OpeningState & { swap?: UsdgState };
 type Client = Pick<PublicClient, 'readContract' | 'getBlock' | 'simulateContract' | 'getChainId'>;
 const same = (a: Address, b: Address) => a.toLowerCase() === b.toLowerCase();
 
+const EXPECTED_USDG_WIRING = {
+	exchange: EXCHANGE,
+	usdg: USDG,
+	bold: CONTRACTS.boldToken,
+	manager: CONTRACTS.troveManager,
+	collateral: CONTRACTS.spyToken,
+	bo: CONTRACTS.borrowerOperations,
+	weth: CONTRACTS.weth,
+	exchangeBold: CONTRACTS.boldToken,
+	exchangeToken: USDG,
+	oracle: ORACLE,
+} as const;
+
+type UsdgWiring = Record<keyof typeof EXPECTED_USDG_WIRING, Address>;
+
+function validateUsdgWiring(wiring: UsdgWiring) {
+	for (const key of Object.keys(EXPECTED_USDG_WIRING) as (keyof UsdgWiring)[]) {
+		if (!same(wiring[key], EXPECTED_USDG_WIRING[key])) {
+			throw new Error('USDG zapper or exchange wiring does not match the SPY branch.');
+		}
+	}
+}
+
 export async function readUsdgOpeningState(client: Client): Promise<BorrowState> {
 	if (!isAddress(USDG_ZAPPER)) throw new Error('Invalid NEXT_PUBLIC_USDG_ZAPPER_ADDRESS.');
 	if (await client.getChainId() !== 46630) throw new Error('Wrong USDG borrowing network.');
@@ -58,12 +81,7 @@ export async function readUsdgOpeningState(client: Client): Promise<BorrowState>
 		client.readContract({ address: CONTRACTS.boldToken, abi: erc20Abi, functionName: 'allowance', args: [USDG_ZAPPER, EXCHANGE], blockNumber }),
 		client.getBlock({ blockNumber }),
 	]);
-	if (!same(exchange, EXCHANGE) || !same(usdg, USDG) || !same(bold, CONTRACTS.boldToken)
-		|| !same(manager, CONTRACTS.troveManager) || !same(collateral, CONTRACTS.spyToken)
-		|| !same(bo, CONTRACTS.borrowerOperations) || !same(weth, CONTRACTS.weth)
-		|| !same(exchangeBold, CONTRACTS.boldToken) || !same(exchangeToken, USDG) || !same(oracle, ORACLE)) {
-		throw new Error('USDG zapper or exchange wiring does not match the SPY branch.');
-	}
+	validateUsdgWiring({ exchange, usdg, bold, manager, collateral, bo, weth, exchangeBold, exchangeToken, oracle });
 	if (boldDecimals !== 18 || decimals > 18 || feedDecimals > 18
 		|| priceScale !== 10n ** BigInt(18 - decimals) || oracleScale !== 10n ** BigInt(feedDecimals)) {
 		throw new Error('Unsupported USDG exchange decimals or scales.');
