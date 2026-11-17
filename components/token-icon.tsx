@@ -11,7 +11,7 @@
 // the existing SVG as a CSS mask rather than being a second copy of the logo
 // baked to a fixed hue.
 
-export type TokenSymbol = 'SPY' | 'FUSD' | 'USDG';
+export type TokenSymbol = 'SPY' | 'FUSD' | 'USDG' | 'frxUSD';
 
 const IMAGE_SRC: Partial<Record<TokenSymbol, string>> = {
   SPY: '/spy-token.png',
@@ -39,6 +39,20 @@ export function TokenIcon({
         height={size}
         style={{ width: px, height: px }}
       />
+    );
+  }
+
+  // frxUSD has no artwork here yet: a neutral disc with its short name, until
+  // Frax's own token image is added to /public like SPY and USDG.
+  if (symbol === 'frxUSD') {
+    return (
+      <span
+        className="tok-icon tok-icon--text"
+        aria-hidden="true"
+        style={{ width: px, height: px, fontSize: `${Math.max(7, Math.round(size * 0.32))}px` }}
+      >
+        frx
+      </span>
     );
   }
 

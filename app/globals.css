@@ -4271,3 +4271,130 @@ input:focus-visible {
 :where([data-theme="dark"]) .theme-switch__thumb { transform: translateX(26px); }
 :where([data-theme="dark"]) .theme-switch__icon--sun { color: inherit; opacity: 0.72; }
 :where([data-theme="dark"]) .theme-switch__icon--moon { color: var(--paper); opacity: 1; }
+
+
+/* frxUSD until its own artwork is added: a neutral disc with its short name. */
+.tok-icon--text {
+  display: inline-grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+/* Swap page (unlisted, /swap). The form reuses the borrow form's fields; these
+   are the parts it adds: the direction switch, the details list, the read-only
+   output and the liquidity cards. */
+.swap-flip {
+  display: flex;
+  justify-content: center;
+  margin: -14px 0;
+  position: relative;
+  z-index: 1;
+}
+
+.swap-flip__btn {
+  width: 38px;
+  height: 38px;
+  border: 1px solid var(--line-soft, rgba(30, 30, 30, 0.16));
+  border-radius: 12px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.12em;
+  cursor: pointer;
+}
+
+.swap-flip__btn:hover {
+  border-color: var(--sp-biscay);
+  color: var(--sp-biscay);
+}
+
+.swap-flip__btn:focus-visible {
+  outline: 2px solid var(--sp-biscay);
+  outline-offset: 2px;
+}
+
+.swap__amount--out {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.swap-details {
+  margin: 4px 0 2px;
+  padding: 0 4px;
+}
+
+.swap-details div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 34px;
+}
+
+.swap-details dt {
+  font-size: 13px;
+  color: var(--gray-2);
+}
+
+.swap-details dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: right;
+}
+
+.pair-icons {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.pair-icons .tok-icon + .tok-icon {
+  margin-left: -9px;
+  box-shadow: 0 0 0 2px var(--sp-hawkes);
+}
+
+.lp {
+  margin-top: 36px;
+}
+
+.lp__title {
+  margin: 0 0 4px;
+  padding: 0 4px;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.lp .mgmt__hint {
+  margin-bottom: 12px;
+}
+
+.lp__foot {
+  align-items: center;
+}
+
+.lp__add {
+  border: 1px solid var(--sp-biscay);
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: transparent;
+  color: var(--sp-biscay);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.lp__add:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
