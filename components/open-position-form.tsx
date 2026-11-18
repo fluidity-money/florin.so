@@ -612,8 +612,13 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 				</div>
 				<div className="swap__foot">
 					<div className="swap__usd swap__loan-summary">
-						<span>{usdgSelected ? (quoteReady ? `At least ${formatUnits(outputWei, swap!.decimals)} USDG received` : 'USDG quote unavailable') : `$${money(borrow)} received`}</span>
-						<span>{usdgSelected ? (quoteReady ? `${formatUnits(borrowedWei, 18)} FUSD principal` : 'Debt and repayments are in FUSD') : `${money(borrow)} FUSD principal`}</span>
+						{/* FUSD loans: the amount field already shows what is received. */}
+						{usdgSelected && (
+							<>
+								<span>{quoteReady ? `At least ${formatUnits(outputWei, swap!.decimals)} USDG received` : 'USDG quote unavailable'}</span>
+								<span>{quoteReady ? `${formatUnits(borrowedWei, 18)} FUSD principal` : 'Debt and repayments are in FUSD'}</span>
+							</>
+						)}
 						<span>{quoteReady ? `${money(totalDebt)} FUSD debt including ${money(fee)} FUSD upfront interest` : '− FUSD debt including − FUSD upfront interest'}</span>
 					</div>
 					<span className="swap__suggest" role={debtSuggestions.length > 0 ? 'group' : undefined} aria-label={debtSuggestions.length > 0 ? 'Suggested loan amounts' : undefined}>
