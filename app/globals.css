@@ -2857,13 +2857,15 @@ input:focus-visible {
 	min-height: 1.5em;
 }
 
-.swap--borrow .swap__loan-summary > span:last-child {
-	min-height: 3em;
-}
-
 .swap--borrow .swap__suggest {
 	min-height: 25px;
 	align-items: start;
+}
+
+/* No suggested loan sizes (no collateral yet, or a USDG loan): the loan box
+   closes up rather than keep an empty row. */
+.swap--borrow .swap__suggest:empty {
+	display: none;
 }
 
 .swap--borrow .swap__meta {
@@ -2907,10 +2909,6 @@ input:focus-visible {
 
 	.swap--borrow .swap__loan-summary > span {
 		min-height: 3em;
-	}
-
-	.swap--borrow .swap__loan-summary > span:last-child {
-		min-height: 4.5em;
 	}
 
 	.swap--borrow .swap__meta {
