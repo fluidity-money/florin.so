@@ -27,7 +27,15 @@ test('swap offers SPY, USDG and frxUSD against FUSD, routed through Uniswap', as
     assert.ok(pool, `pool for ${asset}/FUSD`);
     assert.equal(pool.venue, 'Uniswap');
   }
-  assert.match(read('components/swap-page.tsx'), /Provide liquidity/);
+});
+
+test('a tab bar switches between swapping and providing liquidity', () => {
+  const page = read('components/swap-page.tsx');
+  assert.match(page, /role="tablist"/);
+  assert.match(page, /\['swap', 'liquidity'\] as const/);
+  assert.match(page, /view === 'swap' && \(/);
+  assert.match(page, /view === 'liquidity' && \(/);
+  assert.match(page, /Add liquidity/);
 });
 
 test('the preview prices SPY at the oracle and stablecoins at a dollar', async () => {

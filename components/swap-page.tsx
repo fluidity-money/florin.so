@@ -21,11 +21,15 @@ import {
 } from '../lib/swap';
 
 // Swap into and out of FUSD, and provide liquidity to the pools behind it.
+// A tab bar switches between the two, like the one on Manage.
 //
 // Interface only for now: the amounts shown are a preview (SPY at the oracle
 // price, stablecoins at a dollar) and the swap button stays disabled. The
 // backend wires the pool quote and the swap and add-liquidity transactions
 // in later. The page is unlisted: nothing in the site links here.
+
+type SwapView = 'swap' | 'liquidity';
+const VIEW_LABEL: Record<SwapView, string> = { swap: 'Swap', liquidity: 'Liquidity' };
 
 const SLIPPAGE_LABEL: Record<Slippage, string> = { 0.001: '0.1%', 0.005: '0.5%', 0.01: '1%' };
 
@@ -53,6 +57,7 @@ export function SwapPage() {
   const [asset, setAsset] = useState<SwapAsset>('USDG');
   const [amountStr, setAmountStr] = useState('');
   const [slippage, setSlippage] = useState<Slippage>(0.005);
+  const [view, setView] = useState<SwapView>('swap');
 
   const from: SwapToken = toFusd ? asset : 'FUSD';
   const to: SwapToken = toFusd ? 'FUSD' : asset;
@@ -88,122 +93,142 @@ export function SwapPage() {
   return (
     <div className="swap">
       <h1 className="swap__title">
-        <span>Swap</span>
+        <span>{VIEW_LABEL[view]}</span>
         <span className="swap__pair">
           <TokenIcon symbol="FUSD" size={30} />
           <span className="swap__tok">FUSD</span>
         </span>
       </h1>
 
-      <div className="swap__field">
-        <span className="swap__label">You pay</span>
-        <div className="swap__row">
-          <input
-            className="swap__amount"
-            inputMode="decimal"
-            placeholder="0.00"
-            value={amountStr}
-            onChange={(event) => setAmountStr(event.target.value.replaceAll(',', ''))}
-            aria-label={`${from} to pay`}
-          />
-          {tokenControl('pay')}
-        </div>
-        <span className="swap__usd">{balanceOf(from)}</span>
-      </div>
-
-      <div className="swap-flip">
-        <button
-          type="button"
-          className="swap-flip__btn"
-          aria-label={`Swap direction: pay ${to}, receive ${from}`}
-          onClick={() => {
-            setToFusd((was) => !was);
-            setAmountStr(output !== null ? output.toFixed(decimalsFor(to)) : '');
-          }}
-        >
-          <span aria-hidden="true">↓↑</span>
-        </button>
-      </div>
-
-      <div className="swap__field swap__field--out">
-        <span className="swap__label">You receive <em>(estimate)</em></span>
-        <div className="swap__row">
-          <span className="swap__amount swap__amount--out" aria-live="polite">
-            {output !== null ? money(output, decimalsFor(to)) : '0.00'}
-          </span>
-          {tokenControl('receive')}
-        </div>
-        <span className="swap__usd">{balanceOf(to)}</span>
-      </div>
-
-      <dl className="swap-details">
-        <div>
-          <dt>Rate</dt>
-          <dd>{unitRate !== null ? `1 ${from} ≈ ${money(unitRate, to === 'SPY' ? 6 : 2)} ${to}` : '—'}</dd>
-        </div>
-        <div>
-          <dt>Route</dt>
-          <dd>{pool ? `${pool.venue} · ${pool.pair.join(' / ')}` : '—'}</dd>
-        </div>
-        <div>
-          <dt>Max slippage</dt>
-          <dd>
-            <span className="seg" role="group" aria-label="Maximum slippage">
-              {SLIPPAGE_OPTIONS.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  className={option === slippage ? 'seg__opt seg__opt--on' : 'seg__opt'}
-                  aria-pressed={option === slippage}
-                  onClick={() => setSlippage(option)}
-                >
-                  {SLIPPAGE_LABEL[option]}
-                </button>
-              ))}
-            </span>
-          </dd>
-        </div>
-        <div>
-          <dt>Minimum received</dt>
-          <dd>{minimum !== null ? `${money(minimum, decimalsFor(to))} ${to}` : '—'}</dd>
-        </div>
-      </dl>
-
-      {wallet.connected ? (
-        <Button variant="primary" disabled>Swaps open soon</Button>
-      ) : (
-        <Button variant="primary" onClick={() => void wallet.connect()}>Connect wallet</Button>
-      )}
-      <p className="mgmt__hint">
-        The amounts shown are an estimate: SPY at the oracle price and stablecoins at a dollar,
-        before pool fees and price impact. The swap itself uses the pool&rsquo;s live quote.
-      </p>
-
-      <section className="lp">
-        <h2 className="lp__title">Provide liquidity</h2>
-        <p className="mgmt__hint">Earn trading fees on the pools that route FUSD swaps.</p>
-        {SWAP_POOLS.map((entry) => (
-          <div className="pool" key={entry.id}>
-            <div className="pool__head">
-              <div className="pool__ident">
-                <PairIcons pair={entry.pair} />
-                <span>
-                  <span className="pool__name">{entry.pair.join(' / ')}</span>
-                  <span className="pool__tvl">{entry.venue}</span>
-                </span>
-              </div>
-              <div className="pool__aprs">
-                <span>APR <b>—</b></span>
-                <span className="pool__apr-sub">TVL —</span>
-              </div>
-            </div>
-            <div className="pool__foot lp__foot">
-              <span>Fee tier —</span>
-              <button type="button" className="lp__add" disabled>Add liquidity</button>
-            </div>
-          </div>
+      <div className="pool-tabs" role="tablist" aria-label="Swap or provide liquidity">
+        {(['swap', 'liquidity'] as const).map((option) => (
+          <button
+            key={option}
+            type="button"
+            role="tab"
+            className={view === option ? 'pool-tabs__tab pool-tabs__tab--on' : 'pool-tabs__tab'}
+            aria-selected={view === option}
+            onClick={() => setView(option)}
+          >
+            {VIEW_LABEL[option]}
+          </button>
         ))}
-      </section>
+      </div>
+
+      {view === 'swap' && (
+        <>
+          <div className="swap__field">
+            <span className="swap__label">You pay</span>
+            <div className="swap__row">
+              <input
+                className="swap__amount"
+                inputMode="decimal"
+                placeholder="0.00"
+                value={amountStr}
+                onChange={(event) => setAmountStr(event.target.value.replaceAll(',', ''))}
+                aria-label={`${from} to pay`}
+              />
+              {tokenControl('pay')}
+            </div>
+            <span className="swap__usd">{balanceOf(from)}</span>
+          </div>
+
+          <div className="swap-flip">
+            <button
+              type="button"
+              className="swap-flip__btn"
+              aria-label={`Swap direction: pay ${to}, receive ${from}`}
+              onClick={() => {
+                setToFusd((was) => !was);
+                setAmountStr(output !== null ? output.toFixed(decimalsFor(to)) : '');
+              }}
+            >
+              <span aria-hidden="true">↓↑</span>
+            </button>
+          </div>
+
+          <div className="swap__field swap__field--out">
+            <span className="swap__label">You receive <em>(estimate)</em></span>
+            <div className="swap__row">
+              <span className="swap__amount swap__amount--out" aria-live="polite">
+                {output !== null ? money(output, decimalsFor(to)) : '0.00'}
+              </span>
+              {tokenControl('receive')}
+            </div>
+            <span className="swap__usd">{balanceOf(to)}</span>
+          </div>
+
+          <dl className="swap-details">
+            <div>
+              <dt>Rate</dt>
+              <dd>{unitRate !== null ? `1 ${from} ≈ ${money(unitRate, to === 'SPY' ? 6 : 2)} ${to}` : '—'}</dd>
+            </div>
+            <div>
+              <dt>Route</dt>
+              <dd>{pool ? `${pool.venue} · ${pool.pair.join(' / ')}` : '—'}</dd>
+            </div>
+            <div>
+              <dt>Max slippage</dt>
+              <dd>
+                <span className="seg" role="group" aria-label="Maximum slippage">
+                  {SLIPPAGE_OPTIONS.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      className={option === slippage ? 'seg__opt seg__opt--on' : 'seg__opt'}
+                      aria-pressed={option === slippage}
+                      onClick={() => setSlippage(option)}
+                    >
+                      {SLIPPAGE_LABEL[option]}
+                    </button>
+                  ))}
+                </span>
+              </dd>
+            </div>
+            <div>
+              <dt>Minimum received</dt>
+              <dd>{minimum !== null ? `${money(minimum, decimalsFor(to))} ${to}` : '—'}</dd>
+            </div>
+          </dl>
+
+          {wallet.connected ? (
+            <Button variant="primary" disabled>Swaps open soon</Button>
+          ) : (
+            <Button variant="primary" onClick={() => void wallet.connect()}>Connect wallet</Button>
+          )}
+          <p className="mgmt__hint">
+            The amounts shown are an estimate: SPY at the oracle price and stablecoins at a dollar,
+            before pool fees and price impact. The swap itself uses the pool&rsquo;s live quote.
+          </p>
+        </>
+      )}
+
+      {view === 'liquidity' && (
+        <section className="lp">
+          <p className="mgmt__hint">Provide liquidity and earn trading fees on the pools that route FUSD swaps.</p>
+          {SWAP_POOLS.map((entry) => (
+            <div className="pool" key={entry.id}>
+              <div className="pool__head">
+                <div className="pool__ident">
+                  <PairIcons pair={entry.pair} />
+                  <span>
+                    <span className="pool__name">{entry.pair.join(' / ')}</span>
+                    <span className="pool__tvl">{entry.venue}</span>
+                  </span>
+                </div>
+                <div className="pool__aprs">
+                  <span>APR <b>—</b></span>
+                  <span className="pool__apr-sub">TVL —</span>
+                </div>
+              </div>
+              <div className="pool__foot lp__foot">
+                <span>Fee tier —</span>
+                <button type="button" className="lp__add" disabled>Add liquidity</button>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
     </div>
   );
 }
