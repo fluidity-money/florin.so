@@ -1,0 +1,10 @@
+[
+	{"type":"event","name":"NewVault","inputs":[{"name":"vault_address","type":"address","indexed":true},{"name":"asset","type":"address","indexed":true}]},
+	{"type":"event","name":"UpdateProtocolFeeBps","inputs":[{"name":"old_fee_bps","type":"uint16"},{"name":"new_fee_bps","type":"uint16"}]},
+	{"type":"event","name":"UpdateProtocolFeeRecipient","inputs":[{"name":"old_fee_recipient","type":"address","indexed":true},{"name":"new_fee_recipient","type":"address","indexed":true}]},
+	{"type":"event","name":"UpdateCustomProtocolFee","inputs":[{"name":"vault","type":"address","indexed":true},{"name":"new_custom_protocol_fee","type":"uint16"}]},
+	{"type":"event","name":"RemovedCustomProtocolFee","inputs":[{"name":"vault","type":"address","indexed":true}]},
+	{"type":"event","name":"FactoryShutdown","inputs":[]},
+	{"type":"event","name":"GovernanceTransferred","inputs":[{"name":"previousGovernance","type":"address","indexed":true},{"name":"newGovernance","type":"address","indexed":true}]},
+	{"type":"event","name":"UpdatePendingGovernance","inputs":[{"name":"newPendingGovernance","type":"address","indexed":true}]}
+]

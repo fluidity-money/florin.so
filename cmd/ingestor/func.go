@@ -6,10 +6,13 @@ import (
 	"log"
 	"log/slog"
 	"math/big"
+	"slices"
 	"strings"
 	"time"
 
+	"github.com/fluidity-money/florin.so/lib/config"
 	"github.com/fluidity-money/florin.so/lib/events/liquity"
+	"github.com/fluidity-money/florin.so/lib/events/yearn"
 	"github.com/fluidity-money/florin.so/lib/heartbeat"
 	"github.com/fluidity-money/florin.so/lib/types"
 
@@ -21,7 +24,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func FilterTopics() []ethCommon.Hash {
+func liquityTopics() []ethCommon.Hash {
 	return []ethCommon.Hash{
 		liquity.TopicOperationQueued,
 		liquity.TopicOperationExecuted,
@@ -84,13 +87,31 @@ func FilterTopics() []ethCommon.Hash {
 	}
 }
 
+func FilterTopics() []ethCommon.Hash {
+	topics := liquityTopics()
+	for _, topic := range yearn.FilterTopics() {
+		if !slices.Contains(topics, topic) {
+			topics = append(topics, topic)
+		}
+	}
+	return topics
+}
+
 type IngestorArgs struct {
-	LiquityEmitters []ethCommon.Address
+	Contracts config.C
+}
+
+func (a IngestorArgs) addresses() []ethCommon.Address {
+	addresses := a.Contracts.LiquityAddresses()
+	addresses = append(addresses, a.Contracts.YearnVaultAddress, a.Contracts.YearnVaultFactoryAddress)
+	return slices.DeleteFunc(addresses, func(address ethCommon.Address) bool {
+		return address == (ethCommon.Address{})
+	})
 }
 
 func (a IngestorArgs) isLiquityEmitter(address ethCommon.Address) bool {
-	for _, emitter := range a.LiquityEmitters {
-		if address == emitter {
+	for _, emitter := range a.Contracts.LiquityAddresses() {
+		if address != (ethCommon.Address{}) && address == emitter {
 			return true
 		}
 	}
@@ -151,11 +172,11 @@ func IngestBlockRange(c *ethclient.Client, db *gorm.DB, from, requestedTo uint64
 	logs, err := c.FilterLogs(context.Background(), ethereum.FilterQuery{
 		FromBlock: new(big.Int).SetUint64(from),
 		ToBlock:   new(big.Int).SetUint64(to),
-		Addresses: args.LiquityEmitters,
+		Addresses: args.addresses(),
 		Topics:    [][]ethCommon.Hash{FilterTopics()},
 	})
 	if err != nil {
-		log.Fatalf("failed to filter Liquity logs: %v", err)
+		log.Fatalf("failed to filter contract logs: %v", err)
 	}
 	err = db.Transaction(func(db *gorm.DB) error {
 		for _, log := range logs {
@@ -188,16 +209,16 @@ type tableNamer interface {
 }
 
 func handleLogCallback(args IngestorArgs, l ethTypes.Log, insert func(string, any) error) (bool, error) {
-	if !args.isLiquityEmitter(l.Address) {
-		return false, nil
-	}
-	event, err := liquity.UnpackLog(l)
+	event, err := decodeContractLog(args, l)
 	if err != nil {
-		return false, fmt.Errorf("decode Liquity event: %w", err)
+		return false, err
+	}
+	if event == nil {
+		return false, nil
 	}
 	table, ok := event.(tableNamer)
 	if !ok {
-		return false, fmt.Errorf("liquity event %T does not declare a table", event)
+		return false, fmt.Errorf("event %T does not declare a table", event)
 	}
 	emitterAddr := strings.ToLower(l.Address.String())
 	setEventFields(
@@ -208,6 +229,51 @@ func handleLogCallback(args IngestorArgs, l ethTypes.Log, insert func(string, an
 		emitterAddr,
 	)
 	return true, insert(table.TableName(), event)
+}
+
+// decodeContractLog selects the ABI by the named emitter before inspecting topics.
+// ERC-20 vault shares must never be stored as BOLD transfers or Trove NFTs.
+func decodeContractLog(args IngestorArgs, l ethTypes.Log) (any, error) {
+	if l.Address == (ethCommon.Address{}) {
+		return nil, nil
+	}
+	switch l.Address {
+	case args.Contracts.YearnVaultAddress:
+		return yearn.UnpackVaultLog(l)
+	case args.Contracts.YearnVaultFactoryAddress:
+		return yearn.UnpackFactoryLog(l)
+	}
+	if !args.isLiquityEmitter(l.Address) {
+		return nil, nil
+	}
+	if len(l.Topics) > 0 {
+		topic := l.Topics[0]
+		if !slices.Contains(liquityTopics(), topic) {
+			return nil, nil
+		}
+		if topic == liquity.TopicBoldTokenTransfer || topic == liquity.TopicBoldTokenApproval {
+			switch l.Address {
+			case args.Contracts.BoldTokenAddress:
+				if len(l.Topics) != 3 {
+					return nil, fmt.Errorf("decode Liquity event: BOLD requires three topics")
+				}
+			case args.Contracts.TroveNFTAddress:
+				if len(l.Topics) != 4 {
+					return nil, fmt.Errorf("decode Liquity event: Trove NFT requires four topics")
+				}
+			default:
+				return nil, nil
+			}
+		}
+		if topic == liquity.TopicTroveNFTApprovalForAll && l.Address != args.Contracts.TroveNFTAddress {
+			return nil, nil
+		}
+	}
+	event, err := liquity.UnpackLog(l)
+	if err != nil {
+		return nil, fmt.Errorf("decode Liquity event: %w", err)
+	}
+	return event, nil
 }
 
 func getLastBlockCheckpointed(db *gorm.DB) (uint64, error) {

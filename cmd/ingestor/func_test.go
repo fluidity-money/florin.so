@@ -8,6 +8,7 @@ import (
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
 
+	"github.com/fluidity-money/florin.so/lib/config"
 	"github.com/fluidity-money/florin.so/lib/events/liquity"
 )
 
@@ -28,7 +29,7 @@ func TestHandleLogCallback(t *testing.T) {
 	var table string
 	var inserted any
 	changed, err := handleLogCallback(
-		IngestorArgs{LiquityEmitters: []common.Address{emitter}},
+		IngestorArgs{Contracts: config.C{CollateralRegistryAddress: emitter}},
 		log,
 		func(t string, event any) error {
 			table, inserted = t, event
@@ -50,7 +51,7 @@ func TestHandleLogCallback(t *testing.T) {
 func TestHandleLogCallbackRejectsUnknownEmitter(t *testing.T) {
 	called := false
 	changed, err := handleLogCallback(
-		IngestorArgs{LiquityEmitters: []common.Address{common.HexToAddress("0x1111111111111111111111111111111111111111")}},
+		IngestorArgs{Contracts: config.C{CollateralRegistryAddress: common.HexToAddress("0x1111111111111111111111111111111111111111")}},
 		ethTypes.Log{
 			Address: common.HexToAddress("0x2222222222222222222222222222222222222222"),
 			Topics:  []common.Hash{liquity.TopicBaseRateUpdated},

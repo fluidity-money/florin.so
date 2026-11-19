@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 
+	"github.com/fluidity-money/florin.so/lib/config"
 	"github.com/fluidity-money/florin.so/lib/events/liquity"
 	"github.com/fluidity-money/florin.so/lib/types/events"
 )
@@ -18,7 +19,7 @@ import (
 func TestGovernanceRouting(t *testing.T) {
 	proxy := common.HexToAddress("0xAbCDEF0123456789abcdef0123456789ABCDef01")
 	implementation := common.HexToAddress("0xFeDCBA9876543210fedcba9876543210FEDCBA98")
-	args := IngestorArgs{LiquityEmitters: []common.Address{proxy}}
+	args := IngestorArgs{Contracts: config.C{GovernanceAddress: proxy}}
 	digest := common.HexToHash("0xabcdef")
 	for _, tc := range []struct {
 		signature, table string

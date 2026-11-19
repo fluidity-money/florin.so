@@ -21,9 +21,37 @@ using Gqlgen for GraphQL.
 |---|---|
 | SPN_DEBUG | Enables debug logging in the ingestor |
 | SPN_SUPERPOSITION_URL | Superposition chain RPC URL (feeds the indexer) |
-| SPN_LIQUITY_ADDRS | Comma-separated Liquity emitters/contract addresses to track |
+| SPN_YEARN_VAULT_ADDR | Yearn V3 vault (share-token emitter) |
+| SPN_YEARN_VAULT_FACTORY_ADDR | Yearn V3 vault factory |
+| SPN_BOLD_TOKEN_ADDR | BOLD token |
+| SPN_COLLATERAL_REGISTRY_ADDR | Collateral registry |
+| SPN_ADDRESSES_REGISTRY_ADDR | Addresses registry |
+| SPN_ACTIVE_POOL_ADDR | Active pool |
+| SPN_BORROWER_OPERATIONS_ADDR | Borrower operations (ingestor setting) |
+| SPN_COLL_SURPLUS_POOL_ADDR | Collateral surplus pool |
+| SPN_DEFAULT_POOL_ADDR | Default pool |
+| SPN_SORTED_TROVES_ADDR | Sorted troves |
+| SPN_STABILITY_POOL_ADDR | Stability pool |
+| SPN_TROVE_MANAGER_ADDR | Trove manager |
+| SPN_TROVE_NFT_ADDR | Trove NFT |
+| SPN_PRICE_FEED_ADDR | Price feed |
+| SPN_GOVERNANCE_ADDR | Optional governance proxy; leave blank if not deployed |
 | SPN_HEARTBEAT_URL | Webhook/URL to ping for liveness heartbeat |
 | SPN_TIMESCALE | TimescaleDB/Postgres connection URL for storing events |
+
+Contract settings follow the 9lives `SPN_*_ADDR` convention: one named contract,
+one address. All are required except governance. Missing, malformed, zero and
+duplicate addresses are rejected at startup. The former `SPN_LIQUITY_ADDRS`
+list is no longer read; migrate each existing emitter to its named variable.
+See `.env.example` for the complete configuration. This configuration supports
+one Liquity branch and one Yearn vault/factory pair, not automatic vault discovery.
+
+Before deploying, apply `db/migrations/1795005000-yearn_events.sql` through the
+normal dbmate migration process. Set both Yearn addresses (left blank in the
+example rather than guessing deployments), and confirm the deployed vault API
+matches the pinned 3.1.1 sources. See `lib/events/yearn/README.md` for ABI coverage
+and safe historical backfill instructions. New ingestion does not recover events
+before the shared checkpoint; do not blindly rewind it and duplicate existing rows.
 
 ### Graphql
 

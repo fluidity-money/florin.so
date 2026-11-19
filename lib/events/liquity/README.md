@@ -10,9 +10,11 @@ ABIs and the Solidity definitions for events not exposed by the frontend.
 The ABI is split because ERC-20 BOLD and ERC-721 Trove NFTs both define
 `Approval` and `Transfer` with the same canonical signatures. `UnpackLog`
 distinguishes them by indexed-topic count. The ingestor also restricts log
-queries and dispatch to the contract addresses supplied through the
-comma-separated `SPN_LIQUITY_ADDRS` environment variable; this is required so
-ordinary ERC-20 events elsewhere on the chain are not mistaken for BOLD events.
+queries and dispatch to named contract settings (`SPN_BOLD_TOKEN_ADDR`,
+`SPN_TROVE_NFT_ADDR`, `SPN_ACTIVE_POOL_ADDR`, etc.; see the root README).
+There is no address-list environment variable. The ingestor checks named token
+roles as well as indexed-topic counts: ordinary ERC-20 transfers, including
+Yearn vault shares, cannot be mistaken for BOLD events.
 
 ## Governance indexing deployment
 
@@ -29,11 +31,11 @@ normal migration procedure (`dbmate --migrations-dir db/migrations up` from the
 repository root, with the correct DATABASE_URL). Do not rely on editing or
 reapplying the original Liquity tables migration.
 
-Include the governance **proxy address** in the existing comma-separated
-`SPN_LIQUITY_ADDRS` allowlist, alongside the existing Liquity emitters. Execution
-through delegatecall emits logs at the proxy, not at the implementation address.
-No separate governance allowlist is used. Upgraded events from any allowlisted
-emitter are indexed; events from unlisted emitters are ignored.
+Set the optional `SPN_GOVERNANCE_ADDR` to the governance **proxy address**.
+Execution through delegatecall emits logs at the proxy, not at the implementation
+address. Leave it blank on deployments without governance. Upgraded events from
+named Liquity contracts remain indexed; events from unconfigured emitters are
+ignored. Do not configure an implementation address as a second emitter.
 
 Deploying the new filter does not recover governance logs before the current
 checkpoint. Recover historical missing events with a controlled backfill,

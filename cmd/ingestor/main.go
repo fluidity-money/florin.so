@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/fluidity-money/florin.so/lib/config"
+	"github.com/fluidity-money/florin.so/lib/events/liquity"
+	"github.com/fluidity-money/florin.so/lib/events/yearn"
 
 	_ "github.com/lib/pq"
 
@@ -36,6 +38,9 @@ const (
 const EnvDebug = "SPN_DEBUG"
 
 func main() {
+	if liquity.ErrABI != nil || yearn.ErrABI != nil {
+		log.Fatalf("invalid event ABI: Liquity: %v; Yearn: %v", liquity.ErrABI, yearn.ErrABI)
+	}
 	cfg := config.Get()
 	db, err := gorm.Open(postgres.Open(cfg.PickTimescaleUrl()), &gorm.Config{
 		Logger: gormSlog.New(),
@@ -60,7 +65,7 @@ func main() {
 		DefaultPaginationPollWait,
 		c,
 		db,
-		IngestorArgs{LiquityEmitters: cfg.LiquityEmitters},
+		IngestorArgs{Contracts: cfg},
 	)
 }
 

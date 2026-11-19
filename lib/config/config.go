@@ -7,40 +7,120 @@ import (
 	"os"
 	"strings"
 
-	ethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common"
 )
 
 const DefaultChainId = 46630
 
 type C struct {
-	GethUrls        []string
-	TimescaleUrls   []string
-	ChainId         int
-	LiquityEmitters []ethCommon.Address
+	GethUrls      []string
+	TimescaleUrls []string
+	ChainId       int
+
+	YearnVaultAddress         common.Address
+	YearnVaultFactoryAddress  common.Address
+	BoldTokenAddress          common.Address
+	CollateralRegistryAddress common.Address
+	AddressesRegistryAddress  common.Address
+	ActivePoolAddress         common.Address
+	BorrowerOperationsAddress common.Address
+	CollSurplusPoolAddress    common.Address
+	DefaultPoolAddress        common.Address
+	SortedTrovesAddress       common.Address
+	StabilityPoolAddress      common.Address
+	TroveManagerAddress       common.Address
+	TroveNFTAddress           common.Address
+	PriceFeedAddress          common.Address
+	// GovernanceAddress is the optional governance proxy, never its implementation.
+	GovernanceAddress common.Address
 }
 
 func Get() C {
-	gethURL := os.Getenv("SPN_SUPERPOSITION_URL")
-	if gethURL == "" {
-		log.Fatalf("SPN_SUPERPOSITION_URL not set")
-	}
-	timescaleURL := os.Getenv("SPN_TIMESCALE")
-	if timescaleURL == "" {
-		log.Fatalf("SPN_TIMESCALE not set")
-	}
-	liquityEmitters, err := parseAddresses(os.Getenv("SPN_LIQUITY_ADDRS"))
+	c, err := Parse(os.Getenv)
 	if err != nil {
-		log.Fatalf("SPN_LIQUITY_ADDRS: %v", err)
+		log.Fatal(err)
 	}
-	if len(liquityEmitters) == 0 {
-		log.Fatalf("SPN_LIQUITY_ADDRS not set")
+	return c
+}
+
+// Parse reads named configuration using getenv without exiting the process.
+// Every contract role is required except the governance proxy, which may be
+// absent on deployments without governance. Configured roles must be distinct.
+func Parse(getenv func(string) string) (C, error) {
+	gethURL := strings.TrimSpace(getenv("SPN_SUPERPOSITION_URL"))
+	if gethURL == "" {
+		return C{}, fmt.Errorf("SPN_SUPERPOSITION_URL not set")
 	}
-	return C{
-		GethUrls:        strings.Split(gethURL, ","),
-		TimescaleUrls:   strings.Split(timescaleURL, ","),
-		ChainId:         DefaultChainId,
-		LiquityEmitters: liquityEmitters,
+	timescaleURL := strings.TrimSpace(getenv("SPN_TIMESCALE"))
+	if timescaleURL == "" {
+		return C{}, fmt.Errorf("SPN_TIMESCALE not set")
 	}
+	c := C{
+		GethUrls:      strings.Split(gethURL, ","),
+		TimescaleUrls: strings.Split(timescaleURL, ","),
+		ChainId:       DefaultChainId,
+	}
+	roles := []struct {
+		env      string
+		address  *common.Address
+		optional bool
+	}{
+		{"SPN_YEARN_VAULT_ADDR", &c.YearnVaultAddress, false},
+		{"SPN_YEARN_VAULT_FACTORY_ADDR", &c.YearnVaultFactoryAddress, false},
+		{"SPN_BOLD_TOKEN_ADDR", &c.BoldTokenAddress, false},
+		{"SPN_COLLATERAL_REGISTRY_ADDR", &c.CollateralRegistryAddress, false},
+		{"SPN_ADDRESSES_REGISTRY_ADDR", &c.AddressesRegistryAddress, false},
+		{"SPN_ACTIVE_POOL_ADDR", &c.ActivePoolAddress, false},
+		{"SPN_BORROWER_OPERATIONS_ADDR", &c.BorrowerOperationsAddress, false},
+		{"SPN_COLL_SURPLUS_POOL_ADDR", &c.CollSurplusPoolAddress, false},
+		{"SPN_DEFAULT_POOL_ADDR", &c.DefaultPoolAddress, false},
+		{"SPN_SORTED_TROVES_ADDR", &c.SortedTrovesAddress, false},
+		{"SPN_STABILITY_POOL_ADDR", &c.StabilityPoolAddress, false},
+		{"SPN_TROVE_MANAGER_ADDR", &c.TroveManagerAddress, false},
+		{"SPN_TROVE_NFT_ADDR", &c.TroveNFTAddress, false},
+		{"SPN_PRICE_FEED_ADDR", &c.PriceFeedAddress, false},
+		{"SPN_GOVERNANCE_ADDR", &c.GovernanceAddress, true},
+	}
+	seen := make(map[common.Address]string, len(roles))
+	for _, role := range roles {
+		raw := strings.TrimSpace(getenv(role.env))
+		if raw == "" && role.optional {
+			continue
+		}
+		address, err := parseAddress(raw)
+		if err != nil {
+			return C{}, fmt.Errorf("%s: %w", role.env, err)
+		}
+		if previous, exists := seen[address]; exists {
+			return C{}, fmt.Errorf("%s: duplicate address also configured for %s", role.env, previous)
+		}
+		seen[address] = role.env
+		*role.address = address
+	}
+	return c, nil
+}
+
+// LiquityAddresses derives the RPC log filter from named emitting contracts.
+// Yearn contracts are deliberately excluded; they have their own event routing.
+func (c C) LiquityAddresses() []common.Address {
+	addresses := []common.Address{
+		c.BoldTokenAddress,
+		c.CollateralRegistryAddress,
+		c.AddressesRegistryAddress,
+		c.ActivePoolAddress,
+		c.BorrowerOperationsAddress,
+		c.CollSurplusPoolAddress,
+		c.DefaultPoolAddress,
+		c.SortedTrovesAddress,
+		c.StabilityPoolAddress,
+		c.TroveManagerAddress,
+		c.TroveNFTAddress,
+		c.PriceFeedAddress,
+	}
+	if c.GovernanceAddress != (common.Address{}) {
+		addresses = append(addresses, c.GovernanceAddress)
+	}
+	return addresses
 }
 
 func (c C) PickGethUrl() string {
@@ -51,17 +131,16 @@ func (c C) PickTimescaleUrl() string {
 	return c.TimescaleUrls[rand.Intn(len(c.TimescaleUrls))]
 }
 
-func parseAddresses(value string) ([]ethCommon.Address, error) {
-	var addresses []ethCommon.Address
-	for _, raw := range strings.Split(value, ",") {
-		raw = strings.TrimSpace(raw)
-		if raw == "" {
-			continue
-		}
-		if !ethCommon.IsHexAddress(raw) {
-			return nil, fmt.Errorf("invalid address %q", raw)
-		}
-		addresses = append(addresses, ethCommon.HexToAddress(raw))
+func parseAddress(raw string) (common.Address, error) {
+	if raw == "" {
+		return common.Address{}, fmt.Errorf("not set")
 	}
-	return addresses, nil
+	if !common.IsHexAddress(raw) {
+		return common.Address{}, fmt.Errorf("invalid address %q: expected a single hex address", raw)
+	}
+	address := common.HexToAddress(raw)
+	if address == (common.Address{}) {
+		return common.Address{}, fmt.Errorf("zero address is not allowed")
+	}
+	return address, nil
 }
