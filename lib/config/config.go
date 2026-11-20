@@ -81,7 +81,6 @@ func Parse(getenv func(string) string) (C, error) {
 		{"SPN_PRICE_FEED_ADDR", &c.PriceFeedAddress, false},
 		{"SPN_GOVERNANCE_ADDR", &c.GovernanceAddress, true},
 	}
-	seen := make(map[common.Address]string, len(roles))
 	for _, role := range roles {
 		raw := strings.TrimSpace(getenv(role.env))
 		if raw == "" && role.optional {
@@ -91,10 +90,6 @@ func Parse(getenv func(string) string) (C, error) {
 		if err != nil {
 			return C{}, fmt.Errorf("%s: %w", role.env, err)
 		}
-		if previous, exists := seen[address]; exists {
-			return C{}, fmt.Errorf("%s: duplicate address also configured for %s", role.env, previous)
-		}
-		seen[address] = role.env
 		*role.address = address
 	}
 	return c, nil
