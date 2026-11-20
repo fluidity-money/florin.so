@@ -2244,6 +2244,134 @@ input:focus-visible {
 /* Single column. Every derived number sits directly under the field it belongs
    to, so there is no second panel restating the first. */
 
+.vault {
+	width: min(100%, 880px);
+	margin: 0 auto;
+}
+
+.vault__title {
+	margin: 0 0 12px;
+	font-size: clamp(26px, 3.4vw, 34px);
+	letter-spacing: -0.03em;
+}
+
+.vault__intro {
+	margin: 0 0 28px;
+	color: var(--gray-2);
+	line-height: 1.6;
+}
+
+.vault__grid {
+	width: 100%;
+	border: 1px solid var(--rule, var(--line));
+	border-radius: 14px;
+	border-spacing: 0;
+	background: var(--paper);
+	overflow: hidden;
+}
+
+.vault__caption {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+}
+
+.vault__mobile-label {
+	display: none;
+}
+
+.vault__grid th,
+.vault__grid td {
+	padding: 22px 24px;
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.vault__grid thead th {
+	color: var(--gray-2);
+	font-size: 13px;
+	font-weight: 500;
+}
+
+.vault__grid th:first-child {
+	text-align: left;
+}
+
+.vault__grid tbody th,
+.vault__grid tbody td {
+	border-top: 1px solid var(--rule, var(--line));
+	font-weight: 600;
+}
+
+.vault__strategy,
+.vault__tokens {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.vault__tokens {
+	gap: 4px;
+	flex-shrink: 0;
+}
+
+@media (max-width: 600px) {
+	.vault__grid,
+	.vault__grid tbody {
+		display: block;
+	}
+
+	.vault__grid {
+		border: 0;
+		background: transparent;
+		overflow: visible;
+	}
+
+	.vault__grid thead,
+	.vault__caption {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+
+	.vault__grid tbody tr {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		margin-bottom: 12px;
+		padding: 18px;
+		border: 1px solid var(--rule, var(--line));
+		border-radius: 14px;
+		background: var(--paper);
+	}
+
+	.vault__grid tbody th,
+	.vault__grid tbody td {
+		padding: 10px 0;
+		border: 0;
+	}
+
+	.vault__grid tbody td {
+		display: flex;
+		justify-content: space-between;
+		gap: 16px;
+	}
+
+	.vault__mobile-label {
+		display: inline;
+		color: var(--gray-2);
+		font-weight: 400;
+		text-align: left;
+	}
+}
+
 .swap {
   width: min(100%, 460px);
   margin: 0 auto;
