@@ -27,7 +27,7 @@ import (
 
 // CreateAccountFlorinOpenPosition is the resolver for the createAccountFlorinOpenPosition field.
 func (r *mutationResolver) CreateAccountFlorinOpenPosition(ctx context.Context, createAccount model.CreateAccount, openPosition model.FlorinOpenPosition, gasToken model.Asset, gasTokenAmt string, dryrun *bool) (*model.CreateAccountExec, error) {
-	return nil, fmt.Errorf("not supported")
+	return nil, fmt.Errorf("stop trying to use unreleased features")
 	snowflake, _ := ctx.Value("snowflake").(int)
 	f, err := createAccountToFreshBackwardsGraph(r.AccPubKey, createAccount)
 	if err != nil {
