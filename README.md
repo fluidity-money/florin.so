@@ -7,12 +7,6 @@ using Gqlgen for GraphQL.
 
 	make
 
-## Dependencies
-
-1. Go
-
-2. Next/Pnpm
-
 ## Environment variables
 
 ### Backend
@@ -38,20 +32,6 @@ using Gqlgen for GraphQL.
 | SPN_GOVERNANCE_ADDR | Optional governance proxy; leave blank if not deployed |
 | SPN_HEARTBEAT_URL | Webhook/URL to ping for liveness heartbeat |
 | SPN_TIMESCALE | TimescaleDB/Postgres connection URL for storing events |
-
-Contract settings follow the 9lives `SPN_*_ADDR` convention: one named contract,
-one address. All are required except governance. Missing, malformed, zero and
-duplicate addresses are rejected at startup. The former `SPN_LIQUITY_ADDRS`
-list is no longer read; migrate each existing emitter to its named variable.
-See `.env.example` for the complete configuration. This configuration supports
-one Liquity branch and one Yearn vault/factory pair, not automatic vault discovery.
-
-Before deploying, apply `db/migrations/1795005000-yearn_events.sql` through the
-normal dbmate migration process. Set both Yearn addresses (left blank in the
-example rather than guessing deployments), and confirm the deployed vault API
-matches the pinned 3.1.1 sources. See `lib/events/yearn/README.md` for ABI coverage
-and safe historical backfill instructions. New ingestion does not recover events
-before the shared checkpoint; do not blindly rewind it and duplicate existing rows.
 
 ### Graphql
 
