@@ -138,9 +138,5 @@ func parseAddress(raw string) (common.Address, error) {
 	if !common.IsHexAddress(raw) {
 		return common.Address{}, fmt.Errorf("invalid address %q: expected a single hex address", raw)
 	}
-	address := common.HexToAddress(raw)
-	if address == (common.Address{}) {
-		return common.Address{}, fmt.Errorf("zero address is not allowed")
-	}
-	return address, nil
+	return common.HexToAddress(raw), nil
 }
