@@ -2314,6 +2314,34 @@ input:focus-visible {
 	gap: 12px;
 }
 
+.vault__grid tbody tr {
+	position: relative;
+}
+
+.vault__link {
+	color: inherit;
+	text-decoration: none;
+}
+
+.vault__link::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	cursor: pointer;
+	border-radius: 12px;
+}
+
+.vault__grid tbody tr:hover,
+.vault__grid tbody tr:has(.vault__link:focus-visible) {
+	background: color-mix(in srgb, var(--ink) 5%, var(--paper));
+}
+
+.vault__link:focus-visible::after {
+	outline: 2px solid var(--ink);
+	outline-offset: -3px;
+}
+
 .vault__tokens {
 	gap: 4px;
 	flex-shrink: 0;
