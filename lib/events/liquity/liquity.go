@@ -640,7 +640,7 @@ type Liquidation struct {
 	CollSentToSp        events.Number `json:"coll_sent_to_sp"`
 	CollRedistributed   events.Number `json:"coll_redistributed"`
 	CollSurplus         events.Number `json:"coll_surplus"`
-	LETH                events.Number `json:"l_eth"`
+	LETH                events.Number `json:"l_eth" gorm:"column:l_eth"`
 	LBoldDebt           events.Number `json:"l_bold_debt"`
 	Price               events.Number `json:"price"`
 }

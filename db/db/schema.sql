@@ -1,6 +1,6 @@
-\restrict xpERqXmqhFYfCyepurA4S1HZWJgfBP9RdHutPE9hijXp3m3qwo4QMLtav7379ah
+\restrict ObDNgUm2KFxAc2VChLsLW4SBQFmmxVZPSzIIa1GdW1aD4fNXkttAaGX6vDkeu0s
 
--- Dumped from database version 16.13 (Ubuntu 16.13-1.pgdg22.04+1)
+-- Dumped from database version 16.15 (Ubuntu 16.15-1.pgdg22.04+2)
 -- Dumped by pg_dump version 17.11 (Debian 17.11-0+deb13u1)
 
 SET statement_timeout = 0;
@@ -3223,6 +3223,111 @@ ALTER SEQUENCE public.liquity_events_multi_trove_getter_address_changed_testne_i
 
 
 --
+-- Name: liquity_events_operation_cancelled; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_operation_cancelled (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    digest public.hash NOT NULL
+);
+
+
+--
+-- Name: liquity_events_operation_cancelled_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_operation_cancelled_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_operation_cancelled_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_operation_cancelled_id_seq OWNED BY public.liquity_events_operation_cancelled.id;
+
+
+--
+-- Name: liquity_events_operation_executed; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_operation_executed (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    digest public.hash NOT NULL
+);
+
+
+--
+-- Name: liquity_events_operation_executed_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_operation_executed_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_operation_executed_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_operation_executed_id_seq OWNED BY public.liquity_events_operation_executed.id;
+
+
+--
+-- Name: liquity_events_operation_queued; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_operation_queued (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    digest public.hash NOT NULL
+);
+
+
+--
+-- Name: liquity_events_operation_queued_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_operation_queued_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_operation_queued_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_operation_queued_id_seq OWNED BY public.liquity_events_operation_queued.id;
+
+
+--
 -- Name: liquity_events_ownership_transferred; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4208,6 +4313,40 @@ ALTER SEQUENCE public.liquity_events_stability_pool_coll_balance_updated_testn_i
 
 
 --
+-- Name: liquity_events_storage_wiped; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_storage_wiped (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_storage_wiped_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_storage_wiped_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_storage_wiped_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_storage_wiped_id_seq OWNED BY public.liquity_events_storage_wiped.id;
+
+
+--
 -- Name: liquity_events_trove_manager_address_added; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4731,6 +4870,41 @@ ALTER SEQUENCE public.liquity_events_trove_updated_testnet_v1_id_seq OWNED BY pu
 
 
 --
+-- Name: liquity_events_upgraded; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.liquity_events_upgraded (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    implementation public.address NOT NULL
+);
+
+
+--
+-- Name: liquity_events_upgraded_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.liquity_events_upgraded_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: liquity_events_upgraded_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.liquity_events_upgraded_id_seq OWNED BY public.liquity_events_upgraded.id;
+
+
+--
 -- Name: liquity_events_weth_address_changed; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4798,6 +4972,1153 @@ CREATE SEQUENCE public.liquity_events_weth_address_changed_testnet_v1_id_seq
 --
 
 ALTER SEQUENCE public.liquity_events_weth_address_changed_testnet_v1_id_seq OWNED BY public.liquity_events_weth_address_changed_testnet_v1.id;
+
+
+--
+-- Name: yearn_events_approval; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_approval (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    owner public.address NOT NULL,
+    spender public.address NOT NULL,
+    value public.hugeint NOT NULL
+);
+
+
+--
+-- Name: yearn_events_approval_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_approval_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_approval_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_approval_id_seq OWNED BY public.yearn_events_approval.id;
+
+
+--
+-- Name: yearn_events_debt_purchased; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_debt_purchased (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    strategy public.address NOT NULL,
+    amount public.hugeint NOT NULL
+);
+
+
+--
+-- Name: yearn_events_debt_purchased_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_debt_purchased_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_debt_purchased_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_debt_purchased_id_seq OWNED BY public.yearn_events_debt_purchased.id;
+
+
+--
+-- Name: yearn_events_debt_updated; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_debt_updated (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    strategy public.address NOT NULL,
+    current_debt public.hugeint NOT NULL,
+    new_debt public.hugeint NOT NULL
+);
+
+
+--
+-- Name: yearn_events_debt_updated_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_debt_updated_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_debt_updated_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_debt_updated_id_seq OWNED BY public.yearn_events_debt_updated.id;
+
+
+--
+-- Name: yearn_events_deposit; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_deposit (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    sender public.address NOT NULL,
+    owner public.address NOT NULL,
+    assets public.hugeint NOT NULL,
+    shares public.hugeint NOT NULL
+);
+
+
+--
+-- Name: yearn_events_deposit_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_deposit_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_deposit_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_deposit_id_seq OWNED BY public.yearn_events_deposit.id;
+
+
+--
+-- Name: yearn_events_factory_shutdown; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_factory_shutdown (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL
+);
+
+
+--
+-- Name: yearn_events_factory_shutdown_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_factory_shutdown_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_factory_shutdown_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_factory_shutdown_id_seq OWNED BY public.yearn_events_factory_shutdown.id;
+
+
+--
+-- Name: yearn_events_governance_transferred; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_governance_transferred (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    previous_governance public.address NOT NULL,
+    new_governance public.address NOT NULL
+);
+
+
+--
+-- Name: yearn_events_governance_transferred_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_governance_transferred_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_governance_transferred_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_governance_transferred_id_seq OWNED BY public.yearn_events_governance_transferred.id;
+
+
+--
+-- Name: yearn_events_new_vault; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_new_vault (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    vault_address public.address NOT NULL,
+    asset public.address NOT NULL
+);
+
+
+--
+-- Name: yearn_events_new_vault_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_new_vault_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_new_vault_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_new_vault_id_seq OWNED BY public.yearn_events_new_vault.id;
+
+
+--
+-- Name: yearn_events_removed_custom_protocol_fee; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_removed_custom_protocol_fee (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    vault public.address NOT NULL
+);
+
+
+--
+-- Name: yearn_events_removed_custom_protocol_fee_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_removed_custom_protocol_fee_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_removed_custom_protocol_fee_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_removed_custom_protocol_fee_id_seq OWNED BY public.yearn_events_removed_custom_protocol_fee.id;
+
+
+--
+-- Name: yearn_events_role_set; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_role_set (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    account public.address NOT NULL,
+    role public.hugeint NOT NULL
+);
+
+
+--
+-- Name: yearn_events_role_set_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_role_set_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_role_set_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_role_set_id_seq OWNED BY public.yearn_events_role_set.id;
+
+
+--
+-- Name: yearn_events_shutdown; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_shutdown (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL
+);
+
+
+--
+-- Name: yearn_events_shutdown_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_shutdown_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_shutdown_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_shutdown_id_seq OWNED BY public.yearn_events_shutdown.id;
+
+
+--
+-- Name: yearn_events_strategy_changed; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_strategy_changed (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    strategy public.address NOT NULL,
+    change_type public.hugeint NOT NULL
+);
+
+
+--
+-- Name: yearn_events_strategy_changed_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_strategy_changed_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_strategy_changed_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_strategy_changed_id_seq OWNED BY public.yearn_events_strategy_changed.id;
+
+
+--
+-- Name: yearn_events_strategy_reported; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_strategy_reported (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    strategy public.address NOT NULL,
+    gain public.hugeint NOT NULL,
+    loss public.hugeint NOT NULL,
+    current_debt public.hugeint NOT NULL,
+    protocol_fees public.hugeint NOT NULL,
+    total_fees public.hugeint NOT NULL,
+    total_refunds public.hugeint NOT NULL
+);
+
+
+--
+-- Name: yearn_events_strategy_reported_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_strategy_reported_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_strategy_reported_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_strategy_reported_id_seq OWNED BY public.yearn_events_strategy_reported.id;
+
+
+--
+-- Name: yearn_events_transfer; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_transfer (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    sender public.address NOT NULL,
+    receiver public.address NOT NULL,
+    value public.hugeint NOT NULL
+);
+
+
+--
+-- Name: yearn_events_transfer_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_transfer_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_transfer_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_transfer_id_seq OWNED BY public.yearn_events_transfer.id;
+
+
+--
+-- Name: yearn_events_update_accountant; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_accountant (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    accountant public.address NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_accountant_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_accountant_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_accountant_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_accountant_id_seq OWNED BY public.yearn_events_update_accountant.id;
+
+
+--
+-- Name: yearn_events_update_auto_allocate; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_auto_allocate (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    auto_allocate boolean NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_auto_allocate_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_auto_allocate_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_auto_allocate_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_auto_allocate_id_seq OWNED BY public.yearn_events_update_auto_allocate.id;
+
+
+--
+-- Name: yearn_events_update_custom_protocol_fee; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_custom_protocol_fee (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    vault public.address NOT NULL,
+    new_custom_protocol_fee integer NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_custom_protocol_fee_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_custom_protocol_fee_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_custom_protocol_fee_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_custom_protocol_fee_id_seq OWNED BY public.yearn_events_update_custom_protocol_fee.id;
+
+
+--
+-- Name: yearn_events_update_default_queue; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_default_queue (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    new_default_queue public.address[] NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_default_queue_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_default_queue_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_default_queue_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_default_queue_id_seq OWNED BY public.yearn_events_update_default_queue.id;
+
+
+--
+-- Name: yearn_events_update_deposit_hook; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_deposit_hook (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    deposit_hook public.address NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_deposit_hook_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_deposit_hook_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_deposit_hook_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_deposit_hook_id_seq OWNED BY public.yearn_events_update_deposit_hook.id;
+
+
+--
+-- Name: yearn_events_update_deposit_limit; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_deposit_limit (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    deposit_limit public.hugeint NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_deposit_limit_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_deposit_limit_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_deposit_limit_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_deposit_limit_id_seq OWNED BY public.yearn_events_update_deposit_limit.id;
+
+
+--
+-- Name: yearn_events_update_future_role_manager; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_future_role_manager (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    future_role_manager public.address NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_future_role_manager_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_future_role_manager_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_future_role_manager_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_future_role_manager_id_seq OWNED BY public.yearn_events_update_future_role_manager.id;
+
+
+--
+-- Name: yearn_events_update_minimum_total_idle; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_minimum_total_idle (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    minimum_total_idle public.hugeint NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_minimum_total_idle_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_minimum_total_idle_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_minimum_total_idle_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_minimum_total_idle_id_seq OWNED BY public.yearn_events_update_minimum_total_idle.id;
+
+
+--
+-- Name: yearn_events_update_paused; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_paused (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    paused boolean NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_paused_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_paused_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_paused_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_paused_id_seq OWNED BY public.yearn_events_update_paused.id;
+
+
+--
+-- Name: yearn_events_update_pending_governance; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_pending_governance (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    new_pending_governance public.address NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_pending_governance_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_pending_governance_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_pending_governance_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_pending_governance_id_seq OWNED BY public.yearn_events_update_pending_governance.id;
+
+
+--
+-- Name: yearn_events_update_profit_max_unlock_time; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_profit_max_unlock_time (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    profit_max_unlock_time public.hugeint NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_profit_max_unlock_time_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_profit_max_unlock_time_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_profit_max_unlock_time_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_profit_max_unlock_time_id_seq OWNED BY public.yearn_events_update_profit_max_unlock_time.id;
+
+
+--
+-- Name: yearn_events_update_protocol_fee_bps; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_protocol_fee_bps (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    old_fee_bps integer NOT NULL,
+    new_fee_bps integer NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_protocol_fee_bps_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_protocol_fee_bps_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_protocol_fee_bps_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_protocol_fee_bps_id_seq OWNED BY public.yearn_events_update_protocol_fee_bps.id;
+
+
+--
+-- Name: yearn_events_update_protocol_fee_recipient; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_protocol_fee_recipient (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    old_fee_recipient public.address NOT NULL,
+    new_fee_recipient public.address NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_protocol_fee_recipient_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_protocol_fee_recipient_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_protocol_fee_recipient_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_protocol_fee_recipient_id_seq OWNED BY public.yearn_events_update_protocol_fee_recipient.id;
+
+
+--
+-- Name: yearn_events_update_role_manager; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_role_manager (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    role_manager public.address NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_role_manager_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_role_manager_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_role_manager_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_role_manager_id_seq OWNED BY public.yearn_events_update_role_manager.id;
+
+
+--
+-- Name: yearn_events_update_transfer_hook; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_transfer_hook (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    transfer_hook public.address NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_transfer_hook_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_transfer_hook_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_transfer_hook_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_transfer_hook_id_seq OWNED BY public.yearn_events_update_transfer_hook.id;
+
+
+--
+-- Name: yearn_events_update_use_default_queue; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_use_default_queue (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    use_default_queue boolean NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_use_default_queue_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_use_default_queue_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_use_default_queue_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_use_default_queue_id_seq OWNED BY public.yearn_events_update_use_default_queue.id;
+
+
+--
+-- Name: yearn_events_update_withdraw_hook; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_update_withdraw_hook (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    withdraw_hook public.address NOT NULL
+);
+
+
+--
+-- Name: yearn_events_update_withdraw_hook_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_update_withdraw_hook_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_update_withdraw_hook_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_update_withdraw_hook_id_seq OWNED BY public.yearn_events_update_withdraw_hook.id;
+
+
+--
+-- Name: yearn_events_updated_max_debt_for_strategy; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_updated_max_debt_for_strategy (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    sender public.address NOT NULL,
+    strategy public.address NOT NULL,
+    new_debt public.hugeint NOT NULL
+);
+
+
+--
+-- Name: yearn_events_updated_max_debt_for_strategy_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_updated_max_debt_for_strategy_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_updated_max_debt_for_strategy_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_updated_max_debt_for_strategy_id_seq OWNED BY public.yearn_events_updated_max_debt_for_strategy.id;
+
+
+--
+-- Name: yearn_events_withdraw; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.yearn_events_withdraw (
+    id integer NOT NULL,
+    created_by timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
+    block_hash public.hash NOT NULL,
+    transaction_hash public.hash NOT NULL,
+    block_number integer NOT NULL,
+    emitter_addr public.address NOT NULL,
+    sender public.address NOT NULL,
+    receiver public.address NOT NULL,
+    owner public.address NOT NULL,
+    assets public.hugeint NOT NULL,
+    shares public.hugeint NOT NULL
+);
+
+
+--
+-- Name: yearn_events_withdraw_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.yearn_events_withdraw_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: yearn_events_withdraw_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.yearn_events_withdraw_id_seq OWNED BY public.yearn_events_withdraw.id;
 
 
 --
@@ -5326,6 +6647,27 @@ ALTER TABLE ONLY public.liquity_events_multi_trove_getter_address_changed_testne
 
 
 --
+-- Name: liquity_events_operation_cancelled id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_operation_cancelled ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_operation_cancelled_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_operation_executed id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_operation_executed ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_operation_executed_id_seq'::regclass);
+
+
+--
+-- Name: liquity_events_operation_queued id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_operation_queued ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_operation_queued_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_ownership_transferred id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5522,6 +6864,13 @@ ALTER TABLE ONLY public.liquity_events_stability_pool_coll_balance_updated_testn
 
 
 --
+-- Name: liquity_events_storage_wiped id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_storage_wiped ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_storage_wiped_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_trove_manager_address_added id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5634,6 +6983,13 @@ ALTER TABLE ONLY public.liquity_events_trove_updated_testnet_v1 ALTER COLUMN id 
 
 
 --
+-- Name: liquity_events_upgraded id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_upgraded ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_upgraded_id_seq'::regclass);
+
+
+--
 -- Name: liquity_events_weth_address_changed id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5645,6 +7001,230 @@ ALTER TABLE ONLY public.liquity_events_weth_address_changed ALTER COLUMN id SET 
 --
 
 ALTER TABLE ONLY public.liquity_events_weth_address_changed_testnet_v1 ALTER COLUMN id SET DEFAULT nextval('public.liquity_events_weth_address_changed_testnet_v1_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_approval id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_approval ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_approval_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_debt_purchased id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_debt_purchased ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_debt_purchased_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_debt_updated id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_debt_updated ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_debt_updated_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_deposit id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_deposit ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_deposit_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_factory_shutdown id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_factory_shutdown ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_factory_shutdown_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_governance_transferred id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_governance_transferred ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_governance_transferred_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_new_vault id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_new_vault ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_new_vault_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_removed_custom_protocol_fee id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_removed_custom_protocol_fee ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_removed_custom_protocol_fee_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_role_set id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_role_set ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_role_set_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_shutdown id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_shutdown ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_shutdown_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_strategy_changed id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_strategy_changed ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_strategy_changed_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_strategy_reported id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_strategy_reported ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_strategy_reported_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_transfer id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_transfer ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_transfer_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_accountant id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_accountant ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_accountant_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_auto_allocate id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_auto_allocate ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_auto_allocate_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_custom_protocol_fee id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_custom_protocol_fee ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_custom_protocol_fee_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_default_queue id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_default_queue ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_default_queue_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_deposit_hook id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_deposit_hook ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_deposit_hook_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_deposit_limit id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_deposit_limit ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_deposit_limit_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_future_role_manager id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_future_role_manager ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_future_role_manager_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_minimum_total_idle id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_minimum_total_idle ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_minimum_total_idle_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_paused id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_paused ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_paused_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_pending_governance id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_pending_governance ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_pending_governance_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_profit_max_unlock_time id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_profit_max_unlock_time ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_profit_max_unlock_time_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_protocol_fee_bps id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_protocol_fee_bps ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_protocol_fee_bps_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_protocol_fee_recipient id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_protocol_fee_recipient ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_protocol_fee_recipient_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_role_manager id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_role_manager ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_role_manager_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_transfer_hook id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_transfer_hook ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_transfer_hook_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_use_default_queue id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_use_default_queue ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_use_default_queue_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_update_withdraw_hook id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_withdraw_hook ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_update_withdraw_hook_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_updated_max_debt_for_strategy id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_updated_max_debt_for_strategy ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_updated_max_debt_for_strategy_id_seq'::regclass);
+
+
+--
+-- Name: yearn_events_withdraw id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_withdraw ALTER COLUMN id SET DEFAULT nextval('public.yearn_events_withdraw_id_seq'::regclass);
 
 
 --
@@ -6288,6 +7868,30 @@ ALTER TABLE ONLY public.liquity_events_multi_trove_getter_address_changed_testne
 
 
 --
+-- Name: liquity_events_operation_cancelled liquity_events_operation_cancelled_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_operation_cancelled
+    ADD CONSTRAINT liquity_events_operation_cancelled_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_operation_executed liquity_events_operation_executed_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_operation_executed
+    ADD CONSTRAINT liquity_events_operation_executed_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: liquity_events_operation_queued liquity_events_operation_queued_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_operation_queued
+    ADD CONSTRAINT liquity_events_operation_queued_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_ownership_transferred liquity_events_ownership_transferred_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6512,6 +8116,14 @@ ALTER TABLE ONLY public.liquity_events_stability_pool_coll_balance_updated_testn
 
 
 --
+-- Name: liquity_events_storage_wiped liquity_events_storage_wiped_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_storage_wiped
+    ADD CONSTRAINT liquity_events_storage_wiped_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_trove_manager_address_added liquity_events_trove_manager_address_added_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6640,6 +8252,14 @@ ALTER TABLE ONLY public.liquity_events_trove_updated_testnet_v1
 
 
 --
+-- Name: liquity_events_upgraded liquity_events_upgraded_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.liquity_events_upgraded
+    ADD CONSTRAINT liquity_events_upgraded_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: liquity_events_weth_address_changed liquity_events_weth_address_changed_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6653,6 +8273,262 @@ ALTER TABLE ONLY public.liquity_events_weth_address_changed
 
 ALTER TABLE ONLY public.liquity_events_weth_address_changed_testnet_v1
     ADD CONSTRAINT liquity_events_weth_address_changed_testnet_v1_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_approval yearn_events_approval_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_approval
+    ADD CONSTRAINT yearn_events_approval_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_debt_purchased yearn_events_debt_purchased_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_debt_purchased
+    ADD CONSTRAINT yearn_events_debt_purchased_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_debt_updated yearn_events_debt_updated_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_debt_updated
+    ADD CONSTRAINT yearn_events_debt_updated_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_deposit yearn_events_deposit_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_deposit
+    ADD CONSTRAINT yearn_events_deposit_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_factory_shutdown yearn_events_factory_shutdown_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_factory_shutdown
+    ADD CONSTRAINT yearn_events_factory_shutdown_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_governance_transferred yearn_events_governance_transferred_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_governance_transferred
+    ADD CONSTRAINT yearn_events_governance_transferred_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_new_vault yearn_events_new_vault_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_new_vault
+    ADD CONSTRAINT yearn_events_new_vault_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_removed_custom_protocol_fee yearn_events_removed_custom_protocol_fee_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_removed_custom_protocol_fee
+    ADD CONSTRAINT yearn_events_removed_custom_protocol_fee_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_role_set yearn_events_role_set_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_role_set
+    ADD CONSTRAINT yearn_events_role_set_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_shutdown yearn_events_shutdown_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_shutdown
+    ADD CONSTRAINT yearn_events_shutdown_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_strategy_changed yearn_events_strategy_changed_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_strategy_changed
+    ADD CONSTRAINT yearn_events_strategy_changed_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_strategy_reported yearn_events_strategy_reported_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_strategy_reported
+    ADD CONSTRAINT yearn_events_strategy_reported_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_transfer yearn_events_transfer_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_transfer
+    ADD CONSTRAINT yearn_events_transfer_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_accountant yearn_events_update_accountant_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_accountant
+    ADD CONSTRAINT yearn_events_update_accountant_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_auto_allocate yearn_events_update_auto_allocate_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_auto_allocate
+    ADD CONSTRAINT yearn_events_update_auto_allocate_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_custom_protocol_fee yearn_events_update_custom_protocol_fee_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_custom_protocol_fee
+    ADD CONSTRAINT yearn_events_update_custom_protocol_fee_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_default_queue yearn_events_update_default_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_default_queue
+    ADD CONSTRAINT yearn_events_update_default_queue_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_deposit_hook yearn_events_update_deposit_hook_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_deposit_hook
+    ADD CONSTRAINT yearn_events_update_deposit_hook_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_deposit_limit yearn_events_update_deposit_limit_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_deposit_limit
+    ADD CONSTRAINT yearn_events_update_deposit_limit_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_future_role_manager yearn_events_update_future_role_manager_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_future_role_manager
+    ADD CONSTRAINT yearn_events_update_future_role_manager_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_minimum_total_idle yearn_events_update_minimum_total_idle_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_minimum_total_idle
+    ADD CONSTRAINT yearn_events_update_minimum_total_idle_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_paused yearn_events_update_paused_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_paused
+    ADD CONSTRAINT yearn_events_update_paused_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_pending_governance yearn_events_update_pending_governance_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_pending_governance
+    ADD CONSTRAINT yearn_events_update_pending_governance_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_profit_max_unlock_time yearn_events_update_profit_max_unlock_time_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_profit_max_unlock_time
+    ADD CONSTRAINT yearn_events_update_profit_max_unlock_time_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_protocol_fee_bps yearn_events_update_protocol_fee_bps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_protocol_fee_bps
+    ADD CONSTRAINT yearn_events_update_protocol_fee_bps_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_protocol_fee_recipient yearn_events_update_protocol_fee_recipient_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_protocol_fee_recipient
+    ADD CONSTRAINT yearn_events_update_protocol_fee_recipient_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_role_manager yearn_events_update_role_manager_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_role_manager
+    ADD CONSTRAINT yearn_events_update_role_manager_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_transfer_hook yearn_events_update_transfer_hook_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_transfer_hook
+    ADD CONSTRAINT yearn_events_update_transfer_hook_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_use_default_queue yearn_events_update_use_default_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_use_default_queue
+    ADD CONSTRAINT yearn_events_update_use_default_queue_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_update_withdraw_hook yearn_events_update_withdraw_hook_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_update_withdraw_hook
+    ADD CONSTRAINT yearn_events_update_withdraw_hook_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_updated_max_debt_for_strategy yearn_events_updated_max_debt_for_strategy_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_updated_max_debt_for_strategy
+    ADD CONSTRAINT yearn_events_updated_max_debt_for_strategy_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: yearn_events_withdraw yearn_events_withdraw_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.yearn_events_withdraw
+    ADD CONSTRAINT yearn_events_withdraw_pkey PRIMARY KEY (id);
 
 
 --
@@ -6722,7 +8598,7 @@ CREATE INDEX liquity_events_p_updated_pool_block_id_idx ON public.liquity_events
 -- PostgreSQL database dump complete
 --
 
-\unrestrict xpERqXmqhFYfCyepurA4S1HZWJgfBP9RdHutPE9hijXp3m3qwo4QMLtav7379ah
+\unrestrict ObDNgUm2KFxAc2VChLsLW4SBQFmmxVZPSzIIa1GdW1aD4fNXkttAaGX6vDkeu0s
 
 
 --
@@ -6735,4 +8611,6 @@ INSERT INTO public.florin_migrations (version) VALUES
     ('1790683508'),
     ('1794481872'),
     ('1794483397'),
-    ('1794496177');
+    ('1794496177'),
+    ('1794918000'),
+    ('1795005000');
