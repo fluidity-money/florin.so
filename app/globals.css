@@ -3054,8 +3054,10 @@ input:focus-visible {
 	min-height: 1.5em;
 }
 
-/* The last row leaves the same space below as the collateral row does. */
+/* The second row sits right under the first, like .swap__meta--right, and
+   leaves the same space below as the collateral row does. */
 .swap--borrow .swap__meta--compact + .swap__meta--compact {
+	margin-top: -10px;
 	min-height: calc(3em + 6px);
 }
 
