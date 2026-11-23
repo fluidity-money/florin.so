@@ -651,7 +651,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 		return (<>
 			<div className="swap__meta swap__meta--compact">
 				<span>+ <b>{quoteReady ? money(fee) : '−'}</b> FUSD upfront interest</span>
-				<span>Current max borrow <b>{quoteReady && spy > 0 ? `${formatLoanMax(maxBorrowWei)} ${loanToken}` : '−'}</b></span>
+				<span>Liquidation price <b>{active && (!usdgSelected || quoteReady) ? `$${money(liquidationPrice)}` : '−'}</b></span>
 			</div>
 			<div className="swap__meta swap__meta--compact">
 				{liquidationLevel ? (
@@ -662,9 +662,6 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 				) : (
 					<span className="risk-tag"><i className="swap__dot" /> Liquidation risk</span>
 				)}
-				<span>Liquidation price <b>{active && (!usdgSelected || quoteReady) ? `$${money(liquidationPrice)}` : '−'}</b></span>
-			</div>
-			<div className="swap__meta swap__meta--right">
 				<span>LTV <b>{active && (!usdgSelected || quoteReady) ? pct(ltv * 100, 1) : '−'}</b>{active && (!usdgSelected || quoteReady) && <em> ({pct(collateralRatio * 100, 0)} CR)</em>}</span>
 			</div>
 		</>);

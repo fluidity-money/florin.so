@@ -3054,8 +3054,8 @@ input:focus-visible {
 	min-height: 1.5em;
 }
 
-/* The last row keeps the block's old height, so the interest rate box stays put. */
-.swap--borrow .swap__meta--compact ~ .swap__meta--right {
+/* The last row leaves the same space below as the collateral row does. */
+.swap--borrow .swap__meta--compact + .swap__meta--compact {
 	min-height: calc(3em + 6px);
 }
 
@@ -3080,12 +3080,9 @@ input:focus-visible {
 		gap: 0;
 	}
 
-	.swap--borrow .swap__meta--compact {
+	.swap--borrow .swap__meta--compact,
+	.swap--borrow .swap__meta--compact + .swap__meta--compact {
 		min-height: 3em;
-	}
-
-	.swap--borrow .swap__meta--compact ~ .swap__meta--right {
-		min-height: 1.5em;
 	}
 
 	.swap--borrow .swap__meta > span {
