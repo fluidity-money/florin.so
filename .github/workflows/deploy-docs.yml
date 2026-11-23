@@ -1,0 +1,66 @@
+name: Deploy Sphinx docs to Bunny
+
+on:
+  push:
+    tags:
+      - 'release-*'
+
+permissions:
+  contents: read
+
+# Do not interrupt an upload with another release.
+concurrency:
+  group: deploy-docs-bunny
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Sphinx
+        run: python -m pip install -r docs/requirements.txt
+      - name: Build HTML
+        run: make -C docs html
+      - name: Upload HTML to Bunny Storage
+        env:
+          BUNNY_STORAGE_HOST: ${{ secrets.BUNNY_STORAGE_HOST }}
+          BUNNY_STORAGE_ZONE: ${{ vars.BUNNY_STORAGE_ZONE }}
+          BUNNY_STORAGE_PATH: ${{ vars.BUNNY_STORAGE_PATH }}
+          BUNNY_STORAGE_ACCESS_KEY: ${{ secrets.BUNNY_STORAGE_ACCESS_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${BUNNY_STORAGE_HOST:?Set the Bunny regional storage hostname}"
+          : "${BUNNY_STORAGE_ZONE:?Set the Bunny storage zone name}"
+          : "${BUNNY_STORAGE_ACCESS_KEY:?Set the Bunny storage zone password}"
+          [[ "$BUNNY_STORAGE_HOST" =~ ^([a-z]+\.)?storage\.bunnycdn\.com$ ]] || {
+            printf '%s\n' 'Invalid Bunny storage hostname' >&2
+            exit 1
+          }
+          [[ "$BUNNY_STORAGE_ZONE" =~ ^[a-zA-Z0-9_-]+$ ]] || {
+            printf '%s\n' 'Invalid Bunny storage zone name' >&2
+            exit 1
+          }
+          prefix="${BUNNY_STORAGE_PATH#/}"
+          prefix="${prefix%/}"
+          case "/$prefix/" in
+            */../*|*/./*) printf '%s\n' 'Invalid Bunny storage path' >&2; exit 1 ;;
+          esac
+          test -s docs/_build/html/index.html
+          cd docs/_build/html
+          while IFS= read -r -d '' file; do
+            remote="${prefix:+$prefix/}${file#./}"
+            encoded=$(python -c 'import sys; from urllib.parse import quote; print(quote(sys.argv[1], safe="/"))' "$remote")
+            curl --fail --silent --show-error --retry 3 \
+              --connect-timeout 15 --max-time 120 \
+              --header "AccessKey: $BUNNY_STORAGE_ACCESS_KEY" \
+              --header 'Content-Type: application/octet-stream' \
+              --upload-file "$file" --output /dev/null \
+              "https://$BUNNY_STORAGE_HOST/$BUNNY_STORAGE_ZONE/$encoded"
+          done < <(find . -type f -print0)
