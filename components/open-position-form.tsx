@@ -232,7 +232,7 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 		},
 	});
 
-	const { priceReady, chainReady, feeReady, spyPrice, spy, borrow, fee, totalDebt, collateralUsd, collateralRatio, ltv, maxBorrowWei, formatLoanMax, minimumRatio, liquidationPrice, annualInterest, redemptionRisk, active, liquidationLevel, debtSuggestions, pending } = calculateBorrowPreview();
+	const { priceReady, chainReady, feeReady, spyPrice, spy, borrow, fee, collateralUsd, collateralRatio, ltv, maxBorrowWei, formatLoanMax, minimumRatio, liquidationPrice, annualInterest, redemptionRisk, active, liquidationLevel, debtSuggestions, pending } = calculateBorrowPreview();
 
 	function calculateBorrowPreview() {
 		const priceReady = stateReady;
@@ -611,15 +611,16 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 					/>
 				</div>
 				<div className="swap__foot">
+					{/* One short line, so the suggestions fit beside it and the box keeps its height. */}
 					<div className="swap__usd swap__loan-summary">
-						{/* FUSD loans: the amount field already shows what is received. */}
-						{usdgSelected && (
+						{usdgSelected ? (
 							<>
 								<span>{quoteReady ? `At least ${formatUnits(outputWei, swap!.decimals)} USDG received` : 'USDG quote unavailable'}</span>
 								<span>{quoteReady ? `${formatUnits(borrowedWei, 18)} FUSD principal` : 'Debt and repayments are in FUSD'}</span>
 							</>
+						) : (
+							<span className="swap__loan-usd" title={`$${money(borrow)}`}>${money(borrow)}</span>
 						)}
-						<span>{quoteReady ? `${money(totalDebt)} FUSD debt including ${money(fee)} FUSD upfront interest` : '− FUSD debt including − FUSD upfront interest'}</span>
 					</div>
 					<span className="swap__suggest" role={debtSuggestions.length > 0 ? 'group' : undefined} aria-label={debtSuggestions.length > 0 ? 'Suggested loan amounts' : undefined}>
 						{debtSuggestions.map(({ amount, risk }) => (
@@ -648,7 +649,11 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 
 	function renderBorrowRisk() {
 		return (<>
-			<div className="swap__meta">
+			<div className="swap__meta swap__meta--compact">
+				<span>+ <b>{quoteReady ? money(fee) : '−'}</b> FUSD upfront interest</span>
+				<span>Current max borrow <b>{quoteReady && spy > 0 ? `${formatLoanMax(maxBorrowWei)} ${loanToken}` : '−'}</b></span>
+			</div>
+			<div className="swap__meta swap__meta--compact">
 				{liquidationLevel ? (
 					<span className={`risk-tag risk-tag--${liquidationLevel}`}>
 						<i className={`swap__dot swap__dot--${liquidationLevel}`} />
@@ -657,9 +662,6 @@ export function OpenPositionForm({ initialMarkets }: { initialMarkets: FlorinMar
 				) : (
 					<span className="risk-tag"><i className="swap__dot" /> Liquidation risk</span>
 				)}
-				<span>Current max borrow <b>{quoteReady && spy > 0 ? `${formatLoanMax(maxBorrowWei)} ${loanToken}` : '−'}</b></span>
-			</div>
-			<div className="swap__meta swap__meta--right">
 				<span>Liquidation price <b>{active && (!usdgSelected || quoteReady) ? `$${money(liquidationPrice)}` : '−'}</b></span>
 			</div>
 			<div className="swap__meta swap__meta--right">

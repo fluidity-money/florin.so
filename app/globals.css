@@ -2998,30 +2998,32 @@ input:focus-visible {
 
 /* Borrow reserves the normal quote layout before asynchronous data arrives.
    Minimums (not fixed heights) keep exceptional values and warnings readable. */
+
+/* The dollar value and the suggested loan sizes share one row, as tall as a
+   chip, so the loan box keeps its height when suggestions come and go. */
 .swap--borrow .swap__foot {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr);
+	flex-wrap: nowrap;
+	min-height: 25px;
 }
 
 .swap--borrow .swap__loan-summary {
 	display: grid;
+	min-width: 0;
 	line-height: 1.5;
 	overflow-wrap: anywhere;
 }
 
-.swap--borrow .swap__loan-summary > span {
-	min-height: 1.5em;
-}
-
 .swap--borrow .swap__suggest {
-	min-height: 25px;
-	align-items: start;
+	flex-wrap: nowrap;
+	flex-shrink: 0;
 }
 
-/* No suggested loan sizes (no collateral yet, or a USDG loan): the loan box
-   closes up rather than keep an empty row. */
-.swap--borrow .swap__suggest:empty {
-	display: none;
+/* Very large amounts on a phone cut off rather than wrap and grow the box. */
+.swap--borrow .swap__loan-usd {
+	min-width: 0;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
 .swap--borrow .swap__meta {
@@ -3047,6 +3049,16 @@ input:focus-visible {
 	min-height: 1.5em;
 }
 
+/* Rows under the loan box: one line each on desktop, like a list. */
+.swap--borrow .swap__meta--compact {
+	min-height: 1.5em;
+}
+
+/* The last row keeps the block's old height, so the interest rate box stays put. */
+.swap--borrow .swap__meta--compact ~ .swap__meta--right {
+	min-height: calc(3em + 6px);
+}
+
 .swap--borrow .swap__field > .swap__usd {
 	min-height: 1.5em;
 	line-height: 1.5;
@@ -3063,13 +3075,17 @@ input:focus-visible {
 		min-height: 3em;
 	}
 
-	.swap--borrow .swap__loan-summary > span {
-		min-height: 3em;
-	}
-
 	.swap--borrow .swap__meta {
 		grid-template-columns: minmax(0, 1fr);
 		gap: 0;
+	}
+
+	.swap--borrow .swap__meta--compact {
+		min-height: 3em;
+	}
+
+	.swap--borrow .swap__meta--compact ~ .swap__meta--right {
+		min-height: 1.5em;
 	}
 
 	.swap--borrow .swap__meta > span {
