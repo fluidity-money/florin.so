@@ -9,16 +9,16 @@ Getting started
 
 .. container:: image-grid
 
-   .. image:: /_static/images/for-users.svg
-      :alt: For users
+   .. image:: /_static/images/first-time-borrowers.svg
+      :alt: First time borrowers
       :target: users.html
 
-   .. image:: /_static/images/for-users.svg
-      :alt: For liquidity providers
+   .. image:: /_static/images/first-time-borrowers.svg
+      :alt: Experienced borrowers
       :target: liquidity-providers.html
 
-   .. image:: /_static/images/for-users.svg
-      :alt: For developers
+   .. image:: /_static/images/first-time-borrowers.svg
+      :alt: Developers
       :target: developers.html
 
 .. toctree::
