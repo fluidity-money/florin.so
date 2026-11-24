@@ -21,5 +21,9 @@ Getting started
       :alt: For developers
       :target: developers.html
 
-In technicalese: Florin is an overcollateralised lending protocol built using Liquity V2
-Bold, with support for pausing and holiday periods, and adding collateral dynamically.
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
+   users
+   deployment-addresses
