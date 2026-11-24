@@ -115,6 +115,18 @@ body::before {
   outline-offset: -4px;
 }
 
+/* ---- live protocol safety warning -------------------------------------- */
+.safety-mode-banner {
+	padding: 14px 20px;
+	border-block: 1px solid #b88717;
+	background: color-mix(in srgb, var(--paper) 88%, #e9ac22);
+	color: var(--ink);
+	font-size: 14px;
+	line-height: 1.5;
+	text-align: center;
+	overflow-wrap: anywhere;
+}
+
 /* ---- cookie consent ------------------------------------------------------ */
 .cookie-consent {
   position: fixed;

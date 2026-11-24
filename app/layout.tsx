@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import './globals.css';
 import { Providers } from '../components/Providers';
 import { Header } from '../components/Header';
+import { SafetyModeBanner } from '../components/safety-mode-banner';
 import { Footer } from '../components/Footer';
 import { CookieConsent } from '../components/CookieConsent';
 import { themeVars } from '../lib/theme';
@@ -67,6 +68,7 @@ export default function RootLayout({
             learn more</span>
           </a>
           <Header />
+			<SafetyModeBanner />
           <main className="main">{children}</main>
           <Footer />
         </Providers>
