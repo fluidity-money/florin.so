@@ -1,0 +1,29 @@
+name: Detect release changes
+
+on:
+  workflow_call:
+    outputs:
+      go:
+        value: ${{ jobs.changes.outputs.go }}
+      web:
+        value: ${{ jobs.changes.outputs.web }}
+      docs:
+        value: ${{ jobs.changes.outputs.docs }}
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.detect.outputs.go }}
+      web: ${{ steps.detect.outputs.web }}
+      docs: ${{ steps.detect.outputs.docs }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Compare with preceding release
+        id: detect
+        run: python3 .github/scripts/release_changes.py

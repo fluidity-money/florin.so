@@ -7,6 +7,9 @@ on:
     tags:
       - 'release-*'
 jobs:
+  Changes:
+    uses: ./.github/workflows/release-changes.yml
+
   Snyk:
     runs-on: ubuntu-latest
     steps:
@@ -26,7 +29,8 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
   Test-Npm:
-    needs: Snyk
+    needs: [Snyk, Changes]
+    if: needs.Changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -41,7 +45,8 @@ jobs:
         run: npm test
 
   Test-Go:
-    needs: Snyk
+    needs: [Snyk, Changes]
+    if: needs.Changes.outputs.go == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -72,7 +77,14 @@ jobs:
           --include '*.jsx' --include '*.mjs' --include '*.cjs' --include '*.py'
 
   Deploy-Vercel:
-    needs: [Test-Npm, Check-Complexity]
+    needs: [Changes, Test-Npm, Check-Complexity]
+    # An intentionally skipped web test is safe; failed/cancelled checks are not.
+    if: >-
+      !cancelled() &&
+      needs.Changes.result == 'success' &&
+      needs.Check-Complexity.result == 'success' &&
+      (needs.Test-Npm.result == 'success' ||
+       (needs.Changes.outputs.web == 'false' && needs.Test-Npm.result == 'skipped'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
