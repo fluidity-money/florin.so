@@ -1,5 +1,5 @@
-First time borrowers
-====================
+First time with Liquity
+=======================
 
 Florin is a Smart Contract deployed to Robinhood Chain that lets you borrow Florin US
 Dollars (FUSD) in exchange for Stock Tokens.
@@ -45,7 +45,3 @@ show and tell:
 		referrerpolicy="strict-origin-when-cross-origin"
 		allowfullscreen>
 	</iframe>
-
-How to get SPY
---------------
-

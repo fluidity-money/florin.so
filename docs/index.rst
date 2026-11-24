@@ -1,23 +1,25 @@
 The Florin Book
 ===============
 
-Florin is a lending protocol for Robinhood and Arbitrum One: deposit Stock Tokens, and
+Florin is a lending protocol on Robinhood Chain: deposit Robinhood Stock Tokens, and
 receive dollars without selling.
 
+Florin is a fork of Liquity v2 (BOLD) with changes made to accommodate Stock Tokens.
+
 Getting started
-----------
+---------------
 
 .. container:: image-grid
 
    .. image:: /_static/images/first-time-borrowers.svg
-      :alt: First time borrowers
-      :target: users.html
+      :alt: Liquity beginners
+      :target: first-time-liquity.html
 
-   .. image:: /_static/images/first-time-borrowers.svg
-      :alt: Experienced borrowers
-      :target: liquidity-providers.html
+   .. image:: /_static/images/experienced-borrowers.svg
+      :alt: Experienced with Liquity
+      :target: experienced-liquity.html
 
-   .. image:: /_static/images/first-time-borrowers.svg
+   .. image:: /_static/images/developers.svg
       :alt: Developers
       :target: developers.html
 
@@ -25,5 +27,8 @@ Getting started
    :maxdepth: 2
    :caption: Contents:
 
-   users
+   first-time-liquity
+   experienced-liquity
+   developers
    deployment-addresses
+   audits

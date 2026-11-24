@@ -73,7 +73,10 @@ div.body h2 { margin: 1.8em 0 0.6em; font-size: 28px; }
 div.body h3 { margin: 1.5em 0 0.5em; font-size: 23px; font-style: italic; }
 div.body p, div.body li { line-height: 1.6; }
 div.body p { margin: 0 0 1.1em; }
-a, div.sphinxsidebar a, div.sphinxsidebar h3 a, div.footer a {
+a, a:visited,
+div.sphinxsidebar a, div.sphinxsidebar a:visited,
+div.sphinxsidebar h3 a, div.sphinxsidebar h3 a:visited,
+div.footer a, div.footer a:visited {
 	color: var(--link);
 	border: 0;
 	text-decoration: underline;
