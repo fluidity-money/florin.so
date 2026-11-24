@@ -26,6 +26,7 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 html_theme = 'alabaster'
 html_static_path = ['_static']
 html_css_files = ['book.css']
+html_js_files = ['graph-examples.js']
 html_title = 'The Florin Book'
 html_baseurl = 'https://docs.florin.so/'
 html_context = {

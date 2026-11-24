@@ -210,6 +210,85 @@ div.footer { width: auto; max-width: 1040px; margin: 24px auto 48px; padding: 0 
 	outline-offset: 5px;
 }
 
+.graph-example {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 24px;
+	align-items: start;
+}
+.graph-example > div { min-width: 0; }
+.graph-example__console pre {
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+.graph-example__response { max-height: 360px; overflow: auto; }
+.graph-example button {
+	background: var(--wash);
+	color: var(--link);
+	border: 1px solid var(--rule);
+	padding: 8px 14px;
+	font: inherit;
+	cursor: pointer;
+}
+.graph-example button:hover { color: var(--ink); }
+.graph-example button:disabled { cursor: wait; opacity: 0.65; }
+.graph-example [data-graph-status] { margin-top: 12px; font-size: 15px; }
+
+/* Give runnable examples their own right rail, outside the usual reading measure. */
+div.document:has(.graph-example) { max-width: 1600px; }
+div.body:has(.graph-example) { max-width: none; }
+.graph-example__console {
+	padding: 20px;
+	border: 1px solid var(--rule);
+	background: var(--wash);
+}
+.graph-example__label { display: block; margin-bottom: 12px; }
+.graph-example textarea {
+	display: block;
+	width: 100%;
+	min-height: 180px;
+	margin-bottom: 16px;
+	padding: 12px;
+	resize: vertical;
+	border: 1px solid var(--rule);
+	border-radius: 0;
+	background: var(--paper);
+	color: var(--ink);
+	font: 14px/1.6 var(--mono);
+	tab-size: 2;
+}
+.graph-example textarea:focus-visible {
+	outline: 2px solid var(--link);
+	outline-offset: 3px;
+}
+@media (min-width: 1100px) {
+	section:has(> .graph-example) {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(360px, 1fr);
+		column-gap: 40px;
+		align-items: start;
+		margin-top: 36px;
+	}
+	section:has(> .graph-example) > h3 {
+		grid-column: 1;
+		grid-row: 1;
+		margin-top: 0;
+	}
+	.graph-example { display: contents; }
+	.graph-example__explanation { grid-column: 1; grid-row: 2; }
+	.graph-example__console {
+		grid-column: 2;
+		grid-row: 1 / span 2;
+		position: sticky;
+		top: 24px;
+		max-height: calc(100vh - 48px);
+		overflow: auto;
+	}
+}
+@media (max-width: 1099px) {
+	.graph-example { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 600px) {
 	.image-grid {
 		grid-template-columns: 1fr;
