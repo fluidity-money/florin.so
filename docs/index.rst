@@ -6,6 +6,8 @@ receive dollars without selling.
 
 Florin is a fork of Liquity v2 (BOLD) with changes made to accommodate Stock Tokens.
 
+For agents: navigate to /agents.rst.
+
 Getting started
 ---------------
 

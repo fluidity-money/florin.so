@@ -1,31 +1,17 @@
 Developers
 ==========
 
+Extra smart contract functions
+-------------------------------
+
+
 Using the graph
 ---------------
 
 Florin provides a graph endpoint that can be queried at
 https://graph.superposition.so/robinhood-testnet/florin.
 
-Asking for the ingestor status
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. raw:: html
-
-	<div class="graph-example" data-graph-example>
-		<div class="graph-example__explanation">
-			<p>This is a checkpoint, not a guarantee that the ingestor is currently running or caught up with the chain. If the field is missing, the checkpoint is unavailable.</p>
-		</div>
-		<div class="graph-example__console">
-			<label class="graph-example__label" for="ingestor-query">GraphQL query</label>
-			<textarea id="ingestor-query" data-graph-query rows="7" spellcheck="false" autocapitalize="off" autocomplete="off">query IngestorStatus {
-	  __typename
-	}</textarea>
-			<button type="button" data-graph-run>Run query</button>
-			<p data-graph-status role="status" aria-live="polite">Click Run query to send a request to the testnet graph.</p>
-			<pre class="graph-example__response" tabindex="0" aria-label="GraphQL response"><code data-graph-response>No request sent yet.</code></pre>
-		</div>
-	</div>
+All requests include the ingestor block height as an extension.
 
 Reading borrowing totals
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
