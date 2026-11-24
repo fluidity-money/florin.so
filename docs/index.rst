@@ -1,5 +1,5 @@
-The Florin Book
-===============
+Introduction
+============
 
 Florin is a lending protocol on Robinhood Chain: deposit Robinhood Stock Tokens, and
 receive dollars without selling.

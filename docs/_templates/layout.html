@@ -1,0 +1,22 @@
+{% extends "!layout.html" %}
+
+{% block extrahead %}
+	{{ super() }}
+	{% set social_title = title | striptags %}
+	{% if social_title != docstitle %}
+		{% set social_title = social_title ~ ' — ' ~ docstitle %}
+	{% endif %}
+	{% set social_image = social_image_url %}
+	<meta property="og:type" content="website">
+	<meta property="og:site_name" content="{{ docstitle | e }}">
+	<meta property="og:title" content="{{ social_title | e }}">
+	<meta property="og:description" content="{{ theme_description | e }}">
+	<meta property="og:url" content="{{ pageurl | e }}">
+	<meta property="og:image" content="{{ social_image | e }}">
+	<meta property="og:image:alt" content="Florin">
+	<meta name="twitter:card" content="summary_large_image">
+	<meta name="twitter:title" content="{{ social_title | e }}">
+	<meta name="twitter:description" content="{{ theme_description | e }}">
+	<meta name="twitter:image" content="{{ social_image | e }}">
+	<meta name="twitter:image:alt" content="Florin">
+{% endblock %}

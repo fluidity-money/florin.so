@@ -6,8 +6,8 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'Florin'
-copyright = '2026, Bayge'
+project = 'The Florin Book'
+copyright = '2026, Florin'
 author = 'Bayge'
 
 # -- General configuration ---------------------------------------------------
@@ -27,8 +27,12 @@ html_theme = 'alabaster'
 html_static_path = ['_static']
 html_css_files = ['book.css']
 html_title = 'The Florin Book'
+html_baseurl = 'https://docs.florin.so/'
+html_context = {
+	'social_image_url': html_baseurl + '_static/images/og-image-v2.jpg',
+}
 html_theme_options = {
-	'description': 'The Florin Book',
+	'description': 'Learn how to borrow FUSD using Florin on Robinhood Chain.',
 	'fixed_sidebar': False,
 }
 # book.css supplies a restrained syntax palette for both color schemes.
