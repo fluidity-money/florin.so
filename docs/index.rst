@@ -14,7 +14,7 @@ Getting started
 .. container:: image-grid
 
    .. image:: /_static/images/first-time-borrowers.svg
-      :alt: Liquity beginners
+      :alt: Beginners
       :target: first-time-liquity.html
 
    .. image:: /_static/images/experienced-borrowers.svg

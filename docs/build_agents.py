@@ -24,6 +24,16 @@ def build_agents(source: Path, output: Path) -> None:
 	output.write_text("\n\n".join(sections), encoding="utf-8")
 
 
+def on_build_finished(app, exception):
+	if exception is None and app.builder.format == "html":
+		build_agents(Path(app.srcdir), Path(app.outdir) / "agents.rst")
+
+
+def setup(app):
+	app.connect("build-finished", on_build_finished)
+	return {"parallel_read_safe": True, "parallel_write_safe": True}
+
+
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description=__doc__)
 	parser.add_argument("output", type=Path)
