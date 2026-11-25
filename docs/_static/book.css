@@ -47,7 +47,61 @@ div.document {
 	margin: 72px auto 0;
 	padding: 0 40px;
 }
+/* Alabaster paints this wrapper white below 940px. It remains visible
+ * beside the narrower article and through its margins while scrolling. */
+div.documentwrapper { background: var(--paper); }
 div.bodywrapper { margin-left: 240px; }
+
+/* A local outline, separate from the book's chapter navigation. Native
+ * details keeps it collapsible and keyboard-operable without JavaScript. */
+.page-toc {
+	min-width: 0;
+	margin: 0 0 32px 48px;
+	padding: 0 0 0 18px;
+	border-left: 1px solid var(--rule);
+	font-size: 15px;
+	line-height: 1.5;
+	overflow-wrap: anywhere;
+}
+.page-toc summary { color: var(--muted); cursor: pointer; }
+.page-toc summary:focus-visible { outline: 2px solid var(--link); outline-offset: 4px; }
+.page-toc ul { list-style: none; margin: 12px 0 0; padding: 0; }
+.page-toc ul ul { margin: 6px 0; padding-left: 14px; }
+.page-toc li { margin: 6px 0; }
+.page-toc a { display: inline-block; }
+.page-toc .copy-contents { margin: 18px 0 0; }
+.page-toc #copy-status { margin: 8px 0 0; color: var(--muted); }
+.page-toc #copy-status:empty { display: none; }
+.sidebar-social { margin-top: 18px; }
+.sidebar-social ul { list-style: none; padding: 0; }
+.sidebar-social li { margin: 6px 0; }
+@media (min-width: 1280px) {
+	div.document:has(.page-toc) { max-width: 1400px; }
+	div.bodywrapper:has(.page-toc) {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) 200px;
+		column-gap: 32px;
+		align-items: start;
+	}
+	.page-toc {
+		grid-column: 2;
+		grid-row: 1;
+		position: sticky;
+		top: 32px;
+		max-height: calc(100vh - 64px);
+		overflow-y: auto;
+		margin: 5px 0 0;
+		padding: 4px 8px 8px 18px;
+	}
+	div.bodywrapper:has(.page-toc) > div.body { grid-column: 1; grid-row: 1; }
+}
+@media (max-width: 940px) {
+	.page-toc { margin-left: 0; }
+}
+@media print {
+	.page-toc { display: none; }
+	div.bodywrapper:has(.page-toc) { display: block; }
+}
 div.body {
 	min-width: 0;
 	max-width: 720px;
@@ -73,6 +127,7 @@ div.body h2 { margin: 1.8em 0 0.6em; font-size: 28px; }
 div.body h3 { margin: 1.5em 0 0.5em; font-size: 23px; font-style: italic; }
 div.body p, div.body li { line-height: 1.6; }
 div.body p { margin: 0 0 1.1em; }
+div.body ul.simple, div.body ol.simple { margin-bottom: 30px; }
 a, a:visited,
 div.sphinxsidebar a, div.sphinxsidebar a:visited,
 div.sphinxsidebar h3 a, div.sphinxsidebar h3 a:visited,
@@ -94,13 +149,32 @@ a.headerlink:hover { color: var(--ink); background: var(--wash); }
 /* Navigation reads as marginal material, not a separate application panel. */
 div.sphinxsidebar {
 	width: 240px;
-	margin-left: -100%;
+	/* Keep Alabaster's margin: fixed and floated sidebars differ. */
+	max-height: calc(100vh - 96px);
+	overflow-y: auto;
 	background: var(--paper);
 	font-family: var(--serif);
 	font-size: 15px;
 	line-height: 1.5;
 }
 div.sphinxsidebarwrapper { padding: 5px 32px 24px 0; }
+div.sphinxsidebar p.logo {
+	padding: 16px 0;
+}
+div.sphinxsidebar img.logo {
+	display: block;
+	width: 180px;
+	max-width: 100%;
+	height: auto;
+	margin: 0 auto;
+	filter: brightness(0);
+}
+@media (prefers-color-scheme: dark) {
+	div.sphinxsidebar img.logo { filter: brightness(0) invert(1); }
+}
+@media (max-width: 940px) {
+	div.sphinxsidebar p.logo { display: block; }
+}
 div.sphinxsidebar h1.logo { margin: 0; font-size: 23px; text-align: left; }
 div.sphinxsidebar h1.logo a { color: var(--ink); text-decoration: none; }
 div.sphinxsidebar h3, div.sphinxsidebar h4, div.sphinxsidebar p.caption {
@@ -169,12 +243,12 @@ figcaption, div.figure p.caption { font-size: 0.85em; color: var(--muted); }
 img { max-width: 100%; height: auto; }
 hr { border: 0; border-top: 1px solid var(--rule); }
 div.footer { width: auto; max-width: 1040px; margin: 24px auto 48px; padding: 0 0 0 288px; color: var(--muted); font-size: 13px; text-align: left; }
-@media (max-width: 875px) {
+@media (max-width: 940px) {
 	div.document { margin-top: 36px; padding: 0 24px; }
 	div.documentwrapper { float: none; }
 	div.bodywrapper { margin: 0; }
 	div.body { max-width: 660px; padding: 0 0 32px; }
-	div.sphinxsidebar { float: none; width: auto; margin: 0; padding: 24px 0 0; border-top: 1px solid var(--rule); }
+	div.sphinxsidebar { position: static; float: none; width: auto; max-height: none; overflow: visible; margin: 0; padding: 24px 0 0; border-top: 1px solid var(--rule); }
 	div.sphinxsidebarwrapper { padding: 0; }
 	div.sphinxsidebar #searchbox form.search { max-width: 320px; }
 	div.footer { margin: 32px 24px; padding: 0; }

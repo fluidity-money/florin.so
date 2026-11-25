@@ -1,5 +1,5 @@
-First time with Liquity
-=======================
+Florin 101
+==========
 
 Florin is a Smart Contract deployed to Robinhood Chain that lets you borrow Florin US
 Dollars (FUSD) in exchange for Stock Tokens.
@@ -19,29 +19,9 @@ splitting and dividend payments.
 Florin is a smart contract deployed to Robinhood Chain. A website has been built that lets
 you connect to the smart contract, and the website runs at https://florin.so.
 
-What are Florin US Dollars?
----------------------------
+What are Florin US Dollars (FUSD)?
+----------------------------------
 
 When the S&P500 ETF and other Stock Tokens are supplied to Florin, Florin sends a US
 dollar-denominated token that can be exchanged for the underlying collateral that was
 provided.
-
-How to borrow FUSD
------------------
-
-When you supply Robinhood Stock Tokens to Florin, you receive FUSD. Watch Alex for a
-show and tell:
-
-.. raw:: html
-
-	<iframe
-		src="https://www.youtube-nocookie.com/embed/m8qs3VB5uTc"
-		title="Borrowing with Florin quick demo"
-		width="560"
-		height="315"
-		style="display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; border: 0;"
-		loading="lazy"
-		allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-		referrerpolicy="strict-origin-when-cross-origin"
-		allowfullscreen>
-	</iframe>

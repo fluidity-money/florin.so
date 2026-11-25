@@ -1,0 +1,29 @@
+{
+	"shared": {
+		"collateralRegistry": "0xeb264317b915cb1a8c8e3ca27dd270d947bba968",
+		"hintHelpers": "0xcd8bf0cb142d8e612b9685772b2c5439240c1ba5",
+		"multiTroveGetter": "0x8fac04bbcaadced3074a2909d9490510033b4caa",
+		"debtInFrontHelper": "0x9bcfb45890b2aafb611708fab9c93b66761cc58f",
+		"redemptionHelper": "0x8fe4dad64687d180c6e2a00667f8cb7c7bbeef6b",
+		"boldToken": "0x1f93de989cd9d30b2c31f3227769632729858196"
+	},
+	"branches": {
+		"SPY": {
+			"collToken": "0x8823b40A23387Df76E127744FFB38b26eB012A5c",
+			"chainlinkAggregator": "0xcc794A65915A7Ec2B4753bB9d6b983C60035cd74",
+			"addressesRegistry": "0xd48655f1fc1a6648246cc9802c6ee5190c93fec0",
+			"activePool": "0xf00a7eb2cf0d8dee71788bbb99d57d8a4ef98775",
+			"borrowerOperations": "0xfea06161dbd14374ee6a746eae3502a1a6741990",
+			"collSurplusPool": "0x43a5c00937b4aec0b56f0e12dedd2247e4a454f7",
+			"defaultPool": "0x47697a6400bd3848519f469bbc0824b954826e66",
+			"sortedTroves": "0x83311690476dfa9239b55e732b4b6638a15142df",
+			"stabilityPool": "0x9543b191c66c4fa68b9b7888df65b661842ace1b",
+			"troveManager": "0xc1ebb33678176d7fb5c8fef3ba5a610d50bacc63",
+			"troveNFT": "0xe361393f4d0f3b40eca34c7a83e27e4b5dcfa1c3",
+			"metadataNFT": "0xd2e22b2a1ec0b287cb550e92255694aaa0b6e133",
+			"priceFeed": "0xb7dc3a2596e9a0571b6e104d2f1a3d35b0653862",
+			"gasPool": "0xdc6041cc3ba941e96421ed13e26b2f4ffefb7b71",
+			"interestRouter": "0xd913b152025c1c7a7b7560fdd8a7f04b53a6a5b7"
+		}
+	}
+}

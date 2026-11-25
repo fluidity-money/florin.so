@@ -5,6 +5,8 @@ Deployment addresses
 Robinhood Testnet
 -----------------
 
+:download:`Download Robinhood Testnet addresses (JSON) <downloads/robinhood-testnet.json>`
+
 +--------+------------------------+------------------------------------------------+
 | Scope  | Contract               | Address                                        |
 +========+========================+================================================+

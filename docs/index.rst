@@ -14,23 +14,36 @@ Getting started
 .. container:: image-grid
 
    .. image:: /_static/images/first-time-borrowers.svg
-      :alt: Beginners
-      :target: first-time-liquity.html
+      :alt: Florin 101
+      :target: florin-101.html
 
    .. image:: /_static/images/experienced-borrowers.svg
-      :alt: Experienced with Liquity
-      :target: experienced-liquity.html
+      :alt: How does Florin differ from Liquity?
+      :target: how-does-florin-differ-from-liquity.html
 
    .. image:: /_static/images/developers.svg
       :alt: Developers
       :target: developers.html
 
+   .. image:: /_static/images/developers.svg
+      :alt: Developers
+      :target: developers.html
+
+Digging deeper
+--------------
+
+
+Partnered ecosystems
+--------------------
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+   :hidden:
 
-   first-time-liquity
+   florin-101
    experienced-liquity
    developers
    deployment-addresses
+   risk-disclosure
    audits

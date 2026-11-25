@@ -1,5 +1,24 @@
 {% extends "!layout.html" %}
 
+{% block relbar_top %}
+	{{ super() }}
+	{% if page_sections or (has_source and sourcename) %}
+		<nav class="page-toc" aria-label="On this page">
+			{% if page_sections %}
+				<details open>
+					<summary>On this page</summary>
+					{{ page_sections }}
+				</details>
+			{% endif %}
+			{% if has_source and sourcename %}
+				<p class="copy-contents"><a href="{{ pathto('_sources/' ~ sourcename, resource=True) | e }}" data-copy-contents aria-describedby="copy-status">Copy contents</a></p>
+				<p id="copy-status" role="status" aria-live="polite" aria-atomic="true"></p>
+				<noscript><p>Open “Copy contents” to copy the reStructuredText source manually.</p></noscript>
+			{% endif %}
+		</nav>
+	{% endif %}
+{% endblock %}
+
 {% block extrahead %}
 	{{ super() }}
 	{% set social_title = title | striptags %}

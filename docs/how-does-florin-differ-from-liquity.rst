@@ -1,8 +1,5 @@
-Experienced with Liquity
-========================
-
 How does Florin differ from Liquity?
-------------------------------------
+====================================
 
 Florin differs from Liquity in the following ways:
 

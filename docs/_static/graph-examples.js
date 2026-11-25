@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					credentials: 'omit',
-					body: JSON.stringify({ query: example.querySelector('[data-graph-query]').value }),
+					body: example.querySelector('[data-graph-body]').textContent,
 					signal: controller.signal,
 				});
 				const body = await response.json();
