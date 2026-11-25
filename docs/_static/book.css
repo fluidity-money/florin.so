@@ -149,21 +149,20 @@ a:focus-visible, input:focus-visible, button:focus-visible {
 a.headerlink { color: var(--muted); }
 a.headerlink:hover { color: var(--ink); background: var(--wash); }
 
-.mobile-navigation { display: none; }
+.mobile-nav-toggle { display: none; }
 @media (width < 800px) {
-	.desktop-navigation, div.sphinxsidebar #searchbox { display: none; }
-	.mobile-navigation { display: block; margin: 16px 0; }
-	.mobile-navigation > summary {
-		padding: 10px 0;
-		color: var(--link);
-		cursor: pointer;
+	.quick-search { display: none; }
+	.mobile-nav-toggle {
+		display: block;
+		margin: 16px 24px 0;
 	}
-	.mobile-navigation > summary:focus-visible {
-		outline: 2px solid var(--link);
-		outline-offset: 4px;
+	.mobile-nav-toggle[aria-expanded='false'] ~ .document .sphinxsidebar {
+		display: none;
 	}
-	/* The summary already labels the expanded navigation. */
-	.mobile-navigation > h3 { display: none; }
+	.mobile-nav-toggle .nav-caret { display: inline-block; }
+	.mobile-nav-toggle[aria-expanded='true'] .nav-caret { transform: rotate(90deg); }
+	div.document { margin-top: 24px; }
+	div.sphinxsidebar { margin-bottom: 24px; }
 }
 
 /* Navigation reads as marginal material, not a separate application panel. */
@@ -275,7 +274,7 @@ div.footer { width: auto; max-width: 1040px; margin: 24px auto 48px; padding: 0 
 }
 @media print {
 	:root { color-scheme: light; --paper: #fff; --ink: #222; --muted: #555; --rule: #ccc; --link: #333; --note: #333; --caution: #333; --error: #333; --wash: #f4f4f4; }
-	div.sphinxsidebar, div.footer, a.headerlink { display: none; }
+	div.sphinxsidebar, div.footer, a.headerlink, .mobile-nav-toggle { display: none; }
 	div.document { margin: 0; padding: 0; }
 	div.bodywrapper { margin: 0; }
 	div.body { max-width: none; padding: 0; }

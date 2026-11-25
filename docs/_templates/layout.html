@@ -1,5 +1,14 @@
 {% extends "!layout.html" %}
 
+{% block content %}
+	{% if render_sidebar %}
+		<button class="mobile-nav-toggle" type="button" aria-expanded="false" aria-controls="docs-navigation">
+			<span aria-hidden="true" class="nav-caret">▸</span> Navigation
+		</button>
+	{% endif %}
+	{{ super() }}
+{% endblock %}
+
 {% block relbar_top %}
 	{{ super() }}
 	{% if page_sections or (has_source and sourcename) %}

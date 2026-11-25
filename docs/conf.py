@@ -31,7 +31,7 @@ html_theme = 'alabaster'
 html_static_path = ['_static']
 html_favicon = '_static/images/favicon.ico'
 html_css_files = ['book.css']
-html_js_files = ['graph-examples.js', 'copy-contents.js']
+html_js_files = ['graph-examples.js', 'copy-contents.js', 'navigation.js']
 # Publish only Sphinx's discovered documents, never the entire source directory.
 html_copy_source = True
 html_sourcelink_suffix = '.txt'
