@@ -2,7 +2,7 @@ Introduction
 ============
 
 Florin is a lending protocol on Robinhood Chain: deposit Robinhood Stock Tokens, and
-receive dollars without selling.
+receive FUSD (Florin USD) without selling.
 
 Florin is a fork of Liquity v2 (BOLD) with changes made to accommodate Stock Tokens.
 
