@@ -1,3 +1,7 @@
+// Copyright 2026 Fluid Assets Limited BVI. All rights reserved. Use of this
+// source code is governed by a BUSL license that can be found in the
+// LICENSE file.
+
 // Package yearn decodes the pinned Yearn V3 vault and factory event ABIs.
 package yearn
 

@@ -1,3 +1,7 @@
+// Copyright 2026 Fluid Assets Limited BVI. All rights reserved. Use of this
+// source code is governed by a BUSL license that can be found in the
+// LICENSE file.
+
 // interest: go on-chain to get fee data and uses the historical data
 // in the database for the stability pool and active pool given.
 
