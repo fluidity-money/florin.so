@@ -19,6 +19,11 @@ Getting started
 			<span class="docs-card__title">Florin 101 <span aria-hidden="true">↗</span></span>
 			<span class="docs-card__description">Learn how to borrow FUSD against your Stock Tokens without selling.</span>
 		</a>
+		<a class="docs-card" href="usecases.html">
+			<span class="docs-card__icon" aria-hidden="true">🔥</span>
+			<span class="docs-card__title">Florin usecases <span aria-hidden="true">↗</span></span>
+			<span class="docs-card__description">Read example use cases and user stories.</span>
+		</a>
 		<a class="docs-card" href="how-does-florin-differ-from-liquity.html">
 			<span class="docs-card__icon" aria-hidden="true">⇄</span>
 			<span class="docs-card__title">How does Florin differ from Liquity? <span aria-hidden="true">↗</span></span>
@@ -37,6 +42,10 @@ Digging deeper
 .. raw:: html
 
 	<div class="docs-card-grid">
+		<a class="docs-card" href="risk-disclosure.html">
+			<span class="docs-card__icon" aria-hidden="true">🤝</span>
+			<span class="docs-card__title">Risk disclosure</span>
+		</a>
 		<a class="docs-card" href="smart-contract-architecture.html">
 			<span class="docs-card__icon" aria-hidden="true">▦</span>
 			<span class="docs-card__title">Smart contract architecture <span aria-hidden="true">↗</span></span>
