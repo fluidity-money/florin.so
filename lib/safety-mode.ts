@@ -41,7 +41,7 @@ export async function readSafetyMode(client: Pick<PublicClient, 'getBlock' | 're
 
 export function safetyModeNotice(data: SafetyModeState | undefined, isError: boolean, now: number) {
 	if (isError || (data && (now - data.readAt > SAFETY_MODE_MAX_AGE_MS || now < data.readAt))) {
-		return 'Safety-mode status unavailable. Live protocol conditions could not be verified.';
+		return null;
 	}
 	if (!data?.active) return null;
 	return 'Safety mode is active. The SPY branch’s total collateral ratio is below its critical threshold. Borrowing and collateral withdrawals are restricted; adding collateral or repaying debt helps restore the ratio.';

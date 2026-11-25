@@ -63,6 +63,8 @@ div.bodywrapper { margin-left: 240px; }
 	line-height: 1.5;
 	overflow-wrap: anywhere;
 }
+/* Keep the outline in the right rail only, never above the article. */
+.page-toc > details { display: none; }
 .page-toc summary { color: var(--muted); cursor: pointer; }
 .page-toc summary:focus-visible { outline: 2px solid var(--link); outline-offset: 4px; }
 .page-toc ul { list-style: none; margin: 12px 0 0; padding: 0; }
@@ -76,6 +78,7 @@ div.bodywrapper { margin-left: 240px; }
 .sidebar-social ul { list-style: none; padding: 0; }
 .sidebar-social li { margin: 6px 0; }
 @media (min-width: 1280px) {
+	.page-toc > details { display: block; }
 	div.document:has(.page-toc) { max-width: 1400px; }
 	div.bodywrapper:has(.page-toc) {
 		display: grid;
@@ -145,6 +148,23 @@ a:focus-visible, input:focus-visible, button:focus-visible {
 }
 a.headerlink { color: var(--muted); }
 a.headerlink:hover { color: var(--ink); background: var(--wash); }
+
+.mobile-navigation { display: none; }
+@media (width < 800px) {
+	.desktop-navigation, div.sphinxsidebar #searchbox { display: none; }
+	.mobile-navigation { display: block; margin: 16px 0; }
+	.mobile-navigation > summary {
+		padding: 10px 0;
+		color: var(--link);
+		cursor: pointer;
+	}
+	.mobile-navigation > summary:focus-visible {
+		outline: 2px solid var(--link);
+		outline-offset: 4px;
+	}
+	/* The summary already labels the expanded navigation. */
+	.mobile-navigation > h3 { display: none; }
+}
 
 /* Navigation reads as marginal material, not a separate application panel. */
 div.sphinxsidebar {
