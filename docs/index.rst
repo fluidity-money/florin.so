@@ -6,35 +6,64 @@ receive FUSD (Florin USD) without selling.
 
 Florin is a fork of Liquity v2 (BOLD) with changes made to accommodate Stock Tokens.
 
-For agents: navigate to /agents.rst.
+For agents: navigate to `/agents.rst </agents.rst>`_.
 
 Getting started
 ---------------
 
-.. container:: image-grid
+.. raw:: html
 
-   .. image:: /_static/images/first-time-borrowers.svg
-      :alt: Florin 101
-      :target: florin-101.html
-
-   .. image:: /_static/images/experienced-borrowers.svg
-      :alt: How does Florin differ from Liquity?
-      :target: how-does-florin-differ-from-liquity.html
-
-   .. image:: /_static/images/developers.svg
-      :alt: Developers
-      :target: developers.html
-
-   .. image:: /_static/images/developers.svg
-      :alt: Developers
-      :target: developers.html
+	<div class="docs-card-grid">
+		<a class="docs-card" href="florin-101.html">
+			<span class="docs-card__icon docs-card__icon--florin" aria-hidden="true"></span>
+			<span class="docs-card__title">Florin 101 <span aria-hidden="true">↗</span></span>
+			<span class="docs-card__description">Learn how to borrow FUSD against your Stock Tokens without selling.</span>
+		</a>
+		<a class="docs-card" href="how-does-florin-differ-from-liquity.html">
+			<span class="docs-card__icon" aria-hidden="true">⇄</span>
+			<span class="docs-card__title">How does Florin differ from Liquity? <span aria-hidden="true">↗</span></span>
+			<span class="docs-card__description">Explore the changes for Stock Tokens, market pauses, and governance.</span>
+		</a>
+		<a class="docs-card" href="developers.html">
+			<span class="docs-card__icon docs-card__icon--code" aria-hidden="true">&lt;/&gt;</span>
+			<span class="docs-card__title">Developers <span aria-hidden="true">↗</span></span>
+			<span class="docs-card__description">Query Florin’s GraphQL API with runnable examples for borrowing and rewards.</span>
+		</a>
+	</div>
 
 Digging deeper
 --------------
 
+.. raw:: html
+
+	<div class="docs-card-grid">
+		<a class="docs-card" href="smart-contract-architecture.html">
+			<span class="docs-card__icon" aria-hidden="true">▦</span>
+			<span class="docs-card__title">Smart contract architecture <span aria-hidden="true">↗</span></span>
+		</a>
+		<a class="docs-card" href="flash-loans.html">
+			<span class="docs-card__icon" aria-hidden="true">↯</span>
+			<span class="docs-card__title">Flash loans <span aria-hidden="true">↗</span></span>
+		</a>
+	</div>
 
 Partnered ecosystems
 --------------------
+
+Partnership intake form
+
+.. raw:: html
+
+	<div class="docs-card-grid partner-grid">
+		<a class="docs-card partner-card" href="https://www.liquity.org/">
+			<img src="_static/images/liquity.svg" width="48" height="48" alt="">
+			<span class="docs-card__title">Liquity</span>
+		</a>
+		<a class="docs-card partner-card" href="https://arbitrum.io/">
+			<img src="_static/images/arbitrum.svg" width="48" height="48" alt="">
+			<span class="docs-card__title">Arbitrum</span>
+		</a>
+	</div>
 
 .. toctree::
    :maxdepth: 2
@@ -42,8 +71,10 @@ Partnered ecosystems
    :hidden:
 
    florin-101
-   experienced-liquity
+   how-does-florin-differ-from-liquity
    developers
+   smart-contract-architecture
+   flash-loans
    deployment-addresses
    risk-disclosure
    audits

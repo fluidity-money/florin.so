@@ -2,9 +2,10 @@
 
 {% block content %}
 	{% if render_sidebar %}
-		<button class="mobile-nav-toggle" type="button" aria-expanded="false" aria-controls="docs-navigation">
+		<input class="mobile-nav-state" type="checkbox" id="mobile-nav-state">
+		<label class="mobile-nav-toggle" for="mobile-nav-state">
 			<span aria-hidden="true" class="nav-caret">▸</span> Navigation
-		</button>
+		</label>
 	{% endif %}
 	{{ super() }}
 {% endblock %}
@@ -22,7 +23,6 @@
 			{% if has_source and sourcename %}
 				<p class="copy-contents"><a href="{{ pathto('_sources/' ~ sourcename, resource=True) | e }}" data-copy-contents aria-describedby="copy-status">Copy contents</a></p>
 				<p id="copy-status" role="status" aria-live="polite" aria-atomic="true"></p>
-				<noscript><p>Open “Copy contents” to copy the reStructuredText source manually.</p></noscript>
 			{% endif %}
 		</nav>
 	{% endif %}
