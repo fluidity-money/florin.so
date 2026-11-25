@@ -288,16 +288,16 @@ div.body table.docutils {
 	width: 100%;
 	max-width: 100%;
 	margin: 24px 0 32px;
-	border: 1px solid var(--rule);
-	border-collapse: separate;
+	border: 0;
+	border-collapse: collapse;
 	border-spacing: 0;
-	border-radius: 10px;
+	border-radius: 0;
 	background: var(--paper);
 	font-size: 0.9em;
 	font-variant-numeric: tabular-nums;
 }
 div.body table.docutils th, div.body table.docutils td {
-	padding: 14px 18px;
+	padding: 8px 13px;
 	border: 0;
 	border-bottom: 1px solid var(--rule);
 	text-align: left;
@@ -305,16 +305,12 @@ div.body table.docutils th, div.body table.docutils td {
 	line-height: 1.5;
 }
 div.body table.docutils th {
-	background: var(--wash);
+	background: var(--paper);
 	color: var(--ink);
 	font-weight: 600;
 }
 div.body table.docutils tbody tr:nth-child(even) { background: var(--wash); }
 div.body table.docutils tbody tr:last-child > * { border-bottom: 0; }
-div.body table.docutils tr:first-child > :first-child { border-top-left-radius: 9px; }
-div.body table.docutils tr:first-child > :last-child { border-top-right-radius: 9px; }
-div.body table.docutils tbody tr:last-child > :first-child { border-bottom-left-radius: 9px; }
-div.body table.docutils tbody tr:last-child > :last-child { border-bottom-right-radius: 9px; }
 div.body table.docutils p { margin: 0; line-height: 1.5; }
 div.body table.docutils p + p { margin-top: 8px; }
 div.body table.docutils ul, div.body table.docutils ol { margin-bottom: 0; }
@@ -332,7 +328,7 @@ div.body table.docutils caption {
 		width: max-content;
 		overflow-x: auto;
 	}
-	div.body table.docutils th, div.body table.docutils td { padding: 12px 14px; }
+	div.body table.docutils th, div.body table.docutils td { padding: 8px 13px; }
 }
 @media print {
 	div.body table.docutils { display: table; width: 100%; font-size: 0.8em; }

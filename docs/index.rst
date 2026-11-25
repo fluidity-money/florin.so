@@ -50,7 +50,9 @@ Digging deeper
 Partnered ecosystems
 --------------------
 
-Partnership intake form
+`Want to partner with us? Reach out via Telegram.`_
+
+.. _Want to partner with us? Reach out via Telegram.: https://t.me/eepluse
 
 .. raw:: html
 
@@ -62,6 +64,10 @@ Partnership intake form
 		<a class="docs-card partner-card" href="https://arbitrum.io/">
 			<img src="_static/images/arbitrum.svg" width="48" height="48" alt="">
 			<span class="docs-card__title">Arbitrum</span>
+		</a>
+		<a class="docs-card partner-card" href="https://robinhood.com/chain/">
+			<img src="_static/images/robinhood.ico" width="48" height="48" alt="">
+			<span class="docs-card__title">Robinhood Chain</span>
 		</a>
 	</div>
 
