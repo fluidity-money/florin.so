@@ -86,6 +86,7 @@ Partnered ecosystems
    :hidden:
 
    florin-101
+   usecases
    how-does-florin-differ-from-liquity
    developers
    smart-contract-architecture
