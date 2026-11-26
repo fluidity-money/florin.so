@@ -75,7 +75,7 @@ div.bodywrapper { margin-left: 240px; }
 	overflow-wrap: anywhere;
 }
 /* Keep the outline in the right rail only, never above the article. */
-.page-toc > details { display: none; }
+.page-toc { display: none; }
 .page-toc summary { color: var(--muted); cursor: pointer; }
 .page-toc summary:focus-visible { outline: 2px solid var(--link); outline-offset: 4px; }
 .page-toc ul { list-style: none; margin: 12px 0 0; padding: 0; }
@@ -89,7 +89,7 @@ div.bodywrapper { margin-left: 240px; }
 .sidebar-social ul { list-style: none; padding: 0; }
 .sidebar-social li { margin: 6px 0; }
 @media (min-width: 1280px) {
-	.page-toc > details { display: block; }
+	.page-toc { display: block; }
 	div.document:has(.page-toc) { max-width: 1400px; }
 	div.bodywrapper:has(.page-toc) {
 		display: grid;

@@ -32,7 +32,7 @@
 	{{ super() }}
 	{% set social_title = title | striptags %}
 	{% if social_title != docstitle %}
-		{% set social_title = social_title ~ ' — ' ~ docstitle %}
+		{% set social_title = social_title ~ ' | ' ~ docstitle %}
 	{% endif %}
 	{% set social_image = social_image_url %}
 	<meta name="description" content="{{ theme_description | e }}">

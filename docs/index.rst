@@ -34,6 +34,11 @@ Getting started
 			<span class="docs-card__title">Developers <span aria-hidden="true">↗</span></span>
 			<span class="docs-card__description">Query Florin’s GraphQL API with runnable examples for borrowing and rewards.</span>
 		</a>
+		<a class="docs-card" href="faq.html">
+			<span class="docs-card__icon docs-card__icon--code" aria-hidden="true">&lt;/&gt;</span>
+			<span class="docs-card__title">FAQ <span aria-hidden="true">↗</span></span>
+			<span class="docs-card__description">Read answers to commonly asked questions.</span>
+		</a>
 	</div>
 
 Digging deeper
@@ -45,14 +50,17 @@ Digging deeper
 		<a class="docs-card" href="risk-disclosure.html">
 			<span class="docs-card__icon" aria-hidden="true">🤝</span>
 			<span class="docs-card__title">Risk disclosure</span>
+			<span class="docs-card__description">Learn about platform risks.</span>
 		</a>
 		<a class="docs-card" href="smart-contract-architecture.html">
 			<span class="docs-card__icon" aria-hidden="true">▦</span>
 			<span class="docs-card__title">Smart contract architecture <span aria-hidden="true">↗</span></span>
+			<span class="docs-card__description">Understand the smart contract architecture.</span>
 		</a>
 		<a class="docs-card" href="flash-loans.html">
 			<span class="docs-card__icon" aria-hidden="true">↯</span>
 			<span class="docs-card__title">Flash loans <span aria-hidden="true">↗</span></span>
+			<span class="docs-card__description">Understand how to use flash loans to complete arbitrage.</span>
 		</a>
 	</div>
 

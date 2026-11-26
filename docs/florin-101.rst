@@ -22,9 +22,10 @@ you connect to the smart contract, and the website runs at https://florin.so.
 What are Florin US Dollars (FUSD)?
 ----------------------------------
 
-Florin US Dollars (FUSD) are pegged to US dollars, and are created in exchange for
+Florin US Dollars (FUSD) are stablecoins pegged to the US dollar, and are created in exchange for
 the SPY token, a tokenised S&P 500 share token. $1 of FUSD represents $1 of SPY debt that
-was provided by a borrower.
+was provided by a borrower. The system keeps the value of FUSD the same as the US dollar by
+liquidating collateral provided by borrowers that fall below the 1.10% collateral to debt ratio.
 
 For example:
 ^^^^^^^^^^^^
@@ -56,3 +57,9 @@ because of the ratio of *$2115/$1500*, has a collateral ratio of *1.41*.
      -->|"Supplying $2115 of SPY to borrow $200"| Florin
      -->|"Sends $1500 FUSD back"| Erik
 
+Erik can go and do whatever he wants with the FUSD, but he must keep his ratio of
+collateral to debt above the minimum, 1.10%. If he doesn't, then Florin will Liquidate
+him, taking the collateral he put up to borrow FUSD, and burning the FUSD tokens equal to
+what he borrowed. The FUSD that's burned comes from suppliers of FUSD to the Stability
+Pool, who have selected to do so in exchange for a share of the collateral that's provided
+as a fee.

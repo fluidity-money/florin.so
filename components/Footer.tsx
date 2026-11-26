@@ -97,6 +97,14 @@ export function Footer() {
 			>
 				Status
 			</a>
+			<a
+				className="site-footer__link"
+				href="https://docs.florin.so"
+				target="_blank"
+				rel="noopener noreferrer"
+			>
+				Docs
+			</a>
         </div>
 
         <div className="site-footer__end">
